@@ -1,0 +1,172 @@
+# CIS Benchmark - Linux
+{{ safe "<!-- .element: class=\"title-first-page\" -->" }}
+{{ safe "<!-- .slide: data-background-image=\"../../assets/images/deck-title-page-big.jpg\" -->" }}
+
+
+### Number of Masters scanned: {{ .LinuxCIS.MasterCount }}
+{{ safe "<!-- .element: class=\"title-detailed-page\" -->" }}
+{{ safe "<div style=\"display: block; text-align: left;\">" }}
+
+{{- range $reportKey, $reportSpecs := .LinuxCIS.MasterReport }}
+{{ $node := index $reportSpecs.Node 0 }} 
+
+**Os**: {{ $node.Status.NodeInfo.OSImage }} - KernelVersion: {{ $node.Status.NodeInfo.KernelVersion }} 
+{{ safe "<!-- .element: class=\"title-report\" -->" }}
+
+**Masters**: {{ range $nodeKey, $nodeSpecs := $reportSpecs.Node -}} {{ $nodeSpecs.Name }} {{ end }} 
+{{ safe "<!-- .element: class=\"title-report\" -->" }}
+
+{{- end }} 
+{{ safe "</div>" }}
+
+### Number of Nodes scanned: {{ .LinuxCIS.NodeCount }}
+{{ safe "<!-- .element: class=\"title-detailed-page\" -->" }}
+{{ safe "<div style=\"display: block; text-align: left;\">" }}
+
+{{- range $reportKey, $reportSpecs := .LinuxCIS.NodeReport }}
+{{ $node := index $reportSpecs.Node 0 }} 
+
+**Os**: {{ $node.Status.NodeInfo.OSImage }} - **KernelVersion**: {{ $node.Status.NodeInfo.KernelVersion }}
+{{ safe "<!-- .element: class=\"title-report\" -->" }}
+
+**Nodes**: {{ range $nodeKey, $nodeSpecs := $reportSpecs.Node -}} {{ $nodeSpecs.Name }} {{ end }} 
+{{ safe "<!-- .element: class=\"title-report\" -->" }}
+
+{{- end -}} 
+{{ safe "</div>" -}}
+{{ range $nodeKey, $nodeSpecs := .LinuxCIS.MasterReport }}
+
+
+{{ $node := index $nodeSpecs.Node 0 -}} 
+### Masters - **Os**: {{ $node.Status.NodeInfo.OSImage }} - **KernelVersion**: {{ $node.Status.NodeInfo.KernelVersion }} 
+{{ safe "<!-- .element: class=\"title-report\" -->" }}
+
+##### All included:
+{{ range $outputKey, $output := $nodeSpecs.Output -}}
+
+{{ $output.TotalPass }} checks PASS
+
+{{ $output.TotalFail }} checks FAIL
+
+{{ $output.TotalWarn }} checks WARN
+
+{{ $output.TotalInfo }} checks INFO
+
+#### Scored only:
+
+{{ $output.TotalPassScored }} checks PASS
+
+{{ $output.TotalFailScored }} checks FAIL
+
+{{ $output.TotalWarnScored }} checks WARN
+
+{{ $output.TotalInfoScored }} checks INFO
+
+{{- end -}} 
+{{- end -}}
+{{ range $nodeKey, $nodeSpecs := .LinuxCIS.NodeReport }}
+
+
+{{ $node := index $nodeSpecs.Node 0 -}} 
+### Nodes - **Os**: {{ $node.Status.NodeInfo.OSImage }} - **KernelVersion**: {{ $node.Status.NodeInfo.KernelVersion }} 
+{{ safe "<!-- .element: class=\"title-report\" -->" }}
+
+##### All included:
+{{ range $outputKey, $output := $nodeSpecs.Output -}}
+
+{{ $output.TotalPass }} checks PASS
+
+{{ $output.TotalFail }} checks FAIL
+
+{{ $output.TotalWarn }} checks WARN
+
+{{ $output.TotalInfo }} checks INFO
+
+#### Scored only:
+
+{{ $output.TotalPassScored }} checks PASS
+
+{{ $output.TotalFailScored }} checks FAIL
+
+{{ $output.TotalWarnScored }} checks WARN
+
+{{ $output.TotalInfoScored }} checks INFO
+
+{{- end -}} 
+{{- end }} 
+{{ range $nodeKey, $nodeSpecs := .LinuxCIS.MasterReport -}}
+{{- $index := 0 -}} 
+{{- range $outputKey, $output := $nodeSpecs.Output -}}
+{{- range $testKey, $test := $output.Tests -}}
+{{- $length := len $test.Results -}} 
+{{- range $resultKey, $result := $test.Results -}}
+{{- if modsub $resultKey $length 0 4 }}
+{{- $index = inc $index }} 
+
+
+### CIS Linux Result - Masters - part {{ $index }} 
+{{ safe "<!-- .element: class=\"title-detailed-page\" -->" }}
+
+{{ safe "<div style=\"display: block; text-align: left;\">" }}
+
+{{ $node := index $nodeSpecs.Node 0 -}} 
+### Masters - **Os**: {{ $node.Status.NodeInfo.OSImage }} - **KernelVersion**: {{ $node.Status.NodeInfo.KernelVersion }} - {{ $output.Text }}
+{{ safe "<!-- .element: class=\"title-report\" -->" }}
+
+### {{ $test.Section }} {{ $test.Desc }}: pass {{ $test.Pass }}, fail {{ $test.Fail }}, warn {{ $test.Warn }}, info {{ $test.Info }} 
+{{ safe "<!-- .element: class=\"title-report\" -->" }}
+
+{{ end -}}
+
+**TestNumber {{ $result.TestNumber }} - Status {{ $result.Status }} - Scored {{ $result.Scored }}** - **Description:** {{ truncate $result.TestDesc 400 }} 
+{{ safe "<!-- .element: class=\"title-report\" -->" }}
+
+{{ if $result.Reason }}**Reason:** {{ $result.Reason }}{{- end }}{{- if $result.Audit -}} **Audit:** {{ truncate $result.Audit 400 }} {{- end }}
+{{ safe "<!-- .element: class=\"title-report\" -->" }}
+{{ if $result.ActualValue }} **Result:** {{ $result.ActualValue }}{{- end }}{{- if $result.ExpectedResult }} **Expected:** {{ truncate $result.ExpectedResult 400 }} {{- end }}
+{{ safe "<!-- .element: class=\"title-report\" -->" }}
+
+{{ if modsub $resultKey $length 1 4 -}}
+{{ safe "</div>" -}}
+{{- end -}}
+{{ end -}} 
+{{ end -}} 
+{{ end -}} 
+{{ end -}} 
+{{ range $nodeKey, $nodeSpecs := .LinuxCIS.NodeReport -}}
+{{- $index := 0 -}} 
+{{- range $outputKey, $output := $nodeSpecs.Output -}}
+{{- range $testKey, $test := $output.Tests -}}
+{{- $length := len $test.Results -}} 
+{{- range $resultKey, $result := $test.Results -}}
+{{- if modsub $resultKey $length 0 4 }}
+{{- $index = inc $index }} 
+
+
+### CIS Linux Result - Nodes - part {{ $index }} 
+{{ safe "<!-- .element: class=\"title-detailed-page\" -->" }}
+
+{{ safe "<div style=\"display: block; text-align: left;\">" }}
+
+{{ $node := index $nodeSpecs.Node 0 -}} 
+### Nodes - **Os**: {{ $node.Status.NodeInfo.OSImage }} - **KernelVersion**: {{ $node.Status.NodeInfo.KernelVersion }} - {{ $output.Text }}
+{{ safe "<!-- .element: class=\"title-report\" -->" }}
+### {{ $test.Section }} {{ $test.Desc }}: pass {{ $test.Pass }}, fail {{ $test.Fail }}, warn {{ $test.Warn }}, info {{ $test.Info }} 
+{{ safe "<!-- .element: class=\"title-report\" -->" }}
+
+{{ end -}}
+
+**TestNumber {{ $result.TestNumber }} - Status {{ $result.Status }} - Scored {{ $result.Scored }}** - **Description:** {{ truncate $result.TestDesc 400 }} 
+{{ safe "<!-- .element: class=\"title-report\" -->" }}
+{{ if $result.Reason }}**Reason:** {{ $result.Reason }}{{- end }}{{- if $result.Audit -}} **Audit:** {{ truncate $result.Audit 400 }} {{- end }}
+{{ safe "<!-- .element: class=\"title-report\" -->" }}
+{{ if $result.ActualValue }} **Result:** {{ $result.ActualValue }}{{- end }}{{- if $result.ExpectedResult }} **Expected:** {{ truncate $result.ExpectedResult 400 }} {{- end }}
+{{ safe "<!-- .element: class=\"title-report\" -->" }}
+
+{{ if modsub $resultKey $length 1 4 -}}
+{{ safe "</div>" -}}
+{{- end -}}
+{{ end -}} 
+{{ end -}} 
+{{ end -}} 
+{{ end }} 

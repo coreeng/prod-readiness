@@ -1,0 +1,460 @@
+# Kubernetes audit
+{{ safe "<!-- .element: class=\"title-first-page\" -->" }}
+{{ safe "<!-- .slide: data-background-image=\"../../assets/images/deck-title-page-big.jpg\" -->" }}
+
+
+
+# Image Scanning
+{{ safe "<!-- .element: class=\"title-first-page\" -->" }}
+{{ safe "<!-- .slide: data-background-image=\"../../assets/images/deck-title-page-big.jpg\" -->" }}
+
+
+### Image scan summary 
+{{ safe "<!-- .element: class=\"title-detailed-page\" -->" }}
+{{ safe "<div style=\"display: inline-block; text-align: left;\">" }}
+
+Images scanned running in your cluster: {{ .ImageScan.ImageSummary.NumberImagesScanned }}
+
+Pods scanned running in your cluster: {{ .ImageScan.ImageSummary.NumberPodsScanned }}
+
+Images coming from external registries: {{ .ImageScan.ImageSummary.NumberImagesFromExternalRegistry }}
+
+Images with vulnerability: {{ len .ImageScan.ImageSpecsSortByCriticality }}
+{{ safe "</div>" }}
+
+| Registry | Images Count | Pod Count |
+|----------|-------------:|----------:|
+{{- range $data := .ImageScan.ImageSummary.ImagePerRegistry }}
+| {{ $data.RegistryName }} | {{ $data.ImageCount }} | {{ $data.PodCount }}|
+{{- end }}
+{{ safe "<!-- .element: class=\"table-report-medium\" -->" }}
+
+| Type | Vulnerabilities |
+|------|----------------:|
+{{- range $key, $value := .ImageScan.ImageSummary.TotalVulnerabilityPerCriticality }}
+| {{ $key }} | {{ $value }} |
+{{- end }}
+{{ safe "<!-- .element: class=\"table-report-medium\" -->" }}
+
+
+### Image best pratices
+{{ safe "<!-- .element: class=\"title-detailed-page\" -->" }}
+{{ safe "<div style=\"display: inline-block; text-align: left;\">" }}
+
+These images are exposed to an outage from this external source
+
+They can hit a rate limit from this provider 
+
+Using only internal registry allow you to:
+
+- block the promotion in your cluster if vulnerabilities have been found
+
+- block external image deployment with an admission controller
+{{ safe "</div>" }}
+
+
+### Top 20 images containing the most vulnerabilities 
+{{ safe "<!-- .element: class=\"title-detailed-page\" -->" }}
+
+| Image | Replicas | Critical| High | Medium | Low |
+|-------|----------|---------|------|--------|-----|
+{{- range $key, $specs := .ImageScan.ImageSpecsSortByCriticalityTop20 }}
+| {{ $specs.ImageName }} | {{ len $specs.Pods }} | {{ index $specs.TotalVulnerabilityPerCriticality "CRITICAL" }} | {{ index $specs.TotalVulnerabilityPerCriticality "HIGH" }} | {{ index $specs.TotalVulnerabilityPerCriticality "MEDIUM" }} | {{ index $specs.TotalVulnerabilityPerCriticality "LOW" }}|
+{{- end }}
+{{ safe "<!-- .element: class=\"table-report-medium\" -->" }}
+
+
+### Top 20 images containing vulnerabilities with the most replicas 
+{{ safe "<!-- .element: class=\"title-detailed-page\" -->" }}
+
+| Image | Replicas | Critical| High | Medium | Low |
+|-------|----------|---------|------|--------|-----|
+{{- range $key, $specs := .ImageScan.ImageSpecsSortByCriticalityTop20MostReplicas }}
+| {{ $specs.ImageName }} | {{ len $specs.Pods }} | {{ index $specs.TotalVulnerabilityPerCriticality "CRITICAL" }} | {{ index $specs.TotalVulnerabilityPerCriticality "HIGH" }} | {{ index $specs.TotalVulnerabilityPerCriticality "MEDIUM" }} | {{ index $specs.TotalVulnerabilityPerCriticality "LOW" }}|
+{{- end }}
+{{ safe "<!-- .element: class=\"table-report-medium\" -->" -}}
+{{- range $keyArea, $area := .ImageScan.ImageByArea -}}
+{{- range $keyTeam, $team := $area.Teams -}}
+{{- $index := 0 -}} 
+{{- $partNumber := 1 -}} 
+{{- range $key, $specs := $team.Images -}}
+{{- range $trivyKeyOutput, $trivyOutput := $specs.TrivyOutput -}}
+{{- if $trivyOutput.Vulnerabilities -}}
+{{- range $trivyKey, $trivySpecs := $trivyOutput.Vulnerabilities }}
+{{- $length := len $trivyOutput.Vulnerabilities -}} 
+{{- if mods $index 0 30 }}
+
+
+### Vulnerabilities - {{ $area.AreaName }} - {{ $team.TeamName }} - part {{ $partNumber }} 
+{{ safe "<!-- .element: class=\"title-detailed-page\" -->" }}
+
+| Image | CVE | Severity | PkgName | Description |
+|-------|-----|----------|---------|-------------|
+{{ $partNumber = inc $partNumber -}} 
+{{ end -}} 
+{{- $description := $trivySpecs.Title -}}
+{{- if not $trivySpecs.Title -}}
+{{- $description = $trivySpecs.Description -}}
+{{- end -}}
+| {{ $specs.ImageName }} | [{{ $trivySpecs.VulnerabilityID }}](https://nvd.nist.gov/vuln/detail/{{ $trivySpecs.VulnerabilityID }}) | {{ $trivySpecs.Severity }} | {{ $trivySpecs.PkgName }} | {{ truncate $description 105 }} |
+{{ if mods $index 1 30 -}}
+{{ safe "<!-- .element: class=\"table-report\" -->" }}
+{{- end -}} 
+{{- $index = inc $index -}} 
+{{- end }}
+{{- end }} 
+{{- end }}
+{{- end -}}
+{{ safe "<!-- .element: class=\"table-report\" -->" }}
+{{- end }}
+{{- end }}
+
+
+
+# CIS Benchmark - Kubernetes
+{{ safe "<!-- .element: class=\"title-first-page\" -->" }}
+{{ safe "<!-- .slide: data-background-image=\"../../assets/images/deck-title-page-big.jpg\" -->" }}
+
+
+### Number of Masters scanned: {{ .KubeCIS.MasterCount }}
+{{ safe "<!-- .element: class=\"title-detailed-page\" -->" }}
+{{ safe "<div style=\"display: block; text-align: left;\">" }}
+
+{{- range $reportKey, $reportSpecs := .KubeCIS.MasterReport }}
+{{ $node := index $reportSpecs.Node 0 }} 
+
+**Os**: {{ $node.Status.NodeInfo.OSImage }} - **KernelVersion**: {{ $node.Status.NodeInfo.KernelVersion }} - **Kubelet version**: {{ $node.Status.NodeInfo.KubeletVersion }}  
+{{ safe "<!-- .element: class=\"title-report\" -->" }}
+
+**Masters**: {{ range $nodeKey, $nodeSpecs := $reportSpecs.Node -}} {{ $nodeSpecs.Name }} {{ end }} 
+{{ safe "<!-- .element: class=\"title-report\" -->" }}
+
+{{- end }} 
+{{ safe "</div>" }}
+
+### Number of Nodes scanned: {{ .KubeCIS.NodeCount }}
+{{ safe "<!-- .element: class=\"title-detailed-page\" -->" }}
+{{ safe "<div style=\"display: block; text-align: left;\">" }}
+
+{{- range $reportKey, $reportSpecs := .KubeCIS.NodeReport }}
+{{ $node := index $reportSpecs.Node 0 }} 
+
+**Os**: {{ $node.Status.NodeInfo.OSImage }} - **KernelVersion**: {{ $node.Status.NodeInfo.KernelVersion }} - **Kubelet version**: {{ $node.Status.NodeInfo.KubeletVersion }}  
+{{ safe "<!-- .element: class=\"title-report\" -->" }}
+
+**Nodes**: {{ range $nodeKey, $nodeSpecs := $reportSpecs.Node -}} {{ $nodeSpecs.Name }} {{ end }} 
+{{ safe "<!-- .element: class=\"title-report\" -->" }}
+
+{{- end -}} 
+{{ safe "</div>" -}}
+{{ range $nodeKey, $nodeSpecs := .KubeCIS.MasterReport }}
+
+
+{{ $node := index $nodeSpecs.Node 0 -}} 
+### Masters - **Os**: {{ $node.Status.NodeInfo.OSImage }} - **KernelVersion**: {{ $node.Status.NodeInfo.KernelVersion }} - **Kubelet version**: {{ $node.Status.NodeInfo.KubeletVersion }}  
+{{ safe "<!-- .element: class=\"title-report\" -->" }}
+
+##### All included:
+{{ range $outputKey, $output := $nodeSpecs.Output -}}
+
+{{ $output.TotalPass }} checks PASS
+
+{{ $output.TotalFail }} checks FAIL
+
+{{ $output.TotalWarn }} checks WARN
+
+{{ $output.TotalInfo }} checks INFO
+
+#### Scored only:
+
+{{ $output.TotalPassScored }} checks PASS
+
+{{ $output.TotalFailScored }} checks FAIL
+
+{{ $output.TotalWarnScored }} checks WARN
+
+{{ $output.TotalInfoScored }} checks INFO
+
+{{- end -}} 
+{{- end -}} 
+{{ range $nodeKey, $nodeSpecs := .KubeCIS.NodeReport }}
+
+
+{{ $node := index $nodeSpecs.Node 0 -}} 
+### Nodes - **Os**: {{ $node.Status.NodeInfo.OSImage }} - **KernelVersion**: {{ $node.Status.NodeInfo.KernelVersion }} - **Kubelet version**: {{ $node.Status.NodeInfo.KubeletVersion }}  
+{{ safe "<!-- .element: class=\"title-report\" -->" }}
+
+##### All included:
+{{ range $outputKey, $output := $nodeSpecs.Output -}}
+
+{{ $output.TotalPass }} checks PASS
+
+{{ $output.TotalFail }} checks FAIL
+
+{{ $output.TotalWarn }} checks WARN
+
+{{ $output.TotalInfo }} checks INFO
+
+#### Scored only:
+
+{{ $output.TotalPass }} checks PASS
+
+{{ $output.TotalFail }} checks FAIL
+
+{{ $output.TotalWarn }} checks WARN
+
+{{ $output.TotalInfo }} checks INFO
+
+{{- end -}} 
+{{- end }} 
+{{ range $nodeKey, $nodeSpecs := .KubeCIS.MasterReport -}}
+{{- $index := 0 -}} 
+{{- range $outputKey, $output := $nodeSpecs.Output -}}
+{{- range $testKey, $test := $output.Tests -}}
+{{- $length := len $test.Results -}} 
+{{- range $resultKey, $result := $test.Results -}}
+{{- if modsub $resultKey $length 0 4 }}
+{{- $index = inc $index }} 
+
+
+### CIS Kubernetes Result - Masters - part {{ $index }} 
+{{ safe "<!-- .element: class=\"title-detailed-page\" -->" }}
+
+{{ safe "<div style=\"display: block; text-align: left;\">" }}
+
+{{ $node := index $nodeSpecs.Node 0 -}} 
+### Masters - **Os**: {{ $node.Status.NodeInfo.OSImage }} - **KernelVersion**: {{ $node.Status.NodeInfo.KernelVersion }} - **Kubelet version**: {{ $node.Status.NodeInfo.KubeletVersion }} - {{ $output.Text }} - {{ $output.Version }}
+{{ safe "<!-- .element: class=\"title-report\" -->" }}
+
+### {{ $test.Section }} {{ $test.Desc }}: pass {{ $test.Pass }}, fail {{ $test.Fail }}, warn {{ $test.Warn }}, info {{ $test.Info }} 
+{{ safe "<!-- .element: class=\"title-report\" -->" }}
+
+{{ end -}}
+
+**TestNumber {{ $result.TestNumber }} - Status {{ $result.Status }} - Scored {{ $result.Scored }}**
+{{ safe "<!-- .element: class=\"title-report\" -->" }}
+**Description:** {{ truncate $result.TestDesc 400 }} 
+{{ safe "<!-- .element: class=\"title-report\" -->" }}
+**Remediation:** {{ truncate $result.Remediation 400 }} 
+{{ safe "<!-- .element: class=\"title-report\" -->" }}
+
+{{ if modsub $resultKey $length 1 4 -}}
+{{ safe "</div>" -}}
+{{- end -}}
+{{ end -}} 
+{{ end -}} 
+{{ end -}} 
+{{ end -}}
+{{ range $nodeKey, $nodeSpecs := .KubeCIS.NodeReport -}}
+{{- $index := 0 -}} 
+{{- range $outputKey, $output := $nodeSpecs.Output -}}
+{{- range $testKey, $test := $output.Tests -}}
+{{- $length := len $test.Results -}} 
+{{- range $resultKey, $result := $test.Results -}}
+{{- if modsub $resultKey $length 0 4 }}
+{{- $index = inc $index }} 
+
+
+### CIS Kubernetes Result - Nodes - part {{ $index }} 
+{{ safe "<!-- .element: class=\"title-detailed-page\" -->" }}
+
+{{ safe "<div style=\"display: block; text-align: left;\">" }}
+
+{{ $node := index $nodeSpecs.Node 0 -}} 
+#### Nodes - **Os**: {{ $node.Status.NodeInfo.OSImage }} - **KernelVersion**: {{ $node.Status.NodeInfo.KernelVersion }} - **Kubelet version**: {{ $node.Status.NodeInfo.KubeletVersion }}   - {{ $output.Text }} - {{ $output.Version }}
+{{ safe "<!-- .element: class=\"title-report\" -->" }}
+
+#### {{ $test.Section }} {{ $test.Desc }}: pass {{ $test.Pass }}, fail {{ $test.Fail }}, warn {{ $test.Warn }}, info {{ $test.Info }} 
+{{ safe "<!-- .element: class=\"title-report\" -->" }}
+
+{{ end -}}
+
+**TestNumber {{ $result.TestNumber }} - Status {{ $result.Status }} - Scored {{ $result.Scored }}**
+{{ safe "<!-- .element: class=\"title-report\" -->" }}
+**Description:** {{ truncate $result.TestDesc 400 }} 
+{{ safe "<!-- .element: class=\"title-report\" -->" }}
+**Remediation:** {{ truncate $result.Remediation 400 }} 
+{{ safe "<!-- .element: class=\"title-report\" -->" }}
+
+{{ if modsub $resultKey $length 1 4 -}}
+{{ safe "</div>" -}}
+{{- end -}}
+{{ end -}} 
+{{ end -}} 
+{{ end -}} 
+{{ end }} 
+
+
+
+# CIS Benchmark - Linux
+{{ safe "<!-- .element: class=\"title-first-page\" -->" }}
+{{ safe "<!-- .slide: data-background-image=\"../../assets/images/deck-title-page-big.jpg\" -->" }}
+
+
+### Number of Masters scanned: {{ .LinuxCIS.MasterCount }}
+{{ safe "<!-- .element: class=\"title-detailed-page\" -->" }}
+{{ safe "<div style=\"display: block; text-align: left;\">" }}
+
+{{- range $reportKey, $reportSpecs := .LinuxCIS.MasterReport }}
+{{ $node := index $reportSpecs.Node 0 }} 
+
+**Os**: {{ $node.Status.NodeInfo.OSImage }} - KernelVersion: {{ $node.Status.NodeInfo.KernelVersion }} 
+{{ safe "<!-- .element: class=\"title-report\" -->" }}
+
+**Masters**: {{ range $nodeKey, $nodeSpecs := $reportSpecs.Node -}} {{ $nodeSpecs.Name }} {{ end }} 
+{{ safe "<!-- .element: class=\"title-report\" -->" }}
+
+{{- end }} 
+{{ safe "</div>" }}
+
+### Number of Nodes scanned: {{ .LinuxCIS.NodeCount }}
+{{ safe "<!-- .element: class=\"title-detailed-page\" -->" }}
+{{ safe "<div style=\"display: block; text-align: left;\">" }}
+
+{{- range $reportKey, $reportSpecs := .LinuxCIS.NodeReport }}
+{{ $node := index $reportSpecs.Node 0 }} 
+
+**Os**: {{ $node.Status.NodeInfo.OSImage }} - **KernelVersion**: {{ $node.Status.NodeInfo.KernelVersion }}
+{{ safe "<!-- .element: class=\"title-report\" -->" }}
+
+**Nodes**: {{ range $nodeKey, $nodeSpecs := $reportSpecs.Node -}} {{ $nodeSpecs.Name }} {{ end }} 
+{{ safe "<!-- .element: class=\"title-report\" -->" }}
+
+{{- end -}} 
+{{ safe "</div>" -}}
+{{ range $nodeKey, $nodeSpecs := .LinuxCIS.MasterReport }}
+
+
+{{ $node := index $nodeSpecs.Node 0 -}} 
+### Masters - **Os**: {{ $node.Status.NodeInfo.OSImage }} - **KernelVersion**: {{ $node.Status.NodeInfo.KernelVersion }} 
+{{ safe "<!-- .element: class=\"title-report\" -->" }}
+
+##### All included:
+{{ range $outputKey, $output := $nodeSpecs.Output -}}
+
+{{ $output.TotalPass }} checks PASS
+
+{{ $output.TotalFail }} checks FAIL
+
+{{ $output.TotalWarn }} checks WARN
+
+{{ $output.TotalInfo }} checks INFO
+
+#### Scored only:
+
+{{ $output.TotalPassScored }} checks PASS
+
+{{ $output.TotalFailScored }} checks FAIL
+
+{{ $output.TotalWarnScored }} checks WARN
+
+{{ $output.TotalInfoScored }} checks INFO
+
+{{- end -}} 
+{{- end -}}
+{{ range $nodeKey, $nodeSpecs := .LinuxCIS.NodeReport }}
+
+
+{{ $node := index $nodeSpecs.Node 0 -}} 
+### Nodes - **Os**: {{ $node.Status.NodeInfo.OSImage }} - **KernelVersion**: {{ $node.Status.NodeInfo.KernelVersion }} 
+{{ safe "<!-- .element: class=\"title-report\" -->" }}
+
+##### All included:
+{{ range $outputKey, $output := $nodeSpecs.Output -}}
+
+{{ $output.TotalPass }} checks PASS
+
+{{ $output.TotalFail }} checks FAIL
+
+{{ $output.TotalWarn }} checks WARN
+
+{{ $output.TotalInfo }} checks INFO
+
+#### Scored only:
+
+{{ $output.TotalPassScored }} checks PASS
+
+{{ $output.TotalFailScored }} checks FAIL
+
+{{ $output.TotalWarnScored }} checks WARN
+
+{{ $output.TotalInfoScored }} checks INFO
+
+{{- end -}} 
+{{- end }} 
+{{ range $nodeKey, $nodeSpecs := .LinuxCIS.MasterReport -}}
+{{- $index := 0 -}} 
+{{- range $outputKey, $output := $nodeSpecs.Output -}}
+{{- range $testKey, $test := $output.Tests -}}
+{{- $length := len $test.Results -}} 
+{{- range $resultKey, $result := $test.Results -}}
+{{- if modsub $resultKey $length 0 4 }}
+{{- $index = inc $index }} 
+
+
+### CIS Linux Result - Masters - part {{ $index }} 
+{{ safe "<!-- .element: class=\"title-detailed-page\" -->" }}
+
+{{ safe "<div style=\"display: block; text-align: left;\">" }}
+
+{{ $node := index $nodeSpecs.Node 0 -}} 
+### Masters - **Os**: {{ $node.Status.NodeInfo.OSImage }} - **KernelVersion**: {{ $node.Status.NodeInfo.KernelVersion }} - {{ $output.Text }}
+{{ safe "<!-- .element: class=\"title-report\" -->" }}
+
+### {{ $test.Section }} {{ $test.Desc }}: pass {{ $test.Pass }}, fail {{ $test.Fail }}, warn {{ $test.Warn }}, info {{ $test.Info }} 
+{{ safe "<!-- .element: class=\"title-report\" -->" }}
+
+{{ end -}}
+
+**TestNumber {{ $result.TestNumber }} - Status {{ $result.Status }} - Scored {{ $result.Scored }}** - **Description:** {{ truncate $result.TestDesc 400 }} 
+{{ safe "<!-- .element: class=\"title-report\" -->" }}
+
+{{ if $result.Reason }}**Reason:** {{ $result.Reason }}{{- end }}{{- if $result.Audit -}} **Audit:** {{ truncate $result.Audit 400 }} {{- end }}
+{{ safe "<!-- .element: class=\"title-report\" -->" }}
+{{ if $result.ActualValue }} **Result:** {{ $result.ActualValue }}{{- end }}{{- if $result.ExpectedResult }} **Expected:** {{ truncate $result.ExpectedResult 400 }} {{- end }}
+{{ safe "<!-- .element: class=\"title-report\" -->" }}
+
+{{ if modsub $resultKey $length 1 4 -}}
+{{ safe "</div>" -}}
+{{- end -}}
+{{ end -}} 
+{{ end -}} 
+{{ end -}} 
+{{ end -}} 
+{{ range $nodeKey, $nodeSpecs := .LinuxCIS.NodeReport -}}
+{{- $index := 0 -}} 
+{{- range $outputKey, $output := $nodeSpecs.Output -}}
+{{- range $testKey, $test := $output.Tests -}}
+{{- $length := len $test.Results -}} 
+{{- range $resultKey, $result := $test.Results -}}
+{{- if modsub $resultKey $length 0 4 }}
+{{- $index = inc $index }} 
+
+
+### CIS Linux Result - Nodes - part {{ $index }} 
+{{ safe "<!-- .element: class=\"title-detailed-page\" -->" }}
+
+{{ safe "<div style=\"display: block; text-align: left;\">" }}
+
+{{ $node := index $nodeSpecs.Node 0 -}} 
+### Nodes - **Os**: {{ $node.Status.NodeInfo.OSImage }} - **KernelVersion**: {{ $node.Status.NodeInfo.KernelVersion }} - {{ $output.Text }}
+{{ safe "<!-- .element: class=\"title-report\" -->" }}
+### {{ $test.Section }} {{ $test.Desc }}: pass {{ $test.Pass }}, fail {{ $test.Fail }}, warn {{ $test.Warn }}, info {{ $test.Info }} 
+{{ safe "<!-- .element: class=\"title-report\" -->" }}
+
+{{ end -}}
+
+**TestNumber {{ $result.TestNumber }} - Status {{ $result.Status }} - Scored {{ $result.Scored }}** - **Description:** {{ truncate $result.TestDesc 400 }} 
+{{ safe "<!-- .element: class=\"title-report\" -->" }}
+{{ if $result.Reason }}**Reason:** {{ $result.Reason }}{{- end }}{{- if $result.Audit -}} **Audit:** {{ truncate $result.Audit 400 }} {{- end }}
+{{ safe "<!-- .element: class=\"title-report\" -->" }}
+{{ if $result.ActualValue }} **Result:** {{ $result.ActualValue }}{{- end }}{{- if $result.ExpectedResult }} **Expected:** {{ truncate $result.ExpectedResult 400 }} {{- end }}
+{{ safe "<!-- .element: class=\"title-report\" -->" }}
+
+{{ if modsub $resultKey $length 1 4 -}}
+{{ safe "</div>" -}}
+{{- end -}}
+{{ end -}} 
+{{ end -}} 
+{{ end -}} 
+{{ end -}} 

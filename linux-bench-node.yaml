@@ -1,0 +1,48 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: linux-bench-node
+spec:
+  template:
+    spec:
+      hostPID: true
+      nodeSelector:
+        kubernetes.io/hostname: ubuntu-bionic
+      containers:
+        - name: linux-bench
+          image: rewiko/linux-bench:0.0.2
+          securityContext:
+            capabilities:
+              add:
+                - ALL
+            # privileged: true
+          # command: ["kube-benc", "-h", "--json"]
+          args: ["--json"]
+          volumeMounts:
+            - name: var
+              mountPath: /var
+              readOnly: true
+            - name: etc
+              mountPath: /etc
+              readOnly: true
+            # - name: dev
+            #   mountPath: /dev
+            #   readOnly: true
+            - name: lib-modules
+              mountPath: /lib/modules
+              readOnly: true
+      restartPolicy: Never
+      volumes:
+        - name: var
+          hostPath:
+            path: "/var"
+        - name: etc
+          hostPath:
+            path: "/etc"
+        # - name: dev
+        #   hostPath:
+        #     path: "/dev"
+        - name: lib-modules 
+          hostPath: 
+            path: "/lib/modules"
