@@ -1,6 +1,6 @@
 build
 results
 test/integrated/results
-*.md
+report-*.md
 audit-report/report.md
 output-save
