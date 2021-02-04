@@ -77,6 +77,36 @@ Using only internal registry allow you to:
 {{- range $trivyKey, $trivySpecs := $trivyOutput.Vulnerabilities }}
 {{- $length := len $trivyOutput.Vulnerabilities -}} 
 {{- if mods $index 0 30 }}
+{{- if eq $partNumber 1 }}
+
+
+### Image scan summary - {{ $area.AreaName }} - {{ $team.TeamName }} 
+{{ safe "<!-- .element: class=\"title-detailed-page\" -->" }}
+{{ safe "<div style=\"display: inline-block; text-align: left;\">" }}
+
+Images scanned running in your cluster: {{ $team.ImageSummary.NumberImagesScanned }}
+
+Pods scanned running in your cluster: {{ $team.ImageSummary.NumberPodsScanned }}
+
+Images coming from external registries: {{ $team.ImageSummary.NumberImagesFromExternalRegistry }}
+
+Images with vulnerability: {{ len $team.ImageSpecsSortByCriticality }}
+{{ safe "</div>" }}
+
+| Registry | Images Count | Pod Count |
+|----------|-------------:|----------:|
+{{- range $data := $team.ImageSummary.ImagePerRegistry }}
+| {{ $data.RegistryName }} | {{ $data.ImageCount }} | {{ $data.PodCount }}|
+{{- end }}
+{{ safe "<!-- .element: class=\"table-report-medium\" -->" }}
+
+| Type | Vulnerabilities |
+|------|----------------:|
+{{- range $key, $value := $team.ImageSummary.TotalVulnerabilityPerCriticality }}
+| {{ $key }} | {{ $value }} |
+{{- end }}
+{{ safe "<!-- .element: class=\"table-report-medium\" -->" }}
+{{- end }}
 
 
 ### Vulnerabilities - {{ $area.AreaName }} - {{ $team.TeamName }} - part {{ $partNumber }} 
