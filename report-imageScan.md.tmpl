@@ -79,7 +79,7 @@ Using only internal registry allow you to:
 {{- if mods $index 0 30 }}
 
 
-### Vulnerabilities - {{ $area.AreaName }} - {{ $team.TeamName }} - part {{ $partNumber }} 
+###{{- if gt $partNumber 1 -}}#{{- end }} Vulnerabilities - {{ $area.AreaName }} - {{ $team.TeamName }} {{- if gt $partNumber 1 -}} - part {{ $partNumber }} {{- end }} 
 {{ safe "<!-- .element: class=\"title-detailed-page\" -->" }}
 
 | Image | CVE | Severity | PkgName | Description |
