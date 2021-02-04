@@ -4,3 +4,4 @@ test/integrated/results
 report-*.md
 audit-report/report.md
 output-save
+.idea
