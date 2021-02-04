@@ -516,6 +516,7 @@ func (l *Scanner) scanList(imageList map[string]*ImageSpec, config *Config) (map
 		logr.Errorf("Failed to download trivy db: %s", err)
 	}
 
+	logr.Infof("Scanning %d images with %d workers", len(imageList), config.Workers)
 	for imageName, imageSpec := range imageList {
 		// allocate var to allow access inside the worker submission
 		imageSpec := imageSpec
