@@ -200,6 +200,18 @@ func (l *Scanner) generateAreaOutput(report *Report, config *Config) (*Report, e
 		for _, teams := range area.Teams {
 			logr.Infof("Sort area %s, teams %s", area.AreaName, teams.TeamName)
 			teams.Images = sortByCriticality(teams.Images, false)
+
+			teams.ImageSummary = kpisImages(teams.Images)
+			imagesArr := []ImageSpec{}
+			for _, specs := range teams.Images {
+				for _, trivy := range specs.TrivyOutput {
+					if len(trivy.Vulnerabilities) > 0 {
+						imagesArr = append(imagesArr, specs)
+					}
+				}
+			}
+
+			teams.ImageSpecsSortByCriticality = sortByCriticality(imagesArr, true)
 		}
 	}
 
@@ -214,88 +226,110 @@ type ImagePerArea struct {
 
 // ImagePerTeam define ImagePerTeam
 type ImagePerTeam struct {
-	TeamName   string
-	PodCount   int
-	ImageCount int
-	Pods       []PodDetail
-	Images     []ImageSpec
+	TeamName                    string
+	PodCount                    int
+	ImageCount                  int
+	Pods                        []PodDetail
+	Images                      []ImageSpec
+	ImageSummary                *ImageSummary
+	ImageSpecsSortByCriticality []ImageSpec
 }
 
-func (l *Scanner) calculateKpis(report *Report) (*Report, error) {
+func kpisImages(images []ImageSpec) *ImageSummary {
 
-	report.ImageSummary.NumberImagesScanned = len(report.ImageSpecs)
+	imageSum := ImageSummary{}
 
-	report.ImageSummary.NumberPodsScanned = 0
+	imageSum.NumberImagesScanned = len(images)
 
-	report.ImageSummary.ImagePerRegistry = map[string]*ImagePerRegistry{}
+	imageSum.NumberPodsScanned = 0
 
-	report.ImageSummary.TotalVulnerabilityPerCriticality = map[string]int{}
-	report.ImageSummary.TotalVulnerabilityPerCriticality["CRITICAL"] = 0
-	report.ImageSummary.TotalVulnerabilityPerCriticality["HIGH"] = 0
-	report.ImageSummary.TotalVulnerabilityPerCriticality["MEDIUM"] = 0
-	report.ImageSummary.TotalVulnerabilityPerCriticality["LOW"] = 0
+	imageSum.ImagePerRegistry = map[string]*ImagePerRegistry{}
 
-	report.ImageSummary.ImagePerRegistry["docker.io"] = &ImagePerRegistry{RegistryName: "docker.io", Pods: []PodDetail{}}
+	imageSum.TotalVulnerabilityPerCriticality = map[string]int{}
+	imageSum.TotalVulnerabilityPerCriticality["CRITICAL"] = 0
+	imageSum.TotalVulnerabilityPerCriticality["HIGH"] = 0
+	imageSum.TotalVulnerabilityPerCriticality["MEDIUM"] = 0
+	imageSum.TotalVulnerabilityPerCriticality["LOW"] = 0
 
-	for imageName, specs := range report.ImageSpecs {
+	imageSum.ImagePerRegistry["docker.io"] = &ImagePerRegistry{RegistryName: "docker.io", Pods: []PodDetail{}}
+
+	for _, specs := range images {
 		specs.TotalVulnerabilityPerCriticality = map[string]int{}
 		specs.TotalVulnerabilityPerCriticality["CRITICAL"] = 0
 		specs.TotalVulnerabilityPerCriticality["HIGH"] = 0
 		specs.TotalVulnerabilityPerCriticality["MEDIUM"] = 0
 		specs.TotalVulnerabilityPerCriticality["LOW"] = 0
 
-		specs.ImageName = imageName
+		imageSum.NumberPodsScanned = imageSum.NumberPodsScanned + len(specs.Pods)
 
-		report.ImageSummary.NumberPodsScanned = report.ImageSummary.NumberPodsScanned + len(specs.Pods)
-
-		imageNamWitoutTag := strings.Split(imageName, ":")
+		imageNamWitoutTag := strings.Split(specs.ImageName, ":")
 		imageNameArr := strings.Split(imageNamWitoutTag[0], "/")
 		// if contains . then it's a domain name, otherwise it's plain image like ubuntu:latest
 		if strings.Contains(imageNameArr[0], ".") {
 			// if key doesn't exist
-			if _, ok := report.ImageSummary.ImagePerRegistry[imageNameArr[0]]; !ok {
-				report.ImageSummary.ImagePerRegistry[imageNameArr[0]] = &ImagePerRegistry{RegistryName: imageNameArr[0], Pods: []PodDetail{}}
+			if _, ok := imageSum.ImagePerRegistry[imageNameArr[0]]; !ok {
+				imageSum.ImagePerRegistry[imageNameArr[0]] = &ImagePerRegistry{RegistryName: imageNameArr[0], Pods: []PodDetail{}}
 			}
 
-			report.ImageSummary.ImagePerRegistry[imageNameArr[0]].Pods = append(report.ImageSummary.ImagePerRegistry[imageNameArr[0]].Pods, specs.Pods...)
-			report.ImageSummary.ImagePerRegistry[imageNameArr[0]].Images = append(report.ImageSummary.ImagePerRegistry[imageNameArr[0]].Images, imageName)
+			imageSum.ImagePerRegistry[imageNameArr[0]].Pods = append(imageSum.ImagePerRegistry[imageNameArr[0]].Pods, specs.Pods...)
+			imageSum.ImagePerRegistry[imageNameArr[0]].Images = append(imageSum.ImagePerRegistry[imageNameArr[0]].Images, specs.ImageName)
 		} else {
-			report.ImageSummary.ImagePerRegistry["docker.io"].Pods = append(report.ImageSummary.ImagePerRegistry["docker.io"].Pods, specs.Pods...)
-			report.ImageSummary.ImagePerRegistry["docker.io"].Images = append(report.ImageSummary.ImagePerRegistry["docker.io"].Images, imageName)
+			imageSum.ImagePerRegistry["docker.io"].Pods = append(imageSum.ImagePerRegistry["docker.io"].Pods, specs.Pods...)
+			imageSum.ImagePerRegistry["docker.io"].Images = append(imageSum.ImagePerRegistry["docker.io"].Images, specs.ImageName)
 		}
 
 		for _, output := range specs.TrivyOutput {
 			for _, vul := range output.Vulnerabilities {
 
 				// if key doesn't exist
-				if _, ok := report.ImageSummary.TotalVulnerabilityPerCriticality[vul.Severity]; !ok {
-					report.ImageSummary.TotalVulnerabilityPerCriticality[vul.Severity] = 0
+				if _, ok := imageSum.TotalVulnerabilityPerCriticality[vul.Severity]; !ok {
+					imageSum.TotalVulnerabilityPerCriticality[vul.Severity] = 0
 				}
 				if _, ok := specs.TotalVulnerabilityPerCriticality[vul.Severity]; !ok {
 					specs.TotalVulnerabilityPerCriticality[vul.Severity] = 0
 				}
-				report.ImageSummary.TotalVulnerabilityPerCriticality[vul.Severity]++
+				imageSum.TotalVulnerabilityPerCriticality[vul.Severity]++
 				specs.TotalVulnerabilityPerCriticality[vul.Severity]++
-			}
-			if len(output.Vulnerabilities) > 0 {
-				report.ImageSpecsSortByCriticality = append(report.ImageSpecsSortByCriticality, *specs)
 			}
 		}
 
 	}
 
-	report.ImageSummary.NumberImagesFromExternalRegistry = 0
-	report.ImageSummary.NumberPodsFromExternalRegistry = 0
+	imageSum.NumberImagesFromExternalRegistry = 0
+	imageSum.NumberPodsFromExternalRegistry = 0
 	extenalRegistryName := []string{"docker.io", "quay.io", "gcr.io"}
-	for registryName, specs := range report.ImageSummary.ImagePerRegistry {
+	for registryName, specs := range imageSum.ImagePerRegistry {
 		// if key exists
 		if contains(extenalRegistryName, registryName) {
-			report.ImageSummary.NumberPodsFromExternalRegistry = report.ImageSummary.NumberPodsFromExternalRegistry + len(specs.Pods)
-			report.ImageSummary.NumberImagesFromExternalRegistry = report.ImageSummary.NumberImagesFromExternalRegistry + len(specs.Images)
+			imageSum.NumberPodsFromExternalRegistry = imageSum.NumberPodsFromExternalRegistry + len(specs.Pods)
+			imageSum.NumberImagesFromExternalRegistry = imageSum.NumberImagesFromExternalRegistry + len(specs.Images)
 		}
 		specs.PodCount = len(specs.Pods)
 		specs.ImageCount = len(specs.Images)
 	}
+
+	return &imageSum
+}
+
+func (l *Scanner) convertMapToArrayImageSpecs(images map[string]*ImageSpec, keepOnlyImgWithVul bool) []ImageSpec {
+	var imagesArr []ImageSpec
+	for _, specs := range images {
+		for _, trivy := range specs.TrivyOutput {
+			if len(trivy.Vulnerabilities) > 0 && keepOnlyImgWithVul {
+				imagesArr = append(imagesArr, *specs)
+			} else {
+				imagesArr = append(imagesArr, *specs)
+			}
+		}
+	}
+	return imagesArr
+}
+
+func (l *Scanner) calculateKpis(report *Report) (*Report, error) {
+
+	report.ImageSpecsSortByCriticality = l.convertMapToArrayImageSpecs(report.ImageSpecs, true)
+	images := l.convertMapToArrayImageSpecs(report.ImageSpecs, false)
+	report.ImageSummary = kpisImages(images)
 
 	// TOP 20 IMAGES CONTAINING THE MOST CRITICAL and high VULNERABILITIES
 	// - count all vulnerabilities high + critical
@@ -323,11 +357,6 @@ func (l *Scanner) calculateKpis(report *Report) (*Report, error) {
 			break
 		}
 	}
-	// logr.Infof("report %v", report)
-	// logr.Infof("result images ImageSpecsSortByCriticalityTop20MostReplicas kube-rbac %s", report.ImageSpecsSortByCriticalityTop20MostReplicas[0].ImageName)
-	// logr.Infof("result images ImageSpecsSortByCriticalityTop20 registry %s", report.ImageSpecsSortByCriticalityTop20[0].ImageName)
-
-	// logr.Infof("%v", report.ImageSpecsSortByCriticality)
 
 	return report, nil
 }
@@ -610,6 +639,7 @@ func (l *Scanner) execTrivy(imageName string, imageSpec *ImageSpec) error {
 	imageSpec.TrivyOutput = trivyOutput
 
 	imageSpec.TrivyErrOutput = errOutputAsString
+	imageSpec.ImageName = imageName
 
 	if err != nil {
 		return err
