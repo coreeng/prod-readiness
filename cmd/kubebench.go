@@ -43,7 +43,7 @@ func kubeBench(_ *cobra.Command, _ []string) {
 	fullReport := &FullReport{
 		KubeCIS: kubeReport,
 	}
-	_, err = r.GenerateMarkdown(fullReport, "report-kubeCIS.md.tmpl", "report-kubeCIS.md")
+	err = r.GenerateMarkdown(fullReport, "report-kubeCIS.md.tmpl", "report-kubeCIS.md")
 	if err != nil {
 		// return nil, err
 		logr.Error(err)

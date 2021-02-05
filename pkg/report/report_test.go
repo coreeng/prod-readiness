@@ -2,12 +2,13 @@ package report
 
 import (
 	"bytes"
-	"github.com/coreeng/production-readiness/production-readiness/pkg/scanner"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"testing"
+
+	"github.com/coreeng/production-readiness/production-readiness/pkg/scanner"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -24,7 +25,7 @@ type TestReport struct {
 
 var _ = Describe("Report Images", func() {
 	var (
-		tmpDir            string
+		tmpDir string
 	)
 
 	BeforeEach(func() {
@@ -54,7 +55,7 @@ var _ = Describe("Report Images", func() {
 				ImageSpecs: map[string]*scanner.ImageSpec{
 					"debian:latest": &debianImageScan,
 					"alpine:latest": &alpineImageScan,
-					"ubuntu:18.04": &ubuntuImageScan,
+					"ubuntu:18.04":  &ubuntuImageScan,
 				},
 				ImageByArea: map[string]*scanner.ImagePerArea{
 					"area-1": {
@@ -97,7 +98,7 @@ var _ = Describe("Report Images", func() {
 			},
 		}
 		actualReportFile := filepath.Join(tmpDir, "actual-report.md")
-		_, err := GenerateMarkdown(imageReport, "test-report-imageScan-standard.md.tmpl", actualReportFile)
+		err := GenerateMarkdown(imageReport, "test-report-imageScan-standard.md.tmpl", actualReportFile)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(fileContentEqual("expected-test-report-imageScan-standard.md", actualReportFile)).
 			To(BeTrue(), "Report diff: \n%s", runDiff("expected-test-report-imageScan-standard.md", actualReportFile))
@@ -177,15 +178,15 @@ func anUbuntuImageScan() scanner.ImageSpec {
 		TotalVulnerabilityPerCriticality: map[string]int{"CRITICAL": 0, "HIGH": 2, "MEDIUM": 1, "LOW": 10, "UNKNOWN": 0},
 		TrivyOutput: []scanner.TrivyOutput{
 			{
-				Target: "ubuntu (ubuntu 18.04)",
-				Type:   "ubuntu",
+				Target:          "ubuntu (ubuntu 18.04)",
+				Type:            "ubuntu",
 				Vulnerabilities: vulnerabilities,
 			},
 		},
 	}
 }
 
-func repeat(count int, vulnerability scanner.Vulnerabilities) []scanner.Vulnerabilities{
+func repeat(count int, vulnerability scanner.Vulnerabilities) []scanner.Vulnerabilities {
 	var v []scanner.Vulnerabilities
 	for i := 0; i < count; i++ {
 		v = append(v, vulnerability)
@@ -232,19 +233,18 @@ func aHighVulnerablity() scanner.Vulnerabilities {
 
 func aMediumVulnerablity() scanner.Vulnerabilities {
 	return scanner.Vulnerabilities{
-		VulnerabilityID: "CVE-2020-13844",
-		PkgName: "libstdc++6",
+		VulnerabilityID:  "CVE-2020-13844",
+		PkgName:          "libstdc++6",
 		InstalledVersion: "8.4.0-1ubuntu1~18.04",
 		Layer: &scanner.Layer{
 			DiffID: "sha256:80580270666742c625aecc56607a806ba343a66a8f5a7fd708e6c4e4c07a3e9b",
 		},
 		SeveritySource: "ubuntu",
-		Title: "kernel: ARM straight-line speculation vulnerability",
-		Description: "Arm Armv8-A core implementations utilizing speculative execution past unconditional changes in control flow may allow unauthorized disclosure of information to an attacker with local user access via a side-channel analysis, aka \"straight-line speculation.\"",
-		Severity: "MEDIUM",
+		Title:          "kernel: ARM straight-line speculation vulnerability",
+		Description:    "Arm Armv8-A core implementations utilizing speculative execution past unconditional changes in control flow may allow unauthorized disclosure of information to an attacker with local user access via a side-channel analysis, aka \"straight-line speculation.\"",
+		Severity:       "MEDIUM",
 		References: []string{
 			"https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2018-20839",
 		},
 	}
 }
-

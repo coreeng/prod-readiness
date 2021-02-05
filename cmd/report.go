@@ -16,8 +16,8 @@ var (
 		Short: "Will create a full audit of a cluster and generate presentation and json output",
 		Run:   report,
 	}
-	kubeContext, kubeconfigPath, imageNameReplacement, areaLabel, teamLabels, filterLabels string
-	workersScan, workersKubeBench, workersLinuxBench                                       int
+	kubeContext, kubeconfigPath, imageNameReplacement, areaLabel, teamLabels, filterLabels, severity string
+	workersScan, workersKubeBench, workersLinuxBench                                                 int
 )
 
 func init() {
@@ -31,6 +31,7 @@ func init() {
 	reportCmd.Flags().StringVar(&areaLabel, "area-labels", "", "string allowing to split per area the image scan")
 	reportCmd.Flags().StringVar(&teamLabels, "teams-labels", "", "string allowing to split per team the image scan")
 	reportCmd.Flags().StringVar(&filterLabels, "filters-labels", "", "string allowing to filter the namespaces string separated by comma")
+	reportCmd.Flags().StringVar(&severity, "severity", "UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL", "severities of vulnerabilities to be reported (comma separated) ")
 }
 
 // FullReport - FullReport
@@ -43,7 +44,6 @@ type FullReport struct {
 func report(_ *cobra.Command, _ []string) {
 	kubeconfig := k8s.KubernetesConfig(kubeContext, kubeconfigPath)
 	clientset := k8s.KubernetesClient(kubeconfig)
-	t := scanner.New(kubeconfig, clientset)
 
 	config := &scanner.Config{
 		LogLevel:             logLevel,
@@ -52,9 +52,11 @@ func report(_ *cobra.Command, _ []string) {
 		AreaLabels:           areaLabel,
 		TeamsLabels:          teamLabels,
 		FilterLabels:         filterLabels,
+		Severity:             severity,
 	}
 
-	imageScanReport, err := t.ScanImages(config)
+	t := scanner.New(kubeconfig, clientset, config)
+	imageScanReport, err := t.ScanImages()
 	if err != nil {
 		logr.Errorf("Error scanning images with config %v: %v", config, err)
 	}
@@ -96,7 +98,7 @@ func report(_ *cobra.Command, _ []string) {
 		LinuxCIS:  linuxReport,
 	}
 
-	_, err = r.GenerateMarkdown(fullReport, "report.md.tmpl", "report.md")
+	err = r.GenerateMarkdown(fullReport, "report.md.tmpl", "report.md")
 	if err != nil {
 		// return nil, err
 		logr.Error(err)

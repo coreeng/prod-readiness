@@ -1,7 +1,6 @@
 package report
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"html/template"
@@ -13,8 +12,8 @@ import (
 )
 
 // GenerateMarkdown - GenerateMarkdown
-func GenerateMarkdown(report interface{}, templateFilename string, filename string) (bool, error) {
-
+func GenerateMarkdown(report interface{}, templateFilename string, filename string) error {
+	logr.Infof("Generating mark-down based on template %s", templateFilename)
 	tmp := template.New(templateFilename)
 	tmp.Funcs(template.FuncMap{
 		"safe": func(s string) template.HTML { return template.HTML(s) },
@@ -54,23 +53,25 @@ func GenerateMarkdown(report interface{}, templateFilename string, filename stri
 	tmpl, err := tmp.ParseFiles(templateFilename)
 
 	if err != nil {
-		return false, err
+		return err
 	}
 
-	var output bytes.Buffer
-
-	err = tmpl.Execute(&output, report)
-
+	reportFile, err := os.Create(filename)
 	if err != nil {
-		return false, fmt.Errorf("unable to create file from template: %v", err)
+		return fmt.Errorf("could not create file %s: %v", filename, err)
 	}
 
-	output.Bytes()
-	return writeFile(filename, output.Bytes())
+	err = tmpl.Execute(reportFile, report)
+	if err != nil {
+		return err
+	}
+	logr.Infof("Generated mark-down file: %s", templateFilename)
+	return nil
 }
 
 // SaveReport - SaveReport
 func SaveReport(report interface{}, filename string) error {
+	logr.Infof("Saving report to: %s", filename)
 
 	// saving the ouput into a file
 	file, _ := json.MarshalIndent(report, "", " ")
@@ -93,12 +94,4 @@ func SaveReport(report interface{}, filename string) error {
 	logr.Infof("Report saved into: %s", filenameSaved)
 
 	return nil
-}
-
-func writeFile(location string, contents []byte) (bool, error) {
-	err := ioutil.WriteFile(location, contents, 0644)
-	if err != nil {
-		return false, err
-	}
-	return true, nil
 }

@@ -21,6 +21,7 @@ import (
 type Scanner struct {
 	kubeconfig *rest.Config
 	kubeClient *kubernetes.Clientset
+	config     *Config
 }
 
 // ImageSpec define the information of an image
@@ -100,24 +101,26 @@ type Config struct {
 	AreaLabels           string
 	TeamsLabels          string
 	FilterLabels         string
+	Severity             string
 }
 
 // New creates a Scanner
-func New(kubeconfig *rest.Config, kubeClient *kubernetes.Clientset) *Scanner {
+func New(kubeconfig *rest.Config, kubeClient *kubernetes.Clientset, config *Config) *Scanner {
 	return &Scanner{
 		kubeconfig: kubeconfig,
 		kubeClient: kubeClient,
+		config:     config,
 	}
 }
 
 // ScanImages get all the images available in a cluster and scan them
-func (l *Scanner) ScanImages(config *Config) (*Report, error) {
+func (l *Scanner) ScanImages() (*Report, error) {
 	logr.Infof("Running scanner")
 
 	// get all pods running for now
 	// then we could get all the deployment and statefulset, job, cronjob, to gather all the images which are not running during the scan
 	// pod manifest should be available in the kube-system namespace
-	podList, err := l.getPods(config)
+	podList, err := l.getPods(l.config)
 	if err != nil {
 		return nil, err
 	}
@@ -136,7 +139,7 @@ func (l *Scanner) ScanImages(config *Config) (*Report, error) {
 		return nil, err
 	}
 
-	listScanned, err := l.scanList(imageList, config)
+	listScanned, err := l.scanList(imageList)
 	if err != nil {
 		return nil, err
 	}
@@ -156,7 +159,7 @@ func (l *Scanner) ScanImages(config *Config) (*Report, error) {
 	}
 
 	logr.Infof("generateAreaOutput")
-	_, err = l.generateAreaOutput(report, config)
+	_, err = l.generateAreaOutput(report)
 	if err != nil {
 		return nil, err
 	}
@@ -164,13 +167,13 @@ func (l *Scanner) ScanImages(config *Config) (*Report, error) {
 	return report, nil
 }
 
-func (l *Scanner) generateAreaOutput(report *Report, config *Config) (*Report, error) {
+func (l *Scanner) generateAreaOutput(report *Report) (*Report, error) {
 	var podAreaLabel, podTeamsLabel string
 	for _, specs := range report.ImageSpecs {
 
 		for _, podDetail := range specs.Pods {
-			podAreaLabel = podDetail.Namespace.Labels[config.AreaLabels]
-			podTeamsLabel = podDetail.Namespace.Labels[config.TeamsLabels]
+			podAreaLabel = podDetail.Namespace.Labels[l.config.AreaLabels]
+			podTeamsLabel = podDetail.Namespace.Labels[l.config.TeamsLabels]
 
 			if podAreaLabel == "" {
 				podAreaLabel = "all"
@@ -508,21 +511,21 @@ func (l *Scanner) stringReplacement(imageName string, stringReplacement string) 
 	return imageName, nil
 }
 
-func (l *Scanner) scanList(imageList map[string]*ImageSpec, config *Config) (map[string]*ImageSpec, error) {
-	wp := workerpool.New(config.Workers)
+func (l *Scanner) scanList(imageList map[string]*ImageSpec) (map[string]*ImageSpec, error) {
+	wp := workerpool.New(l.config.Workers)
 
 	err := l.execTrivyDB()
 	if err != nil {
 		logr.Errorf("Failed to download trivy db: %s", err)
 	}
 
-	logr.Infof("Scanning %d images with %d workers", len(imageList), config.Workers)
+	logr.Infof("Scanning %d images with %d workers", len(imageList), l.config.Workers)
 	for imageName, imageSpec := range imageList {
 		// allocate var to allow access inside the worker submission
 		imageSpec := imageSpec
-		imageName, err := l.stringReplacement(imageName, config.ImageNameReplacement)
+		imageName, err := l.stringReplacement(imageName, l.config.ImageNameReplacement)
 		if err != nil {
-			logr.Errorf("Error string replacement failed, image_name : %s, image_replacement_string: %s, error: %s", imageName, config.ImageNameReplacement, err)
+			logr.Errorf("Error string replacement failed, image_name : %s, image_replacement_string: %s, error: %s", imageName, l.config.ImageNameReplacement, err)
 		}
 
 		wp.Submit(func() {
@@ -624,7 +627,7 @@ func (l *Scanner) execTrivy(imageName string, imageSpec *ImageSpec) error {
 
 	logr.Infof("worker image: %s, pod_name: %s", imageName, imageSpec.Pods[0].Pod.Name)
 	cmd := "trivy"
-	args := []string{"-q", "image", "-f", "json", "--skip-update", "--no-progress", imageName}
+	args := []string{"-q", "image", "-f", "json", "--skip-update", "--no-progress", "--severity", l.config.Severity, imageName}
 
 	output, errOutput, err := execCmd.Execute(cmd, args)
 

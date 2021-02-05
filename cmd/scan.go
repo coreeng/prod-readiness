@@ -24,13 +24,13 @@ func init() {
 	scanCmd.Flags().StringVar(&areaLabel, "area-labels", "", "string allowing to split per area the image scan")
 	scanCmd.Flags().StringVar(&teamLabels, "teams-labels", "", "string allowing to split per team the image scan")
 	scanCmd.Flags().StringVar(&filterLabels, "filters-labels", "", "string allowing to filter the namespaces string separated by comma")
+	scanCmd.Flags().StringVar(&severity, "severity", "UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL", "severities of vulnerabilities to be reported (comma separated) ")
 	scanCmd.Flags().IntVar(&workersScan, "workers-scan", 10, "number of worker to process images scan in parallel")
 }
 
 func scan(_ *cobra.Command, _ []string) {
 	kubeconfig := k8s.KubernetesConfig(kubeContext, kubeconfigPath)
 	clientset := k8s.KubernetesClient(kubeconfig)
-	t := scanner.New(kubeconfig, clientset)
 
 	config := &scanner.Config{
 		LogLevel:             logLevel,
@@ -39,9 +39,11 @@ func scan(_ *cobra.Command, _ []string) {
 		AreaLabels:           areaLabel,
 		TeamsLabels:          teamLabels,
 		FilterLabels:         filterLabels,
+		Severity:             severity,
 	}
+	t := scanner.New(kubeconfig, clientset, config)
 
-	imageScanReport, err := t.ScanImages(config)
+	imageScanReport, err := t.ScanImages()
 	if err != nil {
 		logr.Errorf("Error scanning images with config %v: %v", config, err)
 	}
@@ -50,7 +52,7 @@ func scan(_ *cobra.Command, _ []string) {
 	fullReport := &FullReport{
 		ImageScan: imageScanReport,
 	}
-	_, err = r.GenerateMarkdown(fullReport, "report-imageScan.md.tmpl", "report-imageScan.md")
+	err = r.GenerateMarkdown(fullReport, "report-imageScan.md.tmpl", "report-imageScan.md")
 	if err != nil {
 		// return nil, err
 		logr.Error(err)
