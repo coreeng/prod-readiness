@@ -47,12 +47,14 @@ You may need to run `make docker` beforehand to ensure your local changes have b
 ### Run images scan
 
 ```
-make build && ./build/bin/production-readiness scan  --kubeconfig=/home/core/.kube/config   --context cluster-name  --area-labels=area-name --teams-labels=team --image-name-replacement='mirror.registry:5000|registry.mew.url,mirror-2.registry:5000|registry.mew.url'  2>&1 | tee  output-save ; cp report-imageScan.md audit-report/report.md
+production-readiness scan  --kubeconfig=/home/core/.kube/config   --context cluster-name  --area-labels=area-name --teams-labels=team --image-name-replacement='mirror.registry:5000|registry.new.url,mirror-2.registry:5000|registry.new.url'
 ```
 
-### Export presentation as pdf 
+### Render the presentation 
 
+Running the previous step should have given you a mark-down file called `report-imageScan.md` that you may want to convert to PDF.
+Copy the mark-down file in the `audit-report` directory to render it.
+See [Render-presentation](audit-report/Readme.md#Render-presentation)
 ```
-decktape -s 1920x1080 "http://172.16.0.2:8080/?print" report-scan-images-cluster-name.pdf 
+cp report-imageScan.md audit-report/report.md
 ```
-
