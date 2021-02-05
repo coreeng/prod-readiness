@@ -2,6 +2,7 @@ package report
 
 import (
 	"bytes"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -23,7 +24,7 @@ type TestReport struct {
 	ImageScan *scanner.Report
 }
 
-var _ = Describe("Report Images", func() {
+var _ = Describe("Generating report Images", func() {
 	var (
 		tmpDir string
 	)
@@ -40,9 +41,9 @@ var _ = Describe("Report Images", func() {
 	})
 
 	It("should generate the report according to the template file", func() {
-		debianImageScan := aDebianImageScan()
-		ubuntuImageScan := anUbuntuImageScan()
-		alpineImageScan := anAlpineImageScan()
+		debianImageScan := aDebianImageScan(map[string]int{"CRITICAL": 0, "HIGH": 10, "MEDIUM": 5, "LOW": 20, "UNKNOWN": 0})
+		ubuntuImageScan := anUbuntuImageScan(map[string]int{"CRITICAL": 0, "HIGH": 2, "MEDIUM": 1, "LOW": 10, "UNKNOWN": 0})
+		alpineImageScan := anAlpineImageScan(map[string]int{})
 		imageReport := &TestReport{
 			ImageScan: &scanner.Report{
 				ImageSummary: &scanner.ImageSummary{
@@ -128,7 +129,7 @@ func fileContentEqual(filename1, filename2 string) (bool, error) {
 	return bytes.Equal(file1, file2), nil
 }
 
-func anAlpineImageScan() scanner.ImageSpec {
+func anAlpineImageScan(vulnerabilitiesDefinition map[string]int) scanner.ImageSpec {
 	return scanner.ImageSpec{
 		ImageName: "alpine:latest",
 		Pods: []scanner.PodDetail{
@@ -139,51 +140,66 @@ func anAlpineImageScan() scanner.ImageSpec {
 			{
 				Target:          "alpine (alpine 3.13.1)",
 				Type:            "alpine",
-				Vulnerabilities: []scanner.Vulnerabilities{},
+				Vulnerabilities: buildVulnerabilities(vulnerabilitiesDefinition),
 			},
 		},
 	}
 }
 
-func aDebianImageScan() scanner.ImageSpec {
-	var vulnerabilities []scanner.Vulnerabilities
-	vulnerabilities = append(vulnerabilities, repeat(10, aHighVulnerablity())...)
-	vulnerabilities = append(vulnerabilities, repeat(5, aMediumVulnerablity())...)
-	vulnerabilities = append(vulnerabilities, repeat(20, aLowVulnerablity())...)
+func aDebianImageScan(vulnerabilitiesDefinition map[string]int) scanner.ImageSpec {
 	return scanner.ImageSpec{
 		ImageName: "debian:latest",
 		Pods: []scanner.PodDetail{
 			{},
 		},
-		TotalVulnerabilityPerCriticality: map[string]int{"CRITICAL": 0, "HIGH": 10, "MEDIUM": 5, "LOW": 20, "UNKNOWN": 0},
+		TotalVulnerabilityPerCriticality: vulnerabilitiesDefinition,
 		TrivyOutput: []scanner.TrivyOutput{
 			{
 				Target:          "debian (debian 10.7)",
 				Type:            "debian",
-				Vulnerabilities: vulnerabilities,
+				Vulnerabilities: buildVulnerabilities(vulnerabilitiesDefinition),
 			},
 		},
 	}
 }
-func anUbuntuImageScan() scanner.ImageSpec {
-	var vulnerabilities []scanner.Vulnerabilities
-	vulnerabilities = append(vulnerabilities, repeat(2, aHighVulnerablity())...)
-	vulnerabilities = append(vulnerabilities, repeat(1, aMediumVulnerablity())...)
-	vulnerabilities = append(vulnerabilities, repeat(10, aLowVulnerablity())...)
+
+func anUbuntuImageScan(vulnerabilitiesDefinition map[string]int) scanner.ImageSpec {
 	return scanner.ImageSpec{
 		ImageName: "ubuntu:18.04",
 		Pods: []scanner.PodDetail{
 			{},
 		},
-		TotalVulnerabilityPerCriticality: map[string]int{"CRITICAL": 0, "HIGH": 2, "MEDIUM": 1, "LOW": 10, "UNKNOWN": 0},
+		TotalVulnerabilityPerCriticality: vulnerabilitiesDefinition,
 		TrivyOutput: []scanner.TrivyOutput{
 			{
 				Target:          "ubuntu (ubuntu 18.04)",
 				Type:            "ubuntu",
-				Vulnerabilities: vulnerabilities,
+				Vulnerabilities: buildVulnerabilities(vulnerabilitiesDefinition),
 			},
 		},
 	}
+}
+
+func buildVulnerabilities(vulnerabilitiesDefinition map[string]int) []scanner.Vulnerabilities {
+	var vulnerabilities []scanner.Vulnerabilities
+	for severity, count := range vulnerabilitiesDefinition {
+		vulnerabilityFor := func(string) scanner.Vulnerabilities {
+			switch severity {
+			case "HIGH":
+				return aHighVulnerablity()
+			case "MEDIUM":
+				return aMediumVulnerablity()
+			case "LOW":
+				return aLowVulnerablity()
+			default:
+				panic(fmt.Errorf("severity %s not supported", severity))
+			}
+		}
+		if count != 0 {
+			vulnerabilities = append(vulnerabilities, repeat(count, vulnerabilityFor(severity))...)
+		}
+	}
+	return vulnerabilities
 }
 
 func repeat(count int, vulnerability scanner.Vulnerabilities) []scanner.Vulnerabilities {
