@@ -196,9 +196,25 @@ var _ = Describe("Scan Images", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(imageByArea["area-1"].Teams).Should(HaveLen(2))
 			Expect(imageByArea["area-1"].Teams["team-1"].Images).Should(HaveLen(2))
+			Expect(imageByArea["area-1"].Teams["team-1"].Pods[0].NamespaceLabels).Should(And(
+				HaveKeyWithValue(areaLabel, "area-1"),
+				HaveKeyWithValue(teamLabel, "team-1"),
+			))
+			Expect(imageByArea["area-1"].Teams["team-2"].Pods[0].NamespaceLabels).Should(And(
+				HaveKeyWithValue(areaLabel, "area-1"),
+				HaveKeyWithValue(teamLabel, "team-2"),
+			))
 			Expect(imageByArea["area-1"].Teams["team-2"].Images).Should(HaveLen(1))
+			Expect(imageByArea["area-1"].Teams["team-2"].Pods[0].NamespaceLabels).Should(And(
+				HaveKeyWithValue(areaLabel, "area-1"),
+				HaveKeyWithValue(teamLabel, "team-2"),
+			))
 			Expect(imageByArea["area-1"].Teams["team-1"].Images).Should(HaveImages("image-1", "image-2"))
 			Expect(imageByArea["area-1"].Teams["team-2"].Images).Should(HaveImages("image-3"))
+			Expect(imageByArea["area-1"].Teams["team-2"].Pods[0].NamespaceLabels).Should(And(
+				HaveKeyWithValue(areaLabel, "area-1"),
+				HaveKeyWithValue(teamLabel, "team-2"),
+			))
 		})
 
 		It("Common images should be grouped within each team", func() {

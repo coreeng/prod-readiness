@@ -146,16 +146,9 @@ func (l *Scanner) ScanImages() (*Report, error) {
 
 	logr.Infof("All namespaces have been scanned.")
 
-	logr.Infof("generateAreaGrouping")
-	imagesByArea, err := l.generateAreaGrouping(listScanned)
-	if err != nil {
-		return nil, err
-	}
-
 	report := &Report{
 		ImageSummary: &ImageSummary{},
 		ImageSpecs:   listScanned,
-		ImageByArea:  imagesByArea,
 	}
 
 	logr.Infof("calculateKpis")
@@ -163,6 +156,13 @@ func (l *Scanner) ScanImages() (*Report, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	logr.Infof("generateAreaGrouping")
+	imagesByArea, err := l.generateAreaGrouping(listScanned)
+	if err != nil {
+		return nil, err
+	}
+	report.ImageByArea = imagesByArea
 
 	return report, nil
 }
@@ -194,7 +194,7 @@ func (l *Scanner) generateAreaGrouping(imageSpecs map[string]*ImageSpec) (map[st
 
 			imagesByArea[podAreaLabel].Teams[podTeamsLabel].ImageCount++
 			imagesByArea[podAreaLabel].Teams[podTeamsLabel].PodCount++
-			imagesByArea[podAreaLabel].Teams[podTeamsLabel].Pods = append(imagesByArea[podAreaLabel].Teams[podTeamsLabel].Pods, PodSummary{Name: podSummary.Name, Namespace: podSummary.Namespace})
+			imagesByArea[podAreaLabel].Teams[podTeamsLabel].Pods = append(imagesByArea[podAreaLabel].Teams[podTeamsLabel].Pods, podSummary)
 			imagesByArea[podAreaLabel].Teams[podTeamsLabel].Images = append(imagesByArea[podAreaLabel].Teams[podTeamsLabel].Images, *specs)
 		}
 	}
