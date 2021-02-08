@@ -2,6 +2,7 @@ package report
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -103,6 +104,45 @@ var _ = Describe("Generating report Images", func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(fileContentEqual("expected-test-report-imageScan-standard.md", actualReportFile)).
 			To(BeTrue(), "Report diff: \n%s", runDiff("expected-test-report-imageScan-standard.md", actualReportFile))
+	})
+})
+
+
+var _ = Describe("Saving json report", func() {
+	var (
+		tmpDir string
+	)
+
+	BeforeEach(func() {
+		var err error
+		tmpDir, err = ioutil.TempDir("", "")
+		Expect(err).NotTo(HaveOccurred())
+	})
+
+	AfterEach(func() {
+		err := os.RemoveAll(tmpDir)
+		Expect(err).NotTo(HaveOccurred())
+	})
+
+	It("should save the report json representation to the given file", func() {
+		testReport := TestReport{
+			ImageScan: &scanner.Report{
+				ImageSummary: &scanner.ImageSummary{
+					NumberPodsScanned:                3,
+					NumberImagesScanned:              2,
+					NumberImagesFromExternalRegistry: 0,
+				},
+			},
+		}
+		err := SaveReport(&testReport, filepath.Join(tmpDir, "report.json"))
+		Expect(err).NotTo(HaveOccurred())
+
+		actualReportSaved := &TestReport{}
+		actualReportBytes, err := ioutil.ReadFile(filepath.Join(tmpDir, "report.json"))
+		Expect(err).NotTo(HaveOccurred())
+		err = json.Unmarshal(actualReportBytes, actualReportSaved)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(actualReportSaved).Should(Equal(&testReport))
 	})
 })
 

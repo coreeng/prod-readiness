@@ -26,6 +26,7 @@ func init() {
 	scanCmd.Flags().StringVar(&filterLabels, "filters-labels", "", "string allowing to filter the namespaces string separated by comma")
 	scanCmd.Flags().StringVar(&severity, "severity", "UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL", "severities of vulnerabilities to be reported (comma separated) ")
 	scanCmd.Flags().IntVar(&workersScan, "workers-scan", 10, "number of worker to process images scan in parallel")
+	scanCmd.Flags().StringVar(&jsonReportFile, "json-report-filename", "", "optional filename where the json representation of the report will be saved")
 }
 
 func scan(_ *cobra.Command, _ []string) {
@@ -58,10 +59,11 @@ func scan(_ *cobra.Command, _ []string) {
 		logr.Error(err)
 	}
 
-	err = r.SaveReport(fullReport, "imageScan")
-	if err != nil {
-		// return nil, err
-		logr.Error(err)
+	if jsonReportFile != "" {
+		err = r.SaveReport(fullReport, jsonReportFile)
+		if err != nil {
+			logr.Error(err)
+		}
 	}
 
 }

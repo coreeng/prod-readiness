@@ -16,7 +16,7 @@ var (
 		Short: "Will create a full audit of a cluster and generate presentation and json output",
 		Run:   report,
 	}
-	kubeContext, kubeconfigPath, imageNameReplacement, areaLabel, teamLabels, filterLabels, severity string
+	kubeContext, kubeconfigPath, imageNameReplacement, areaLabel, teamLabels, filterLabels, severity, jsonReportFile string
 	workersScan, workersKubeBench, workersLinuxBench                                                 int
 )
 
@@ -32,6 +32,7 @@ func init() {
 	reportCmd.Flags().StringVar(&teamLabels, "teams-labels", "", "string allowing to split per team the image scan")
 	reportCmd.Flags().StringVar(&filterLabels, "filters-labels", "", "string allowing to filter the namespaces string separated by comma")
 	reportCmd.Flags().StringVar(&severity, "severity", "UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL", "severities of vulnerabilities to be reported (comma separated) ")
+	reportCmd.Flags().StringVar(&jsonReportFile, "json-report-filename", "", "optional filename where the json representation of the report will be saved")
 }
 
 // FullReport - FullReport
@@ -104,9 +105,10 @@ func report(_ *cobra.Command, _ []string) {
 		logr.Error(err)
 	}
 
-	err = r.SaveReport(fullReport, "report")
-	if err != nil {
-		// return nil, err
-		logr.Error(err)
+	if jsonReportFile != "" {
+		err = r.SaveReport(fullReport, jsonReportFile)
+		if err != nil {
+			logr.Error(err)
+		}
 	}
 }
