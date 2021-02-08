@@ -107,7 +107,6 @@ var _ = Describe("Generating report Images", func() {
 	})
 })
 
-
 var _ = Describe("Saving json report", func() {
 	var (
 		tmpDir string
@@ -172,7 +171,7 @@ func fileContentEqual(filename1, filename2 string) (bool, error) {
 func anAlpineImageScan(vulnerabilitiesDefinition map[string]int) scanner.ImageSpec {
 	return scanner.ImageSpec{
 		ImageName: "alpine:latest",
-		Pods: []scanner.PodDetail{
+		Pods: []scanner.PodSummary{
 			{},
 		},
 		TotalVulnerabilityPerCriticality: map[string]int{"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0, "UNKNOWN": 0},
@@ -189,7 +188,7 @@ func anAlpineImageScan(vulnerabilitiesDefinition map[string]int) scanner.ImageSp
 func aDebianImageScan(vulnerabilitiesDefinition map[string]int) scanner.ImageSpec {
 	return scanner.ImageSpec{
 		ImageName: "debian:latest",
-		Pods: []scanner.PodDetail{
+		Pods: []scanner.PodSummary{
 			{},
 		},
 		TotalVulnerabilityPerCriticality: vulnerabilitiesDefinition,
@@ -206,7 +205,7 @@ func aDebianImageScan(vulnerabilitiesDefinition map[string]int) scanner.ImageSpe
 func anUbuntuImageScan(vulnerabilitiesDefinition map[string]int) scanner.ImageSpec {
 	return scanner.ImageSpec{
 		ImageName: "ubuntu:18.04",
-		Pods: []scanner.PodDetail{
+		Pods: []scanner.PodSummary{
 			{},
 		},
 		TotalVulnerabilityPerCriticality: vulnerabilitiesDefinition,

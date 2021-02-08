@@ -32,7 +32,7 @@ type ImageSpec struct {
 	DockerPullErrCommand             string        `json:"dockerPullErrCommand"`
 	DockerRmiCommand                 string        `json:"dockerRmiCommand"`
 	DockerRmiErrCommand              string        `json:"dockerRmiErrCommand"`
-	Pods                             []PodDetail   `json:"pods"`
+	Pods                             []PodSummary  `json:"pods"`
 	TotalVulnerabilityPerCriticality map[string]int
 	ImageName                        string
 }
@@ -62,7 +62,7 @@ type ImagePerRegistry struct {
 	RegistryName string
 	PodCount     int
 	ImageCount   int
-	Pods         []PodDetail
+	Pods         []PodSummary
 	Images       []string
 }
 
@@ -172,9 +172,9 @@ func (l *Scanner) generateAreaGrouping(imageSpecs map[string]*ImageSpec) (map[st
 	var podAreaLabel, podTeamsLabel string
 	for _, specs := range imageSpecs {
 
-		for _, podDetail := range specs.Pods {
-			podAreaLabel = podDetail.Namespace.Labels[l.config.AreaLabels]
-			podTeamsLabel = podDetail.Namespace.Labels[l.config.TeamsLabels]
+		for _, podSummary := range specs.Pods {
+			podAreaLabel = podSummary.NamespaceLabels[l.config.AreaLabels]
+			podTeamsLabel = podSummary.NamespaceLabels[l.config.TeamsLabels]
 
 			if podAreaLabel == "" {
 				podAreaLabel = "all"
@@ -194,7 +194,7 @@ func (l *Scanner) generateAreaGrouping(imageSpecs map[string]*ImageSpec) (map[st
 
 			imagesByArea[podAreaLabel].Teams[podTeamsLabel].ImageCount++
 			imagesByArea[podAreaLabel].Teams[podTeamsLabel].PodCount++
-			imagesByArea[podAreaLabel].Teams[podTeamsLabel].Pods = append(imagesByArea[podAreaLabel].Teams[podTeamsLabel].Pods, podDetail)
+			imagesByArea[podAreaLabel].Teams[podTeamsLabel].Pods = append(imagesByArea[podAreaLabel].Teams[podTeamsLabel].Pods, PodSummary{Name: podSummary.Name, Namespace: podSummary.Namespace})
 			imagesByArea[podAreaLabel].Teams[podTeamsLabel].Images = append(imagesByArea[podAreaLabel].Teams[podTeamsLabel].Images, *specs)
 		}
 	}
@@ -232,7 +232,7 @@ type ImagePerTeam struct {
 	TeamName                    string
 	PodCount                    int
 	ImageCount                  int
-	Pods                        []PodDetail
+	Pods                        []PodSummary
 	Images                      []ImageSpec
 	ImageSummary                *ImageSummary
 	ImageSpecsSortByCriticality []ImageSpec
@@ -254,7 +254,7 @@ func kpisImages(images []ImageSpec) *ImageSummary {
 	imageSum.TotalVulnerabilityPerCriticality["MEDIUM"] = 0
 	imageSum.TotalVulnerabilityPerCriticality["LOW"] = 0
 
-	imageSum.ImagePerRegistry["docker.io"] = &ImagePerRegistry{RegistryName: "docker.io", Pods: []PodDetail{}}
+	imageSum.ImagePerRegistry["docker.io"] = &ImagePerRegistry{RegistryName: "docker.io", Pods: []PodSummary{}}
 
 	for _, specs := range images {
 		specs.TotalVulnerabilityPerCriticality = map[string]int{}
@@ -271,7 +271,7 @@ func kpisImages(images []ImageSpec) *ImageSummary {
 		if strings.Contains(imageNameArr[0], ".") {
 			// if key doesn't exist
 			if _, ok := imageSum.ImagePerRegistry[imageNameArr[0]]; !ok {
-				imageSum.ImagePerRegistry[imageNameArr[0]] = &ImagePerRegistry{RegistryName: imageNameArr[0], Pods: []PodDetail{}}
+				imageSum.ImagePerRegistry[imageNameArr[0]] = &ImagePerRegistry{RegistryName: imageNameArr[0], Pods: []PodSummary{}}
 			}
 
 			imageSum.ImagePerRegistry[imageNameArr[0]].Pods = append(imageSum.ImagePerRegistry[imageNameArr[0]].Pods, specs.Pods...)
@@ -437,15 +437,21 @@ func (l *Scanner) getNamespaces(config *Config) (*v1.NamespaceList, error) {
 	return namespaceList, nil
 }
 
-// PodDetail - PodDetail
-type PodDetail struct {
+type podDetail struct {
 	Pod       v1.Pod
 	Namespace v1.Namespace
 }
 
-func (l *Scanner) getPods(config *Config) ([]PodDetail, error) {
+// PodSummary - cut down version of the podDetail
+type PodSummary struct {
+	Name            string
+	Namespace       string
+	NamespaceLabels map[string]string
+}
+
+func (l *Scanner) getPods(config *Config) ([]podDetail, error) {
 	var podList *v1.PodList
-	var podDetailList []PodDetail
+	var podDetailList []podDetail
 	var namespaceList *v1.NamespaceList
 	var err error
 
@@ -459,7 +465,7 @@ func (l *Scanner) getPods(config *Config) ([]PodDetail, error) {
 		podList, err = l.kubeClient.CoreV1().Pods(namespace.Name).List(metaV1.ListOptions{})
 
 		for _, pod := range podList.Items {
-			podDetailList = append(podDetailList, PodDetail{Pod: pod, Namespace: namespace})
+			podDetailList = append(podDetailList, podDetail{Pod: pod, Namespace: namespace})
 		}
 		logr.Infof("Get pods from namespace %s", namespace.Name)
 
@@ -474,18 +480,17 @@ func (l *Scanner) getPods(config *Config) ([]PodDetail, error) {
 	return podDetailList, nil
 }
 
-func (l *Scanner) getImagesList(podList []PodDetail) (map[string]*ImageSpec, error) {
+func (l *Scanner) getImagesList(podList []podDetail) (map[string]*ImageSpec, error) {
 	imageList := map[string]*ImageSpec{}
 	for _, pod := range podList {
-		logr.Infof("pod %s in namespace %s", pod.Pod.Name, pod.Pod.Namespace)
-		podItem := pod
+		logr.Infof("pod %s in namespace %s", pod.Pod.Name, pod.Namespace.Name)
+		podItem := PodSummary{Namespace: pod.Namespace.Name, NamespaceLabels: pod.Namespace.Labels, Name: pod.Pod.Name}
 		for _, container := range pod.Pod.Spec.Containers {
 			// if key exists
 			if image, ok := imageList[container.Image]; ok {
 				image.Pods = append(image.Pods, podItem)
 			} else {
-				podDetail := []PodDetail{{Pod: podItem.Pod, Namespace: podItem.Namespace}}
-				imageList[container.Image] = &ImageSpec{Pods: podDetail}
+				imageList[container.Image] = &ImageSpec{Pods: []PodSummary{podItem}}
 			}
 		}
 	}
@@ -502,7 +507,7 @@ func (l *Scanner) stringReplacement(imageName string, stringReplacement string) 
 				logr.Debugf("String replacement from imageName: %s, match: %s, replace %s", imageName, replacementItems[0], replacementItems[1])
 				imageName = strings.Replace(imageName, replacementItems[0], replacementItems[1], -1)
 			} else {
-				return imageName, fmt.Errorf("String Replacement pattern is not in the right format '$matchingString|$replacementString,$matchingString|$replacementString'")
+				return imageName, fmt.Errorf("string Replacement pattern is not in the right format '$matchingString|$replacementString,$matchingString|$replacementString'")
 			}
 
 		}
@@ -625,7 +630,7 @@ func (l *Scanner) execTrivyDB() error {
 
 func (l *Scanner) execTrivy(imageName string, imageSpec *ImageSpec) error {
 
-	logr.Infof("worker image: %s, pod_name: %s", imageName, imageSpec.Pods[0].Pod.Name)
+	logr.Infof("worker image: %s, pod_name: %s", imageName, imageSpec.Pods[0].Name)
 	cmd := "trivy"
 	args := []string{"-q", "image", "-f", "json", "--skip-update", "--no-progress", "--severity", l.config.Severity, imageName}
 

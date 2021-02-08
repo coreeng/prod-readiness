@@ -17,7 +17,7 @@ var (
 		Run:   report,
 	}
 	kubeContext, kubeconfigPath, imageNameReplacement, areaLabel, teamLabels, filterLabels, severity, jsonReportFile string
-	workersScan, workersKubeBench, workersLinuxBench                                                 int
+	workersScan, workersKubeBench, workersLinuxBench                                                                 int
 )
 
 func init() {

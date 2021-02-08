@@ -2,9 +2,10 @@ package scanner
 
 import (
 	"fmt"
-	"github.com/onsi/gomega/types"
 	"reflect"
 	"testing"
+
+	"github.com/onsi/gomega/types"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -66,7 +67,7 @@ var _ = Describe("Scan Images", func() {
 		})
 
 		It("GetImagesList should return an unique map", func() {
-			podList1 := PodDetail{
+			podList1 := podDetail{
 				Pod: v1.Pod{
 					ObjectMeta: metaV1.ObjectMeta{
 						Name: "podName1",
@@ -90,11 +91,14 @@ var _ = Describe("Scan Images", func() {
 				Namespace: v1.Namespace{
 					ObjectMeta: metaV1.ObjectMeta{
 						Name: "test-namespace",
+						Labels: map[string]string{
+							"teams-name": "team-1",
+						},
 					},
 				},
 			}
 
-			podList2 := PodDetail{
+			podList2 := podDetail{
 				Pod: v1.Pod{
 					ObjectMeta: metaV1.ObjectMeta{
 						Name: "podName2",
@@ -118,25 +122,28 @@ var _ = Describe("Scan Images", func() {
 				Namespace: v1.Namespace{
 					ObjectMeta: metaV1.ObjectMeta{
 						Name: "test-namespace",
+						Labels: map[string]string{
+							"teams-name": "team-2",
+						},
 					},
 				},
 			}
 
-			podList := []PodDetail{}
-			podList = append(podList, podList1)
-			podList = append(podList, podList2)
+			// when
+			imageList, err := scan.getImagesList([]podDetail{podList1, podList2})
 
-			imageList, err := scan.getImagesList(podList)
-
+			// then
+			podSummary1 := PodSummary{Name: podList1.Pod.Name, Namespace: podList1.Namespace.Name, NamespaceLabels: podList1.Namespace.Labels}
+			podSummary2 := PodSummary{Name: podList2.Pod.Name, Namespace: podList2.Namespace.Name, NamespaceLabels: podList2.Namespace.Labels}
 			imageListExpected := map[string]*ImageSpec{
-				"ubuntu:latest": &ImageSpec{
-					Pods: podList,
+				"ubuntu:latest": {
+					Pods: []PodSummary{podSummary1, podSummary2},
 				},
-				"ubuntu:trusty": &ImageSpec{
-					Pods: []PodDetail{podList1},
+				"ubuntu:trusty": {
+					Pods: []PodSummary{podSummary1},
 				},
-				"gcr.io:name": &ImageSpec{
-					Pods: []PodDetail{podList2},
+				"gcr.io:name": {
+					Pods: []PodSummary{podSummary2},
 				},
 			}
 
@@ -156,37 +163,31 @@ var _ = Describe("Scan Images", func() {
 			imageSpecs := map[string]*ImageSpec{
 				"image-1": {
 					ImageName: "image-1",
-					Pods: []PodDetail{
+					Pods: []PodSummary{
 						{
-							Namespace: v1.Namespace{
-								ObjectMeta: metaV1.ObjectMeta{
-									Labels: map[string]string{areaLabel: "area-1", teamLabel: "team-1"},
-								},
-							},
+							Namespace:       "namespace-1",
+							NamespaceLabels: map[string]string{areaLabel: "area-1", teamLabel: "team-1"},
+							Name:            "pod-1",
 						},
 					},
 				},
 				"image-2": {
 					ImageName: "image-2",
-					Pods: []PodDetail{
+					Pods: []PodSummary{
 						{
-							Namespace: v1.Namespace{
-								ObjectMeta: metaV1.ObjectMeta{
-									Labels: map[string]string{areaLabel: "area-1", teamLabel: "team-1"},
-								},
-							},
+							Namespace:       "namespace-1",
+							NamespaceLabels: map[string]string{areaLabel: "area-1", teamLabel: "team-1"},
+							Name:            "pod-2",
 						},
 					},
 				},
 				"image-3": {
 					ImageName: "image-3",
-					Pods: []PodDetail{
+					Pods: []PodSummary{
 						{
-							Namespace: v1.Namespace{
-								ObjectMeta: metaV1.ObjectMeta{
-									Labels: map[string]string{areaLabel: "area-1", teamLabel: "team-2"},
-								},
-							},
+							Namespace:       "namespace-2",
+							Name:            "pod-3",
+							NamespaceLabels: map[string]string{areaLabel: "area-1", teamLabel: "team-2"},
 						},
 					},
 				},

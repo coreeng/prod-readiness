@@ -3,9 +3,10 @@ package report
 import (
 	"encoding/json"
 	"fmt"
-	logr "github.com/sirupsen/logrus"
 	"html/template"
 	"os"
+
+	logr "github.com/sirupsen/logrus"
 )
 
 // GenerateMarkdown - GenerateMarkdown
@@ -71,12 +72,12 @@ func SaveReport(report interface{}, filename string) error {
 	logr.Infof("Saving report to: %s", filename)
 
 	// saving the ouput into a file
-	reportJsonFile, err := os.Create(filename)
+	reportJSONFile, err := os.Create(filename)
 	if err != nil {
 		return fmt.Errorf("could not create report json file %s: %v", filename, err)
 	}
 
-	encoder := json.NewEncoder(reportJsonFile)
+	encoder := json.NewEncoder(reportJSONFile)
 	err = encoder.Encode(report)
 	if err != nil {
 		logr.Errorf("Error encoding report to json %v", err)
