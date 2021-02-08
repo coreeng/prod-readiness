@@ -221,21 +221,23 @@ func anUbuntuImageScan(vulnerabilitiesDefinition map[string]int) scanner.ImageSp
 }
 
 func buildVulnerabilities(vulnerabilitiesDefinition map[string]int) []scanner.Vulnerabilities {
-	var vulnerabilities []scanner.Vulnerabilities
-	for severity, count := range vulnerabilitiesDefinition {
-		vulnerabilityFor := func(string) scanner.Vulnerabilities {
-			switch severity {
-			case "HIGH":
-				return aHighVulnerablity()
-			case "MEDIUM":
-				return aMediumVulnerablity()
-			case "LOW":
-				return aLowVulnerablity()
-			default:
-				panic(fmt.Errorf("severity %s not supported", severity))
-			}
+	vulnerabilityFor := func(severity string) scanner.Vulnerabilities {
+		switch severity {
+		case "HIGH":
+			return aHighVulnerablity()
+		case "MEDIUM":
+			return aMediumVulnerablity()
+		case "LOW":
+			return aLowVulnerablity()
+		default:
+			panic(fmt.Errorf("severity %s not supported", severity))
 		}
-		if count != 0 {
+	}
+
+	var vulnerabilities []scanner.Vulnerabilities
+	severities := []string{"CRITICAL", "HIGH", "MEDIUM", "LOW", "UNKNOWN"}
+	for _, severity := range severities {
+		if count := vulnerabilitiesDefinition[severity]; count != 0 {
 			vulnerabilities = append(vulnerabilities, repeat(count, vulnerabilityFor(severity))...)
 		}
 	}
