@@ -3,6 +3,7 @@ package scanner
 import (
 	"fmt"
 	"reflect"
+	"sort"
 	"testing"
 
 	"github.com/onsi/gomega/types"
@@ -153,13 +154,22 @@ var _ = Describe("Scan Images", func() {
 	})
 
 	Context("Area grouping", func() {
-		It("Image specific teams should be grouped under that team", func() {
-			areaLabel := "areas-label"
-			teamLabel := "teams-label"
-			scan := &Scanner{config: &Config{
+
+		var (
+			areaLabel, teamLabel string
+			scan                 *Scanner
+		)
+
+		BeforeEach(func() {
+			areaLabel = "areas-label"
+			teamLabel = "teams-label"
+			scan = &Scanner{config: &Config{
 				AreaLabels:  areaLabel,
 				TeamsLabels: teamLabel,
 			}}
+		})
+
+		It("groups images per team and area", func() {
 			imageSpecs := map[string]*ImageSpec{
 				"image-1": {
 					ImageName: "image-1",
@@ -191,37 +201,175 @@ var _ = Describe("Scan Images", func() {
 						},
 					},
 				},
+				"image-4": {
+					ImageName: "image-4",
+					Pods: []PodSummary{
+						{
+							Namespace:       "namespace-3",
+							Name:            "pod-4",
+							NamespaceLabels: map[string]string{areaLabel: "area-2", teamLabel: "team-3"},
+						},
+					},
+				},
 			}
+
+			// when
 			imageByArea, err := scan.generateAreaGrouping(imageSpecs)
+
+			// then
 			Expect(err).NotTo(HaveOccurred())
 			Expect(imageByArea["area-1"].Teams).Should(HaveLen(2))
-			Expect(imageByArea["area-1"].Teams["team-1"].Images).Should(HaveLen(2))
+			Expect(imageByArea["area-1"].Teams["team-1"].Images).Should(HaveImages("image-1", "image-2"))
 			Expect(imageByArea["area-1"].Teams["team-1"].Pods[0].NamespaceLabels).Should(And(
 				HaveKeyWithValue(areaLabel, "area-1"),
 				HaveKeyWithValue(teamLabel, "team-1"),
 			))
-			Expect(imageByArea["area-1"].Teams["team-2"].Pods[0].NamespaceLabels).Should(And(
-				HaveKeyWithValue(areaLabel, "area-1"),
-				HaveKeyWithValue(teamLabel, "team-2"),
-			))
-			Expect(imageByArea["area-1"].Teams["team-2"].Images).Should(HaveLen(1))
-			Expect(imageByArea["area-1"].Teams["team-2"].Pods[0].NamespaceLabels).Should(And(
-				HaveKeyWithValue(areaLabel, "area-1"),
-				HaveKeyWithValue(teamLabel, "team-2"),
-			))
-			Expect(imageByArea["area-1"].Teams["team-1"].Images).Should(HaveImages("image-1", "image-2"))
+
 			Expect(imageByArea["area-1"].Teams["team-2"].Images).Should(HaveImages("image-3"))
 			Expect(imageByArea["area-1"].Teams["team-2"].Pods[0].NamespaceLabels).Should(And(
 				HaveKeyWithValue(areaLabel, "area-1"),
 				HaveKeyWithValue(teamLabel, "team-2"),
 			))
+
+			Expect(imageByArea["area-2"].Teams).Should(HaveLen(1))
+			Expect(imageByArea["area-2"].Teams["team-3"].Images).Should(HaveImages("image-4"))
+			Expect(imageByArea["area-2"].Teams["team-3"].Pods[0].NamespaceLabels).Should(And(
+				HaveKeyWithValue(areaLabel, "area-2"),
+				HaveKeyWithValue(teamLabel, "team-3"),
+			))
 		})
 
-		It("Common images should be grouped within each team", func() {
+		It("list the same image found in multiple pods only once", func() {
+			imageSpecs := map[string]*ImageSpec{
+				"image-1": {
+					ImageName: "image-1",
+					Pods: []PodSummary{
+						{
+							Namespace:       "namespace-1",
+							NamespaceLabels: map[string]string{areaLabel: "area-1", teamLabel: "team-1"},
+							Name:            "pod-1",
+						},
+						{
+							Namespace:       "namespace-1",
+							NamespaceLabels: map[string]string{areaLabel: "area-1", teamLabel: "team-1"},
+							Name:            "pod-2",
+						},
+						{
+							Namespace:       "namespace-2",
+							NamespaceLabels: map[string]string{areaLabel: "area-1", teamLabel: "team-2"},
+							Name:            "pod-3",
+						},
+					},
+				},
+			}
+			// when
+			imageByArea, err := scan.generateAreaGrouping(imageSpecs)
 
+			// then
+			Expect(err).NotTo(HaveOccurred())
+			Expect(imageByArea["area-1"].Teams).Should(HaveLen(2))
+			Expect(imageByArea["area-1"].Teams["team-1"].Images).Should(HaveImages("image-1"))
+			Expect(imageByArea["area-1"].Teams["team-1"].Pods).Should(HaveLen(2))
+			Expect(imageByArea["area-1"].Teams["team-1"].Pods[0].Name).Should(Equal("pod-1"))
+			Expect(imageByArea["area-1"].Teams["team-1"].Pods[1].Name).Should(Equal("pod-2"))
+
+			Expect(imageByArea["area-1"].Teams["team-2"].Images).Should(HaveImages("image-1"))
+			Expect(imageByArea["area-1"].Teams["team-2"].Pods).Should(HaveLen(1))
+			Expect(imageByArea["area-1"].Teams["team-2"].Pods[0].Name).Should(Equal("pod-3"))
+		})
+
+		XIt("sort teams images by criticality", func() {
+			team1Pod := PodSummary{
+				Namespace:       "namespace-1",
+				NamespaceLabels: map[string]string{areaLabel: "area-1", teamLabel: "team-1"},
+				Name:            "pod-1",
+			}
+
+			team2Pod := PodSummary{
+				Namespace:       "namespace-1",
+				NamespaceLabels: map[string]string{areaLabel: "area-1", teamLabel: "team-2"},
+				Name:            "pod-1",
+			}
+
+			imageSpecs := map[string]*ImageSpec{
+				"mostCriticalTeam2": {
+					ImageName: "mostCriticalTeam2",
+					Pods:      []PodSummary{team2Pod},
+					TotalVulnerabilityPerCriticality: map[string]int{
+						"CRITICAL": 1,
+						"HIGH":     5,
+						"MEDIUM":   0,
+						"LOW":      0,
+					},
+				},
+				"leastCriticalTeam2": {
+					ImageName: "leastCriticalTeam2",
+					Pods:      []PodSummary{team2Pod},
+					TotalVulnerabilityPerCriticality: map[string]int{
+						"CRITICAL": 0,
+						"HIGH":     6,
+						"MEDIUM":   10,
+						"LOW":      25,
+					},
+				},
+				"mostCritical": {
+					ImageName: "mostCritical",
+					Pods:      []PodSummary{team1Pod},
+					TotalVulnerabilityPerCriticality: map[string]int{
+						"CRITICAL": 4,
+						"HIGH":     5,
+						"MEDIUM":   10,
+						"LOW":      25,
+					},
+				},
+				"mostHighAfterSameCritical": {
+					ImageName: "mostHighAfterSameCritical",
+					Pods:      []PodSummary{team1Pod},
+					TotalVulnerabilityPerCriticality: map[string]int{
+						"CRITICAL": 3,
+						"HIGH":     6,
+						"MEDIUM":   11,
+						"LOW":      26,
+					},
+				},
+				"mostMediumAfterSameCriticalAndHigh": {
+					ImageName: "mostMediumAfterSameCriticalAndHigh",
+					Pods:      []PodSummary{team1Pod},
+					TotalVulnerabilityPerCriticality: map[string]int{
+						"CRITICAL": 3,
+						"HIGH":     5,
+						"MEDIUM":   12,
+						"LOW":      27,
+					},
+				},
+				"leastCriticalTeam1": {
+					ImageName: "leastCriticalTeam1",
+					Pods:      []PodSummary{team1Pod},
+					TotalVulnerabilityPerCriticality: map[string]int{
+						"CRITICAL": 3,
+						"HIGH":     5,
+						"MEDIUM":   11,
+						"LOW":      28,
+					},
+				},
+			}
+
+			// when
+			imageByArea, err := scan.generateAreaGrouping(imageSpecs)
+
+			// then
+			Expect(err).NotTo(HaveOccurred())
+			Expect(imageByArea["area-1"].Teams["team-1"].Images).To(HaveLen(4))
+			Expect(imageByArea["area-1"].Teams["team-1"].Images[0].ImageName).To(Equal("mostCritical"))
+			Expect(imageByArea["area-1"].Teams["team-1"].Images[1].ImageName).To(Equal("mostHighAfterSameCritical"))
+			Expect(imageByArea["area-1"].Teams["team-1"].Images[2].ImageName).To(Equal("mostMediumAfterSameCriticalAndHigh"))
+			Expect(imageByArea["area-1"].Teams["team-1"].Images[3].ImageName).To(Equal("leastCriticalTeam1"))
+
+			Expect(imageByArea["area-1"].Teams["team-2"].Images).To(HaveLen(2))
+			Expect(imageByArea["area-1"].Teams["team-2"].Images[0].ImageName).To(Equal("mostCriticalTeam2"))
+			Expect(imageByArea["area-1"].Teams["team-2"].Images[1].ImageName).To(Equal("leastCriticalTeam2"))
 		})
 	})
-
 })
 
 func HaveImages(images ...string) types.GomegaMatcher {
@@ -238,6 +386,8 @@ func (m *haveImages) Match(actual interface{}) (success bool, err error) {
 	for _, imageSpec := range imagesSpecs {
 		actualImages = append(actualImages, imageSpec.ImageName)
 	}
+	sort.Strings(m.expectedImages)
+	sort.Strings(actualImages)
 	return reflect.DeepEqual(actualImages, m.expectedImages), nil
 }
 

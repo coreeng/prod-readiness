@@ -166,9 +166,13 @@ func (l *Scanner) ScanImages() (*Report, error) {
 
 	return report, nil
 }
+type teamKey struct {
+	area, team string
+}
 
 func (l *Scanner) generateAreaGrouping(imageSpecs map[string]*ImageSpec) (map[string]*ImagePerArea, error) {
-	imagesByArea := make(map[string]*ImagePerArea)
+	imagesSpecByTeam := make(map[teamKey]map[string]ImageSpec)
+	podsByTeam := make(map[teamKey][]PodSummary)
 	var podAreaLabel, podTeamsLabel string
 	for _, specs := range imageSpecs {
 
@@ -183,39 +187,48 @@ func (l *Scanner) generateAreaGrouping(imageSpecs map[string]*ImageSpec) (map[st
 				podTeamsLabel = "all"
 			}
 
-			// if key doesn't exist
-			if _, ok := imagesByArea[podAreaLabel]; !ok {
-				imagesByArea[podAreaLabel] = &ImagePerArea{AreaName: podAreaLabel, Teams: map[string]*ImagePerTeam{}}
-			}
-			// if key doesn't exist
-			if _, ok := imagesByArea[podAreaLabel].Teams[podTeamsLabel]; !ok {
-				imagesByArea[podAreaLabel].Teams[podTeamsLabel] = &ImagePerTeam{TeamName: podTeamsLabel}
-			}
+			key := teamKey{area: podAreaLabel, team: podTeamsLabel}
+			podsByTeam[key] = append(podsByTeam[key], podSummary)
 
-			imagesByArea[podAreaLabel].Teams[podTeamsLabel].ImageCount++
-			imagesByArea[podAreaLabel].Teams[podTeamsLabel].PodCount++
-			imagesByArea[podAreaLabel].Teams[podTeamsLabel].Pods = append(imagesByArea[podAreaLabel].Teams[podTeamsLabel].Pods, podSummary)
-			imagesByArea[podAreaLabel].Teams[podTeamsLabel].Images = append(imagesByArea[podAreaLabel].Teams[podTeamsLabel].Images, *specs)
+			if _, ok := imagesSpecByTeam[key]; !ok {
+				imagesSpecByTeam[key] = make(map[string]ImageSpec)
+			}
+			imagesSpecByTeam[key][specs.ImageName] = *specs
 		}
 	}
 
-	for _, area := range imagesByArea {
-		for _, teams := range area.Teams {
-			logr.Infof("Sort area %s, teams %s", area.AreaName, teams.TeamName)
-			teams.Images = sortByCriticality(teams.Images, false)
+	imagesByArea := make(map[string]*ImagePerArea)
+	for key := range podsByTeam {
+		if _, ok := imagesByArea[key.area]; !ok {
+			imagesByArea[key.area] = &ImagePerArea{AreaName: key.area, Teams: map[string]*ImagePerTeam{}}
+		}
+		if _, ok := imagesByArea[key.area].Teams[key.team]; !ok {
+			imagesByArea[key.area].Teams[key.team] = &ImagePerTeam{TeamName: key.team}
+		}
+		imagesByArea[key.area].Teams[key.team].PodCount = len(podsByTeam[key])
+		imagesByArea[key.area].Teams[key.team].Pods = podsByTeam[key]
 
-			teams.ImageSummary = kpisImages(teams.Images)
-			imagesArr := []ImageSpec{}
-			for _, specs := range teams.Images {
-				for _, trivy := range specs.TrivyOutput {
-					if len(trivy.Vulnerabilities) > 0 {
-						imagesArr = append(imagesArr, specs)
-					}
+		var teamImages []ImageSpec
+		for _, imageSpec := range imagesSpecByTeam[key] {
+			teamImages = append(teamImages, imageSpec)
+		}
+
+		logr.Infof("Sort area %s, teams %s", key.area, key.team)
+		imagesByArea[key.area].Teams[key.team].Images = sortByCriticality(teamImages, false)
+		imagesByArea[key.area].Teams[key.team].ImageCount = len(teamImages)
+
+		imagesByArea[key.area].Teams[key.team].ImageSummary = kpisImages(teamImages)
+		imagesArr := []ImageSpec{}
+		for _, specs := range teamImages {
+			for _, trivy := range specs.TrivyOutput {
+				if len(trivy.Vulnerabilities) > 0 {
+					imagesArr = append(imagesArr, specs)
 				}
 			}
-
-			teams.ImageSpecsSortByCriticality = sortByCriticality(imagesArr, true)
 		}
+
+		imagesByArea[key.area].Teams[key.team].ImageSpecsSortByCriticality = sortByCriticality(imagesArr, true)
+
 	}
 
 	return imagesByArea, nil
