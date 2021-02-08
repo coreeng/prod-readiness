@@ -146,10 +146,16 @@ func (l *Scanner) ScanImages() (*Report, error) {
 
 	logr.Infof("All namespaces have been scanned.")
 
+	logr.Infof("generateAreaGrouping")
+	imagesByArea, err := l.generateAreaGrouping(listScanned)
+	if err != nil {
+		return nil, err
+	}
+
 	report := &Report{
 		ImageSummary: &ImageSummary{},
 		ImageSpecs:   listScanned,
-		ImageByArea:  map[string]*ImagePerArea{},
+		ImageByArea:  imagesByArea,
 	}
 
 	logr.Infof("calculateKpis")
@@ -158,18 +164,13 @@ func (l *Scanner) ScanImages() (*Report, error) {
 		return nil, err
 	}
 
-	logr.Infof("generateAreaOutput")
-	_, err = l.generateAreaOutput(report)
-	if err != nil {
-		return nil, err
-	}
-
 	return report, nil
 }
 
-func (l *Scanner) generateAreaOutput(report *Report) (*Report, error) {
+func (l *Scanner) generateAreaGrouping(imageSpecs map[string]*ImageSpec) (map[string]*ImagePerArea, error) {
+	imagesByArea := make(map[string]*ImagePerArea)
 	var podAreaLabel, podTeamsLabel string
-	for _, specs := range report.ImageSpecs {
+	for _, specs := range imageSpecs {
 
 		for _, podDetail := range specs.Pods {
 			podAreaLabel = podDetail.Namespace.Labels[l.config.AreaLabels]
@@ -183,23 +184,22 @@ func (l *Scanner) generateAreaOutput(report *Report) (*Report, error) {
 			}
 
 			// if key doesn't exist
-			if _, ok := report.ImageByArea[podAreaLabel]; !ok {
-				report.ImageByArea[podAreaLabel] = &ImagePerArea{AreaName: podAreaLabel, Teams: map[string]*ImagePerTeam{}}
+			if _, ok := imagesByArea[podAreaLabel]; !ok {
+				imagesByArea[podAreaLabel] = &ImagePerArea{AreaName: podAreaLabel, Teams: map[string]*ImagePerTeam{}}
 			}
 			// if key doesn't exist
-			if _, ok := report.ImageByArea[podAreaLabel].Teams[podTeamsLabel]; !ok {
-				report.ImageByArea[podAreaLabel].Teams[podTeamsLabel] = &ImagePerTeam{TeamName: podTeamsLabel}
+			if _, ok := imagesByArea[podAreaLabel].Teams[podTeamsLabel]; !ok {
+				imagesByArea[podAreaLabel].Teams[podTeamsLabel] = &ImagePerTeam{TeamName: podTeamsLabel}
 			}
 
-			report.ImageByArea[podAreaLabel].Teams[podTeamsLabel].ImageCount++
-			report.ImageByArea[podAreaLabel].Teams[podTeamsLabel].PodCount++
-			report.ImageByArea[podAreaLabel].Teams[podTeamsLabel].Pods = append(report.ImageByArea[podAreaLabel].Teams[podTeamsLabel].Pods, podDetail)
-			report.ImageByArea[podAreaLabel].Teams[podTeamsLabel].Images = append(report.ImageByArea[podAreaLabel].Teams[podTeamsLabel].Images, *specs)
-
+			imagesByArea[podAreaLabel].Teams[podTeamsLabel].ImageCount++
+			imagesByArea[podAreaLabel].Teams[podTeamsLabel].PodCount++
+			imagesByArea[podAreaLabel].Teams[podTeamsLabel].Pods = append(imagesByArea[podAreaLabel].Teams[podTeamsLabel].Pods, podDetail)
+			imagesByArea[podAreaLabel].Teams[podTeamsLabel].Images = append(imagesByArea[podAreaLabel].Teams[podTeamsLabel].Images, *specs)
 		}
 	}
 
-	for _, area := range report.ImageByArea {
+	for _, area := range imagesByArea {
 		for _, teams := range area.Teams {
 			logr.Infof("Sort area %s, teams %s", area.AreaName, teams.TeamName)
 			teams.Images = sortByCriticality(teams.Images, false)
@@ -218,7 +218,7 @@ func (l *Scanner) generateAreaOutput(report *Report) (*Report, error) {
 		}
 	}
 
-	return report, nil
+	return imagesByArea, nil
 }
 
 // ImagePerArea - define ImagePerArea
