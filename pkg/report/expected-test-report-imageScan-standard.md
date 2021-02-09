@@ -62,7 +62,34 @@ Using only internal registry allow you to:
 <!-- .element: class="table-report-medium" -->
 
 
-### Vulnerabilities - area-1 - team-1 - part 1 
+### Image scan summary - area-1 - team-1
+<!-- .element: class="title-detailed-page" -->
+<div style="display: inline-block; text-align: left;">
+
+Images scanned running in your cluster: 2
+
+Pods scanned running in your cluster: 3
+
+Images coming from external registries: 0
+
+Images with vulnerability: 0
+</div>
+
+| Registry | Images Count | Pod Count |
+|----------|-------------:|----------:|
+<!-- .element: class="table-report-medium" -->
+
+| Type | Vulnerabilities |
+|------|----------------:|
+| CRITICAL | 0 |
+| HIGH | 0 |
+| LOW | 0 |
+| MEDIUM | 1 |
+| UNKNOWN | 0 |
+<!-- .element: class="table-report-medium" -->
+
+
+### Vulnerabilities - area-1 - team-1
 <!-- .element: class="title-detailed-page" -->
 
 | Image | CVE | Severity | PkgName | Description |
@@ -100,7 +127,7 @@ Using only internal registry allow you to:
 <!-- .element: class="table-report" -->
 
 
-### Vulnerabilities - area-1 - team-1 - part 2 
+#### Vulnerabilities - area-1 - team-1- part 2
 <!-- .element: class="title-detailed-page" -->
 
 | Image | CVE | Severity | PkgName | Description |
@@ -126,7 +153,34 @@ Using only internal registry allow you to:
 <!-- .element: class="table-report" -->
 
 
-### Vulnerabilities - area-1 - team-2 - part 1 
+### Image scan summary - area-1 - team-2
+<!-- .element: class="title-detailed-page" -->
+<div style="display: inline-block; text-align: left;">
+
+Images scanned running in your cluster: 1
+
+Pods scanned running in your cluster: 1
+
+Images coming from external registries: 0
+
+Images with vulnerability: 0
+</div>
+
+| Registry | Images Count | Pod Count |
+|----------|-------------:|----------:|
+<!-- .element: class="table-report-medium" -->
+
+| Type | Vulnerabilities |
+|------|----------------:|
+| CRITICAL | 2 |
+| HIGH | 10 |
+| LOW | 0 |
+| MEDIUM | 1 |
+| UNKNOWN | 0 |
+<!-- .element: class="table-report-medium" -->
+
+
+### Vulnerabilities - area-1 - team-2
 <!-- .element: class="title-detailed-page" -->
 
 | Image | CVE | Severity | PkgName | Description |
@@ -147,7 +201,34 @@ Using only internal registry allow you to:
 <!-- .element: class="table-report" -->
 
 
-### Vulnerabilities - area-2 - team-3 - part 1 
+### Image scan summary - area-2 - team-3
+<!-- .element: class="title-detailed-page" -->
+<div style="display: inline-block; text-align: left;">
+
+Images scanned running in your cluster: 1
+
+Pods scanned running in your cluster: 4
+
+Images coming from external registries: 0
+
+Images with vulnerability: 0
+</div>
+
+| Registry | Images Count | Pod Count |
+|----------|-------------:|----------:|
+<!-- .element: class="table-report-medium" -->
+
+| Type | Vulnerabilities |
+|------|----------------:|
+| CRITICAL | 3 |
+| HIGH | 2 |
+| LOW | 0 |
+| MEDIUM | 10 |
+| UNKNOWN | 0 |
+<!-- .element: class="table-report-medium" -->
+
+
+### Vulnerabilities - area-2 - team-3
 <!-- .element: class="title-detailed-page" -->
 
 | Image | CVE | Severity | PkgName | Description |
@@ -185,7 +266,7 @@ Using only internal registry allow you to:
 <!-- .element: class="table-report" -->
 
 
-### Vulnerabilities - area-2 - team-3 - part 2 
+#### Vulnerabilities - area-2 - team-3- part 2
 <!-- .element: class="title-detailed-page" -->
 
 | Image | CVE | Severity | PkgName | Description |
