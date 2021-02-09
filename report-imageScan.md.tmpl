@@ -75,12 +75,13 @@ Using only internal registry allow you to:
 {{- range $trivyKeyOutput, $trivyOutput := $specs.TrivyOutput -}}
 {{- if $trivyOutput.Vulnerabilities -}}
 {{- range $trivyKey, $trivySpecs := $trivyOutput.Vulnerabilities }}
-{{- $length := len $trivyOutput.Vulnerabilities -}} 
+{{- $length := len $trivyOutput.Vulnerabilities -}}
+{{- $multiparts := gt $length 30 -}}
 {{- if mods $index 0 30 }}
 {{- if eq $partNumber 1 }}
 
 
-### Image scan summary - {{ $area.AreaName }} - {{ $team.TeamName }} 
+### Image scan summary - {{ $area.AreaName }} - {{ $team.TeamName }}
 {{ safe "<!-- .element: class=\"title-detailed-page\" -->" }}
 {{ safe "<div style=\"display: inline-block; text-align: left;\">" }}
 
@@ -109,8 +110,14 @@ Images with vulnerability: {{ len $team.ImageSpecsSortByCriticality }}
 {{- end }}
 
 
-###{{- if gt $partNumber 1 -}}#{{- end }} Vulnerabilities - {{ $area.AreaName }} - {{ $team.TeamName }} {{- if gt $partNumber 1 -}} - part {{ $partNumber }} {{- end }} 
+{{- if eq $partNumber 1 }}
+### Vulnerabilities - {{ $area.AreaName }} - {{ $team.TeamName }}
+{{- end}}
 {{ safe "<!-- .element: class=\"title-detailed-page\" -->" }}
+
+{{- if $multiparts }}
+#### Vulnerabilities - {{ $area.AreaName }} - {{ $team.TeamName }} - part {{ $partNumber }}
+{{- end}}
 
 | Image | CVE | Severity | PkgName | Description |
 |-------|-----|----------|---------|-------------|

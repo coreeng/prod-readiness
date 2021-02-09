@@ -87,10 +87,9 @@ Images with vulnerability: 0
 | MEDIUM | 1 |
 | UNKNOWN | 0 |
 <!-- .element: class="table-report-medium" -->
-
-
 ### Vulnerabilities - area-1 - team-1
 <!-- .element: class="title-detailed-page" -->
+#### Vulnerabilities - area-1 - team-1 - part 1
 
 | Image | CVE | Severity | PkgName | Description |
 |-------|-----|----------|---------|-------------|
@@ -125,10 +124,8 @@ Images with vulnerability: 0
 | debian:latest | [CVE-2011-3374](https://nvd.nist.gov/vuln/detail/CVE-2011-3374) | LOW | apt | It was found that apt-key in apt, all versions, do not correctly validate gpg keys with the master keyrin... |
 | debian:latest | [CVE-2011-3374](https://nvd.nist.gov/vuln/detail/CVE-2011-3374) | LOW | apt | It was found that apt-key in apt, all versions, do not correctly validate gpg keys with the master keyrin... |
 <!-- .element: class="table-report" -->
-
-
-#### Vulnerabilities - area-1 - team-1- part 2
 <!-- .element: class="title-detailed-page" -->
+#### Vulnerabilities - area-1 - team-1 - part 2
 
 | Image | CVE | Severity | PkgName | Description |
 |-------|-----|----------|---------|-------------|
@@ -178,8 +175,6 @@ Images with vulnerability: 0
 | MEDIUM | 1 |
 | UNKNOWN | 0 |
 <!-- .element: class="table-report-medium" -->
-
-
 ### Vulnerabilities - area-1 - team-2
 <!-- .element: class="title-detailed-page" -->
 
@@ -226,10 +221,9 @@ Images with vulnerability: 0
 | MEDIUM | 10 |
 | UNKNOWN | 0 |
 <!-- .element: class="table-report-medium" -->
-
-
 ### Vulnerabilities - area-2 - team-3
 <!-- .element: class="title-detailed-page" -->
+#### Vulnerabilities - area-2 - team-3 - part 1
 
 | Image | CVE | Severity | PkgName | Description |
 |-------|-----|----------|---------|-------------|
@@ -264,10 +258,8 @@ Images with vulnerability: 0
 | debian:latest | [CVE-2011-3374](https://nvd.nist.gov/vuln/detail/CVE-2011-3374) | LOW | apt | It was found that apt-key in apt, all versions, do not correctly validate gpg keys with the master keyrin... |
 | debian:latest | [CVE-2011-3374](https://nvd.nist.gov/vuln/detail/CVE-2011-3374) | LOW | apt | It was found that apt-key in apt, all versions, do not correctly validate gpg keys with the master keyrin... |
 <!-- .element: class="table-report" -->
-
-
-#### Vulnerabilities - area-2 - team-3- part 2
 <!-- .element: class="title-detailed-page" -->
+#### Vulnerabilities - area-2 - team-3 - part 2
 
 | Image | CVE | Severity | PkgName | Description |
 |-------|-----|----------|---------|-------------|
