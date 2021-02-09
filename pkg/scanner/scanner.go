@@ -166,6 +166,7 @@ func (l *Scanner) ScanImages() (*Report, error) {
 
 	return report, nil
 }
+
 type teamKey struct {
 	area, team string
 }
