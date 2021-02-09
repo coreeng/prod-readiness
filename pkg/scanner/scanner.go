@@ -37,6 +37,12 @@ type ImageSpec struct {
 	ImageName                        string
 }
 
+// Report is top level structure holding the results of the image scan
+type Report struct {
+	ImageSpecs                                   map[string]*ImageSpec
+	ImageByArea                                  map[string]*ImagePerArea
+}
+
 // AreaSummary defines the summary for an area
 type AreaSummary struct {
 	ImageCount                       int `json:"number_images_scanned"`
@@ -55,36 +61,24 @@ type VulnerabilitySummary struct {
 	TotalVulnerabilityPerCriticality map[string]int
 }
 
-// ImageSummary define the summary
-type ImageSummary struct {
-	NumberImagesScanned              int `json:"number_images_scanned"`
-	NumberPodsScanned                int `json:"number_pods_scanned"`
-	NumberImagesFromExternalRegistry int `json:"number_images_from_external_registry"`
-	NumberPodsFromExternalRegistry   int `json:"number_pods_from_external_registry"`
-	ImagePerRegistry                 map[string]*ImagePerRegistry
-	TotalVulnerabilityPerCriticality map[string]int
+// ImagePerArea regroups image vulnerabilities for an area/department
+type ImagePerArea struct {
+	AreaName string
+	Summary  *AreaSummary
+	Teams    map[string]*ImagePerTeam
 }
 
-// Report define report
-type Report struct {
-	ImageSummary                                 *ImageSummary
-	ImageSpecs                                   map[string]*ImageSpec
-	ImageSpecsSortByCriticality                  []ImageSpec
-	ImageSpecsSortByCriticalityTop20             []ImageSpec
-	ImageSpecsSortByCriticalityTop20MostReplicas []ImageSpec
-	ImageByArea                                  map[string]*ImagePerArea
+// ImagePerTeam regroups image vulnerabilities for a team
+type ImagePerTeam struct {
+	TeamName                    string
+	Summary						*TeamSummary
+	PodCount                    int
+	ImageCount                  int
+	Pods                        []PodSummary
+	Images                      []ImageSpec
 }
 
-// ImagePerRegistry define ImagePerRegistry
-type ImagePerRegistry struct {
-	RegistryName string
-	PodCount     int
-	ImageCount   int
-	Pods         []PodSummary
-	Images       []string
-}
-
-// Vulnerabilities defines Vulnerabilities
+// Vulnerabilities is the object representation of the trivy vulnerability table for an image
 type Vulnerabilities struct {
 	Description      string
 	Severity         string
@@ -98,14 +92,14 @@ type Vulnerabilities struct {
 	Layer            *Layer
 }
 
-// TrivyOutput defines TrivyOutput
+// TrivyOutput is an object representation of the trivy output for an image scan
 type TrivyOutput struct {
 	Vulnerabilities []Vulnerabilities
 	Type            string
 	Target          string
 }
 
-// Layer defines layer
+// Layer is the object representation of the trivy image layer
 type Layer struct {
 	DiffID string
 	Digest string
@@ -156,19 +150,19 @@ func (l *Scanner) ScanImages() (*Report, error) {
 	if err != nil {
 		return nil, err
 	}
-	listScanned, err := l.scanList(imageList)
+	scannedImages, err := l.scanList(imageList)
 	if err != nil {
 		return nil, err
 	}
 
 	logr.Infof("Generating report")
-	imagesByArea, err := l.generateAreaGrouping(listScanned)
+	imagesByArea, err := l.generateAreaGrouping(scannedImages)
 	if err != nil {
 		return nil, err
 	}
 	return &Report{
-		ImageSummary: &ImageSummary{},
-		ImageByArea:  imagesByArea,
+		ImageSpecs:  scannedImages,
+		ImageByArea: imagesByArea,
 	}, nil
 }
 
@@ -220,159 +214,14 @@ func (l *Scanner) generateAreaGrouping(imageSpecs map[string]*ImageSpec) (map[st
 		}
 
 		logr.Infof("Sort area %s, teams %s", key.area, key.team)
-		imagesByArea[key.area].Teams[key.team].Images = sortByCriticality(teamImages, false)
+		imagesByArea[key.area].Teams[key.team].Images = sortByCriticality(teamImages)
 		imagesByArea[key.area].Teams[key.team].ImageCount = len(teamImages)
 	}
 
 	return imagesByArea, nil
 }
 
-// ImagePerArea - define ImagePerArea
-type ImagePerArea struct {
-	AreaName string
-	Summary  *AreaSummary
-	Teams    map[string]*ImagePerTeam
-}
-
-// ImagePerTeam define ImagePerTeam
-type ImagePerTeam struct {
-	TeamName                    string
-	Summary						*TeamSummary
-	PodCount                    int
-	ImageCount                  int
-	Pods                        []PodSummary
-	Images                      []ImageSpec
-	ImageSummary                *ImageSummary
-	ImageSpecsSortByCriticality []ImageSpec
-}
-
-func kpisImages(images []ImageSpec) *ImageSummary {
-
-	imageSum := ImageSummary{}
-
-	imageSum.NumberImagesScanned = len(images)
-
-	imageSum.NumberPodsScanned = 0
-
-	imageSum.ImagePerRegistry = map[string]*ImagePerRegistry{}
-
-	imageSum.TotalVulnerabilityPerCriticality = map[string]int{}
-	imageSum.TotalVulnerabilityPerCriticality["CRITICAL"] = 0
-	imageSum.TotalVulnerabilityPerCriticality["HIGH"] = 0
-	imageSum.TotalVulnerabilityPerCriticality["MEDIUM"] = 0
-	imageSum.TotalVulnerabilityPerCriticality["LOW"] = 0
-
-	imageSum.ImagePerRegistry["docker.io"] = &ImagePerRegistry{RegistryName: "docker.io", Pods: []PodSummary{}}
-
-	for _, specs := range images {
-		specs.TotalVulnerabilityPerCriticality = map[string]int{}
-		specs.TotalVulnerabilityPerCriticality["CRITICAL"] = 0
-		specs.TotalVulnerabilityPerCriticality["HIGH"] = 0
-		specs.TotalVulnerabilityPerCriticality["MEDIUM"] = 0
-		specs.TotalVulnerabilityPerCriticality["LOW"] = 0
-
-		imageSum.NumberPodsScanned = imageSum.NumberPodsScanned + len(specs.Pods)
-
-		imageNamWitoutTag := strings.Split(specs.ImageName, ":")
-		imageNameArr := strings.Split(imageNamWitoutTag[0], "/")
-		// if contains . then it's a domain name, otherwise it's plain image like ubuntu:latest
-		if strings.Contains(imageNameArr[0], ".") {
-			// if key doesn't exist
-			if _, ok := imageSum.ImagePerRegistry[imageNameArr[0]]; !ok {
-				imageSum.ImagePerRegistry[imageNameArr[0]] = &ImagePerRegistry{RegistryName: imageNameArr[0], Pods: []PodSummary{}}
-			}
-
-			imageSum.ImagePerRegistry[imageNameArr[0]].Pods = append(imageSum.ImagePerRegistry[imageNameArr[0]].Pods, specs.Pods...)
-			imageSum.ImagePerRegistry[imageNameArr[0]].Images = append(imageSum.ImagePerRegistry[imageNameArr[0]].Images, specs.ImageName)
-		} else {
-			imageSum.ImagePerRegistry["docker.io"].Pods = append(imageSum.ImagePerRegistry["docker.io"].Pods, specs.Pods...)
-			imageSum.ImagePerRegistry["docker.io"].Images = append(imageSum.ImagePerRegistry["docker.io"].Images, specs.ImageName)
-		}
-
-		for _, output := range specs.TrivyOutput {
-			for _, vul := range output.Vulnerabilities {
-
-				// if key doesn't exist
-				if _, ok := imageSum.TotalVulnerabilityPerCriticality[vul.Severity]; !ok {
-					imageSum.TotalVulnerabilityPerCriticality[vul.Severity] = 0
-				}
-				if _, ok := specs.TotalVulnerabilityPerCriticality[vul.Severity]; !ok {
-					specs.TotalVulnerabilityPerCriticality[vul.Severity] = 0
-				}
-				imageSum.TotalVulnerabilityPerCriticality[vul.Severity]++
-				specs.TotalVulnerabilityPerCriticality[vul.Severity]++
-			}
-		}
-
-	}
-
-	imageSum.NumberImagesFromExternalRegistry = 0
-	imageSum.NumberPodsFromExternalRegistry = 0
-	extenalRegistryName := []string{"docker.io", "quay.io", "gcr.io"}
-	for registryName, specs := range imageSum.ImagePerRegistry {
-		// if key exists
-		if contains(extenalRegistryName, registryName) {
-			imageSum.NumberPodsFromExternalRegistry = imageSum.NumberPodsFromExternalRegistry + len(specs.Pods)
-			imageSum.NumberImagesFromExternalRegistry = imageSum.NumberImagesFromExternalRegistry + len(specs.Images)
-		}
-		specs.PodCount = len(specs.Pods)
-		specs.ImageCount = len(specs.Images)
-	}
-
-	return &imageSum
-}
-
-func (l *Scanner) convertMapToArrayImageSpecs(images map[string]*ImageSpec, keepOnlyImgWithVul bool) []ImageSpec {
-	var imagesArr []ImageSpec
-	for _, specs := range images {
-		for _, trivy := range specs.TrivyOutput {
-			if len(trivy.Vulnerabilities) > 0 && keepOnlyImgWithVul {
-				imagesArr = append(imagesArr, *specs)
-			} else {
-				imagesArr = append(imagesArr, *specs)
-			}
-		}
-	}
-	return imagesArr
-}
-
-func (l *Scanner) calculateKpis(report *Report) (*Report, error) {
-
-	report.ImageSpecsSortByCriticality = l.convertMapToArrayImageSpecs(report.ImageSpecs, true)
-	images := l.convertMapToArrayImageSpecs(report.ImageSpecs, false)
-	report.ImageSummary = kpisImages(images)
-
-	// TOP 20 IMAGES CONTAINING THE MOST CRITICAL and high VULNERABILITIES
-	// - count all vulnerabilities high + critical
-	// TOP 20 IMAGES CONTAINING CRITICAL VULNERABILITIES WITH THE MOST REPLICAS:
-	// - count all vulnerabilities most replicas
-
-	logr.Infof("Sorted by Criticality and replicas")
-	report.ImageSpecsSortByCriticality = sortByCriticality(report.ImageSpecsSortByCriticality, true)
-
-	for index, image := range report.ImageSpecsSortByCriticality {
-		if index < 20 {
-			report.ImageSpecsSortByCriticalityTop20MostReplicas = append(report.ImageSpecsSortByCriticalityTop20MostReplicas, image)
-		} else {
-			break
-		}
-	}
-
-	logr.Infof("Sorted by Criticality")
-
-	report.ImageSpecsSortByCriticality = sortByCriticality(report.ImageSpecsSortByCriticality, false)
-	for index, image := range report.ImageSpecsSortByCriticality {
-		if index < 20 {
-			report.ImageSpecsSortByCriticalityTop20 = append(report.ImageSpecsSortByCriticalityTop20, image)
-		} else {
-			break
-		}
-	}
-
-	return report, nil
-}
-
-func sortByCriticality(imageArr []ImageSpec, includePodCount bool) []ImageSpec {
+func sortByCriticality(imageArr []ImageSpec) []ImageSpec {
 	sort.Slice(imageArr, func(i, j int) bool {
 
 		firstItemScore := 0
@@ -402,29 +251,11 @@ func sortByCriticality(imageArr []ImageSpec, includePodCount bool) []ImageSpec {
 		if _, ok := imageArr[j].TotalVulnerabilityPerCriticality["LOW"]; ok {
 			secondItemScore = secondItemScore + imageArr[j].TotalVulnerabilityPerCriticality["LOW"]
 		}
-
-		if includePodCount {
-
-			// logr.Infof(" %d, %d", len(imageArr[i].Pods)*10000, len(imageArr[j].Pods)*10000)
-			firstItemScore = firstItemScore + len(imageArr[i].Pods)*10000
-			secondItemScore = secondItemScore + len(imageArr[j].Pods)*10000
-		}
-
-		// logr.Infof("%s, %d, %v", imageArr[i].ImageName, firstItemScore, imageArr[i].TotalVulnerabilityPerCriticality)
-		// logr.Infof("%s, %d, %v ", imageArr[j].ImageName, secondItemScore, imageArr[j].TotalVulnerabilityPerCriticality)
 		return firstItemScore > secondItemScore
 	})
 	return imageArr
 }
 
-func contains(arr []string, str string) bool {
-	for _, a := range arr {
-		if a == str {
-			return true
-		}
-	}
-	return false
-}
 
 func (l *Scanner) getNamespaces(config *Config) (*v1.NamespaceList, error) {
 
