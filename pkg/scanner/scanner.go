@@ -37,6 +37,24 @@ type ImageSpec struct {
 	ImageName                        string
 }
 
+// AreaSummary defines the summary for an area
+type AreaSummary struct {
+	ImageCount                       int `json:"number_images_scanned"`
+	PodCount                         int `json:"number_pods_scanned"`
+	TotalVulnerabilityPerCriticality map[string]int
+}
+
+// TeamSummary defines the summary for an team
+type TeamSummary struct {
+	ImageVulnerabilitySummary        map[string]VulnerabilitySummary
+}
+
+// VulnerabilitySummary defines
+type VulnerabilitySummary struct {
+	PodCount                         int
+	TotalVulnerabilityPerCriticality map[string]int
+}
+
 // ImageSummary define the summary
 type ImageSummary struct {
 	NumberImagesScanned              int `json:"number_images_scanned"`
@@ -138,33 +156,20 @@ func (l *Scanner) ScanImages() (*Report, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	listScanned, err := l.scanList(imageList)
 	if err != nil {
 		return nil, err
 	}
 
-	logr.Infof("All namespaces have been scanned.")
-
-	report := &Report{
-		ImageSummary: &ImageSummary{},
-		ImageSpecs:   listScanned,
-	}
-
-	logr.Infof("calculateKpis")
-	_, err = l.calculateKpis(report)
-	if err != nil {
-		return nil, err
-	}
-
-	logr.Infof("generateAreaGrouping")
+	logr.Infof("Generating report")
 	imagesByArea, err := l.generateAreaGrouping(listScanned)
 	if err != nil {
 		return nil, err
 	}
-	report.ImageByArea = imagesByArea
-
-	return report, nil
+	return &Report{
+		ImageSummary: &ImageSummary{},
+		ImageByArea:  imagesByArea,
+	}, nil
 }
 
 type teamKey struct {
@@ -217,19 +222,6 @@ func (l *Scanner) generateAreaGrouping(imageSpecs map[string]*ImageSpec) (map[st
 		logr.Infof("Sort area %s, teams %s", key.area, key.team)
 		imagesByArea[key.area].Teams[key.team].Images = sortByCriticality(teamImages, false)
 		imagesByArea[key.area].Teams[key.team].ImageCount = len(teamImages)
-
-		imagesByArea[key.area].Teams[key.team].ImageSummary = kpisImages(teamImages)
-		imagesArr := []ImageSpec{}
-		for _, specs := range teamImages {
-			for _, trivy := range specs.TrivyOutput {
-				if len(trivy.Vulnerabilities) > 0 {
-					imagesArr = append(imagesArr, specs)
-				}
-			}
-		}
-
-		imagesByArea[key.area].Teams[key.team].ImageSpecsSortByCriticality = sortByCriticality(imagesArr, true)
-
 	}
 
 	return imagesByArea, nil
@@ -238,12 +230,14 @@ func (l *Scanner) generateAreaGrouping(imageSpecs map[string]*ImageSpec) (map[st
 // ImagePerArea - define ImagePerArea
 type ImagePerArea struct {
 	AreaName string
+	Summary  *AreaSummary
 	Teams    map[string]*ImagePerTeam
 }
 
 // ImagePerTeam define ImagePerTeam
 type ImagePerTeam struct {
 	TeamName                    string
+	Summary						*TeamSummary
 	PodCount                    int
 	ImageCount                  int
 	Pods                        []PodSummary

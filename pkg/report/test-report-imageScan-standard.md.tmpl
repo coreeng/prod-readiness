@@ -1,141 +1,41 @@
 # Image Scanning
-{{ safe "<!-- .element: class=\"title-first-page\" -->" }}
-{{ safe "<!-- .slide: data-background-image=\"../../assets/images/deck-title-page-big.jpg\" -->" }}
 
+{{- range $keyArea, $area := .ImageScan.ImageByArea }}
 
-### Image scan summary 
-{{ safe "<!-- .element: class=\"title-detailed-page\" -->" }}
-{{ safe "<div style=\"display: inline-block; text-align: left;\">" }}
+## Vulnerabilities for {{ $area.AreaName }}
 
-Images scanned running in your cluster: {{ .ImageScan.ImageSummary.NumberImagesScanned }}
+| Total Image Count | Total Replica Count | Total Critical| Total High | Total Medium | Total Low | Total Unknown |
+|--------|----------|---------|------|--------|-----|-----|
+| {{ $area.Summary.ImageCount }} | {{ $area.Summary.PodCount }} | {{ index $area.Summary.TotalVulnerabilityPerCriticality "CRITICAL" }} | {{ index $area.Summary.TotalVulnerabilityPerCriticality "HIGH" }} | {{ index $area.Summary.TotalVulnerabilityPerCriticality "MEDIUM" }} | {{ index $area.Summary.TotalVulnerabilityPerCriticality "LOW" }} | {{ index $area.Summary.TotalVulnerabilityPerCriticality "UNKNOWN" }}|
 
-Pods scanned running in your cluster: {{ .ImageScan.ImageSummary.NumberPodsScanned }}
+{{- range $keyTeam, $team := $area.Teams }}
 
-Images coming from external registries: {{ .ImageScan.ImageSummary.NumberImagesFromExternalRegistry }}
+### Vulnerabilities for {{ $area.AreaName }} - {{ $team.TeamName }}
 
-Images with vulnerability: {{ len .ImageScan.ImageSpecsSortByCriticality }}
-{{ safe "</div>" }}
+#### Summary
 
-| Registry | Images Count | Pod Count |
-|----------|-------------:|----------:|
-{{- range $data := .ImageScan.ImageSummary.ImagePerRegistry }}
-| {{ $data.RegistryName }} | {{ $data.ImageCount }} | {{ $data.PodCount }}|
-{{- end }}
-{{ safe "<!-- .element: class=\"table-report-medium\" -->" }}
-
-| Type | Vulnerabilities |
-|------|----------------:|
-{{- range $key, $value := .ImageScan.ImageSummary.TotalVulnerabilityPerCriticality }}
-| {{ $key }} | {{ $value }} |
-{{- end }}
-{{ safe "<!-- .element: class=\"table-report-medium\" -->" }}
-
-
-### Image best pratices
-{{ safe "<!-- .element: class=\"title-detailed-page\" -->" }}
-{{ safe "<div style=\"display: inline-block; text-align: left;\">" }}
-
-These images are exposed to an outage from this external source
-
-They can hit a rate limit from this provider 
-
-Using only internal registry allow you to:
-
-- block the promotion in your cluster if vulnerabilities have been found
-
-- block external image deployment with an admission controller
-{{ safe "</div>" }}
-
-
-### Top 20 images containing the most vulnerabilities 
-{{ safe "<!-- .element: class=\"title-detailed-page\" -->" }}
-
-| Image | Replicas | Critical| High | Medium | Low |
-|-------|----------|---------|------|--------|-----|
-{{- range $key, $specs := .ImageScan.ImageSpecsSortByCriticalityTop20 }}
-| {{ $specs.ImageName }} | {{ len $specs.Pods }} | {{ index $specs.TotalVulnerabilityPerCriticality "CRITICAL" }} | {{ index $specs.TotalVulnerabilityPerCriticality "HIGH" }} | {{ index $specs.TotalVulnerabilityPerCriticality "MEDIUM" }} | {{ index $specs.TotalVulnerabilityPerCriticality "LOW" }}|
-{{- end }}
-{{ safe "<!-- .element: class=\"table-report-medium\" -->" }}
-
-
-### Top 20 images containing vulnerabilities with the most replicas 
-{{ safe "<!-- .element: class=\"title-detailed-page\" -->" }}
-
-| Image | Replicas | Critical| High | Medium | Low |
-|-------|----------|---------|------|--------|-----|
-{{- range $key, $specs := .ImageScan.ImageSpecsSortByCriticalityTop20MostReplicas }}
-| {{ $specs.ImageName }} | {{ len $specs.Pods }} | {{ index $specs.TotalVulnerabilityPerCriticality "CRITICAL" }} | {{ index $specs.TotalVulnerabilityPerCriticality "HIGH" }} | {{ index $specs.TotalVulnerabilityPerCriticality "MEDIUM" }} | {{ index $specs.TotalVulnerabilityPerCriticality "LOW" }}|
-{{- end }}
-{{ safe "<!-- .element: class=\"table-report-medium\" -->" -}}
-{{- range $keyArea, $area := .ImageScan.ImageByArea -}}
-{{- range $keyTeam, $team := $area.Teams -}}
-{{- $index := 0 -}} 
-{{- $partNumber := 1 -}} 
-{{- range $key, $specs := $team.Images -}}
-{{- range $trivyKeyOutput, $trivyOutput := $specs.TrivyOutput -}}
-{{- if $trivyOutput.Vulnerabilities -}}
-{{- range $trivyKey, $trivySpecs := $trivyOutput.Vulnerabilities }}
-{{- $length := len $trivyOutput.Vulnerabilities -}}
-{{- $multiparts := gt $length 30 -}}
-{{- if mods $index 0 30 }}
-{{- if eq $partNumber 1 }}
-
-
-### Image scan summary - {{ $area.AreaName }} - {{ $team.TeamName }}
-{{ safe "<!-- .element: class=\"title-detailed-page\" -->" }}
-{{ safe "<div style=\"display: inline-block; text-align: left;\">" }}
-
-Images scanned running in your cluster: {{ $team.ImageSummary.NumberImagesScanned }}
-
-Pods scanned running in your cluster: {{ $team.ImageSummary.NumberPodsScanned }}
-
-Images coming from external registries: {{ $team.ImageSummary.NumberImagesFromExternalRegistry }}
-
-Images with vulnerability: {{ len $team.ImageSpecsSortByCriticality }}
-{{ safe "</div>" }}
-
-| Registry | Images Count | Pod Count |
-|----------|-------------:|----------:|
-{{- range $data := $team.ImageSummary.ImagePerRegistry }}
-| {{ $data.RegistryName }} | {{ $data.ImageCount }} | {{ $data.PodCount }}|
-{{- end }}
-{{ safe "<!-- .element: class=\"table-report-medium\" -->" }}
-
-| Type | Vulnerabilities |
-|------|----------------:|
-{{- range $key, $value := $team.ImageSummary.TotalVulnerabilityPerCriticality }}
-| {{ $key }} | {{ $value }} |
-{{- end }}
-{{ safe "<!-- .element: class=\"table-report-medium\" -->" }}
+| Images | Replicas | Critical| High | Medium | Low | Unknown |
+|--------|----------|---------|------|--------|-----|-----|
+{{- range $key, $specs := $team.Summary.ImageVulnerabilitySummary }}
+| {{ $key }} | {{ $specs.PodCount }} | {{ index $specs.TotalVulnerabilityPerCriticality "CRITICAL" }} | {{ index $specs.TotalVulnerabilityPerCriticality "HIGH" }} | {{ index $specs.TotalVulnerabilityPerCriticality "MEDIUM" }} | {{ index $specs.TotalVulnerabilityPerCriticality "LOW" }} | {{ index $specs.TotalVulnerabilityPerCriticality "UNKNOWN" }}|
 {{- end }}
 
-
-{{- if eq $partNumber 1 }}
-### Vulnerabilities - {{ $area.AreaName }} - {{ $team.TeamName }}
-{{- end}}
-{{ safe "<!-- .element: class=\"title-detailed-page\" -->" }}
-
-{{- if $multiparts }}
-#### Vulnerabilities - {{ $area.AreaName }} - {{ $team.TeamName }} - part {{ $partNumber }}
-{{- end}}
+#### Vulnerabilities details
 
 | Image | CVE | Severity | PkgName | Description |
 |-------|-----|----------|---------|-------------|
-{{ $partNumber = inc $partNumber -}} 
-{{ end -}} 
+{{ range $key, $specs := $team.Images }}
+{{- range $trivyKeyOutput, $trivyOutput := $specs.TrivyOutput }}
+{{- if $trivyOutput.Vulnerabilities }}
+{{- range $trivyKey, $trivySpecs := $trivyOutput.Vulnerabilities }}
 {{- $description := $trivySpecs.Title -}}
 {{- if not $trivySpecs.Title -}}
 {{- $description = $trivySpecs.Description -}}
 {{- end -}}
 | {{ $specs.ImageName }} | [{{ $trivySpecs.VulnerabilityID }}](https://nvd.nist.gov/vuln/detail/{{ $trivySpecs.VulnerabilityID }}) | {{ $trivySpecs.Severity }} | {{ $trivySpecs.PkgName }} | {{ truncate $description 105 }} |
-{{ if mods $index 1 30 -}}
-{{ safe "<!-- .element: class=\"table-report\" -->" }}
-{{- end -}} 
-{{- $index = inc $index -}} 
-{{- end }}
-{{- end }} 
-{{- end }}
-{{- end -}}
-{{ safe "<!-- .element: class=\"table-report\" -->" }}
-{{- end }}
-{{- end -}}
+{{ end}} {{/* end of team if vulnerabilities */}}
+{{- end}} {{/* end of team vulnerabilities */}}
+{{- end}} {{/* end of team trivy output */}}
+{{- end}} {{/* end of team images */}}
+{{- end}} {{/* end of team */}}
+{{- end}} {{/* end of area */}}

@@ -47,13 +47,6 @@ var _ = Describe("Generating report Images", func() {
 		alpineImageScan := anAlpineImageScan(map[string]int{})
 		imageReport := &TestReport{
 			ImageScan: &scanner.Report{
-				ImageSummary: &scanner.ImageSummary{
-					NumberPodsScanned:                3,
-					NumberImagesScanned:              2,
-					NumberImagesFromExternalRegistry: 0,
-					ImagePerRegistry:                 map[string]*scanner.ImagePerRegistry{},
-					TotalVulnerabilityPerCriticality: map[string]int{"CRITICAL": 0, "HIGH": 0, "MEDIUM": 1, "LOW": 0, "UNKNOWN": 0},
-				},
 				ImageSpecs: map[string]*scanner.ImageSpec{
 					"debian:latest": &debianImageScan,
 					"alpine:latest": &alpineImageScan,
@@ -62,17 +55,29 @@ var _ = Describe("Generating report Images", func() {
 				ImageByArea: map[string]*scanner.ImagePerArea{
 					"area-1": {
 						AreaName: "area-1",
+						Summary: &scanner.AreaSummary{
+							ImageCount:                       7,
+							PodCount:                         10,
+							TotalVulnerabilityPerCriticality: map[string]int{"CRITICAL": 4, "HIGH": 12, "MEDIUM": 5, "LOW": 26, "UNKNOWN": 1},
+						},
 						Teams: map[string]*scanner.ImagePerTeam{
 							"team-1": {
 								TeamName:   "team-1",
-								ImageCount: 2,
-								PodCount:   3,
-								ImageSummary: &scanner.ImageSummary{
-									NumberPodsScanned:                3,
-									NumberImagesScanned:              2,
-									NumberImagesFromExternalRegistry: 0,
-									ImagePerRegistry:                 map[string]*scanner.ImagePerRegistry{},
-									TotalVulnerabilityPerCriticality: map[string]int{"CRITICAL": 0, "HIGH": 0, "MEDIUM": 1, "LOW": 0, "UNKNOWN": 0},
+								Summary: &scanner.TeamSummary{
+									ImageVulnerabilitySummary: map[string]scanner.VulnerabilitySummary{
+										"debian:latest": {
+											PodCount:                         2,
+											TotalVulnerabilityPerCriticality: map[string]int{"CRITICAL": 0, "HIGH": 10, "MEDIUM": 5, "LOW": 20, "UNKNOWN": 0},
+										},
+										"alpine:latest": {
+											PodCount:                         1,
+											TotalVulnerabilityPerCriticality: map[string]int{"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 2, "UNKNOWN": 0},
+										},
+										"ubuntu:18.04": {
+											PodCount:                         3,
+											TotalVulnerabilityPerCriticality: map[string]int{"CRITICAL": 2, "HIGH": 1, "MEDIUM": 0, "LOW": 2, "UNKNOWN": 1},
+										},
+									},
 								},
 								Images: []scanner.ImageSpec{
 									debianImageScan,
@@ -82,14 +87,13 @@ var _ = Describe("Generating report Images", func() {
 							},
 							"team-2": {
 								TeamName:   "team-2",
-								ImageCount: 1,
-								PodCount:   1,
-								ImageSummary: &scanner.ImageSummary{
-									NumberPodsScanned:                1,
-									NumberImagesScanned:              1,
-									NumberImagesFromExternalRegistry: 0,
-									ImagePerRegistry:                 map[string]*scanner.ImagePerRegistry{},
-									TotalVulnerabilityPerCriticality: map[string]int{"CRITICAL": 2, "HIGH": 10, "MEDIUM": 1, "LOW": 0, "UNKNOWN": 0},
+								Summary: &scanner.TeamSummary{
+									ImageVulnerabilitySummary: map[string]scanner.VulnerabilitySummary{
+										"ubuntu:18.04": {
+											PodCount:                         3,
+											TotalVulnerabilityPerCriticality: map[string]int{"CRITICAL": 2, "HIGH": 1, "MEDIUM": 0, "LOW": 2, "UNKNOWN": 1},
+										},
+									},
 								},
 								Images: []scanner.ImageSpec{
 									ubuntuImageScan,
@@ -99,20 +103,24 @@ var _ = Describe("Generating report Images", func() {
 					},
 					"area-2": {
 						AreaName: "area-2",
+						Summary:  &scanner.AreaSummary{
+							ImageCount:                       10,
+							PodCount:                         10,
+							TotalVulnerabilityPerCriticality: map[string]int{"CRITICAL": 4, "HIGH": 12, "MEDIUM": 5, "LOW": 26, "UNKNOWN": 1},
+						},
 						Teams: map[string]*scanner.ImagePerTeam{
 							"team-3": {
-								TeamName:   "team-3",
-								ImageCount: 1,
-								PodCount:   4,
+								TeamName:  "team-3",
+								Summary: &scanner.TeamSummary{
+									ImageVulnerabilitySummary: map[string]scanner.VulnerabilitySummary{
+										"debian:latest": {
+											PodCount:                         2,
+											TotalVulnerabilityPerCriticality: map[string]int{"CRITICAL": 10, "HIGH": 10, "MEDIUM": 5, "LOW": 20, "UNKNOWN": 0},
+										},
+									},
+								},
 								Images: []scanner.ImageSpec{
 									debianImageScan,
-								},
-								ImageSummary: &scanner.ImageSummary{
-									NumberPodsScanned:                4,
-									NumberImagesScanned:              1,
-									NumberImagesFromExternalRegistry: 0,
-									ImagePerRegistry:                 map[string]*scanner.ImagePerRegistry{},
-									TotalVulnerabilityPerCriticality: map[string]int{"CRITICAL": 3, "HIGH": 2, "MEDIUM": 10, "LOW": 0, "UNKNOWN": 0},
 								},
 							},
 						},
@@ -147,10 +155,15 @@ var _ = Describe("Saving json report", func() {
 	It("should save the report json representation to the given file", func() {
 		testReport := TestReport{
 			ImageScan: &scanner.Report{
-				ImageSummary: &scanner.ImageSummary{
-					NumberPodsScanned:                3,
-					NumberImagesScanned:              2,
-					NumberImagesFromExternalRegistry: 0,
+				ImageByArea: map[string]*scanner.ImagePerArea{
+					"area-1": {
+						AreaName: "area-1",
+						Summary: &scanner.AreaSummary{
+							ImageCount:                       7,
+							PodCount:                         10,
+							TotalVulnerabilityPerCriticality: map[string]int{"CRITICAL": 4, "HIGH": 12, "MEDIUM": 5, "LOW": 26, "UNKNOWN": 1},
+						},
+					},
 				},
 			},
 		}
