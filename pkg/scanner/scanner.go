@@ -383,10 +383,10 @@ func sortByCriticality(imageArr []ImageSpec, includePodCount bool) []ImageSpec {
 		firstItemScore := 0
 		secondItemScore := 0
 		if _, ok := imageArr[i].TotalVulnerabilityPerCriticality["CRITICAL"]; ok {
-			firstItemScore = firstItemScore + imageArr[i].TotalVulnerabilityPerCriticality["CRITICAL"]*1000
+			firstItemScore = firstItemScore + imageArr[i].TotalVulnerabilityPerCriticality["CRITICAL"]*1000000
 		}
 		if _, ok := imageArr[i].TotalVulnerabilityPerCriticality["HIGH"]; ok {
-			firstItemScore = firstItemScore + imageArr[i].TotalVulnerabilityPerCriticality["HIGH"]*500
+			firstItemScore = firstItemScore + imageArr[i].TotalVulnerabilityPerCriticality["HIGH"]*10000
 		}
 		if _, ok := imageArr[i].TotalVulnerabilityPerCriticality["MEDIUM"]; ok {
 			firstItemScore = firstItemScore + imageArr[i].TotalVulnerabilityPerCriticality["MEDIUM"]*100
@@ -396,10 +396,10 @@ func sortByCriticality(imageArr []ImageSpec, includePodCount bool) []ImageSpec {
 		}
 
 		if _, ok := imageArr[j].TotalVulnerabilityPerCriticality["CRITICAL"]; ok {
-			secondItemScore = secondItemScore + imageArr[j].TotalVulnerabilityPerCriticality["CRITICAL"]*1000
+			secondItemScore = secondItemScore + imageArr[j].TotalVulnerabilityPerCriticality["CRITICAL"]*1000000
 		}
 		if _, ok := imageArr[j].TotalVulnerabilityPerCriticality["HIGH"]; ok {
-			secondItemScore = secondItemScore + imageArr[j].TotalVulnerabilityPerCriticality["HIGH"]*500
+			secondItemScore = secondItemScore + imageArr[j].TotalVulnerabilityPerCriticality["HIGH"]*10000
 		}
 		if _, ok := imageArr[j].TotalVulnerabilityPerCriticality["MEDIUM"]; ok {
 			secondItemScore = secondItemScore + imageArr[j].TotalVulnerabilityPerCriticality["MEDIUM"]*100

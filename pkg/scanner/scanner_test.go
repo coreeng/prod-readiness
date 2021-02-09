@@ -278,7 +278,7 @@ var _ = Describe("Scan Images", func() {
 			Expect(imageByArea["area-1"].Teams["team-2"].Pods[0].Name).Should(Equal("pod-3"))
 		})
 
-		XIt("sort teams images by criticality", func() {
+		It("sort teams images by criticality", func() {
 			team1Pod := PodSummary{
 				Namespace:       "namespace-1",
 				NamespaceLabels: map[string]string{areaLabel: "area-1", teamLabel: "team-1"},
