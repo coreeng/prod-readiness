@@ -62,11 +62,6 @@ install: build
 	@echo "== install"
 	cp -v $(buildDir)/bin/production-readiness $(shell go env GOPATH)/bin/production-readiness
 
-.PHONY: functional-test
-functional-test:
-	@echo "== functional-test"
-	IMAGE_UNDER_TEST=$(image) ginkgo -r --v --progress test/functional
-
 .PHONY: integrated-test
 integrated-test:
 	@echo "== integrated-test"

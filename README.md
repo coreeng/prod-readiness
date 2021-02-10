@@ -16,7 +16,7 @@ Run `make install`
 
 Note: this will also run unit tests.
 
-### Test
+### Testing
 
 #### Unit tests
 
@@ -27,19 +27,16 @@ static code analysis and will check formatting.
 
 Run `make format` to fix any formatting errors.
 
-#### Functional tests
-
-`make functional-test`
-
-You may need to run `make docker` beforehand to ensure your local changes have been built and pushed to the registry.
-
 #### Integrated tests
+
+_This is work in progress_
 
 `make integrated-test`
 
-You may need to run `make docker` beforehand to ensure your local changes have been built and pushed to the registry.
 
 ## Releasing
+
+_To be defined_
 
 
 ## Cheatsheet
@@ -47,10 +44,12 @@ You may need to run `make docker` beforehand to ensure your local changes have b
 ### Run images scan
 
 ```
-production-readiness scan  --kubeconfig=/home/core/.kube/config   --context cluster-name  --area-labels=area-name --teams-labels=team --image-name-replacement='mirror.registry:5000|registry.new.url,mirror-2.registry:5000|registry.new.url'
+production-readiness scan  --context cluster-name  --area-labels=area-name --teams-labels=team --image-name-replacement='mirror.registry:5000|registry.new.url,mirror-2.registry:5000|registry.new.url'
 ```
 
 ### Render the presentation 
+
+_This is work in progress_
 
 Running the previous step should have given you a mark-down file called `report-imageScan.md` that you may want to convert to PDF.
 Copy the mark-down file in the `audit-report` directory to render it.
