@@ -1,24 +1,25 @@
 package test
 
 import (
+	"os"
+	"path/filepath"
+
 	logr "github.com/sirupsen/logrus"
 	"k8s.io/client-go/kubernetes"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc" // required for connectivity into dev cluster
 	"k8s.io/client-go/tools/clientcmd"
-	"os"
-	"path/filepath"
 )
 
 type Environment struct {
-	KubeClientset              *kubernetes.Clientset
-	KubeContext                string
+	KubeClientset *kubernetes.Clientset
+	KubeContext   string
 }
 
 func NewIntegratedEnv() *Environment {
 	context := "kind"
 	env := &Environment{
-		KubeContext:                context,
-		KubeClientset:              newKubeClientset(context),
+		KubeContext:   context,
+		KubeClientset: newKubeClientset(context),
 	}
 	logr.Infof("Test environment. K8 context: %s", env.KubeContext)
 	return env

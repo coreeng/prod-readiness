@@ -15,7 +15,7 @@ version := 0.0.1
 image := production-readiness:v$(version)
 
 .PHONY: setup
-setup: install-tools
+setup: check-system-dependencies install-tools
 	@echo "== setup"
 
 .PHONY: check
@@ -65,7 +65,7 @@ install: build
 .PHONY: integrated-test
 integrated-test:
 	@echo "== integrated-test"
-	IMAGE_UNDER_TEST=$(image) ginkgo -r --v --progress test/integrated
+	ginkgo -r --v --progress test/integrated
 
 .PHONY: clean
 clean:
@@ -79,15 +79,28 @@ docker: build
 
 .PHONY: download
 download:
-	@echo Download go.mod dependencies
+	@echo "== download go.mod dependencies"
 	@go mod download
 
 .PHONY: install-tools
 install-tools: download
-	@echo Installing tools from tools.go
+	@echo "== installing tools from tools.go"
 	@cat tools.go | grep _ | awk -F'"' '{print $$2}' | xargs -tI % go install %
 
 .PHONY: kind
 kind:
-	@echo Creating kind cluster
+	@echo "== creating kind cluster"
 	$(projectDir)/create-kind-cluster.sh
+
+.PHONY: check-system-dependencies
+check-system-dependencies:
+	@echo "== checking system dependencies"
+ifeq (, $(shell which go))
+	$(error "golang not found in PATH")
+endif
+ifeq (, $(shell which docker))
+	$(error "docker not found in PATH")
+endif
+ifeq (, $(shell which kind))
+	$(error "kind not found in PATH")
+endif

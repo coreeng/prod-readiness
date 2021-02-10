@@ -1,12 +1,13 @@
 package test
 
 import (
+	"time"
+
 	. "github.com/onsi/gomega"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"time"
 )
 
 type Fixture struct {
@@ -45,15 +46,6 @@ func (f *Fixture) NamespaceIsAbsent(namespace string) func() (bool, error) {
 			return true, nil
 		}
 		return false, err
-	}
-}
-func (f *Fixture) PodIsAbsent(namespace string) func() (bool, error) {
-	return func() (bool, error) {
-		pods, err := f.env.KubeClientset.CoreV1().Pods(namespace).List(metav1.ListOptions{})
-		if err != nil {
-			return false, err
-		}
-		return len(pods.Items) == 0, nil
 	}
 }
 

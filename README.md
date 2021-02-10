@@ -69,9 +69,10 @@ See [Render-presentation](audit-report/Readme.md#Render-presentation)
 cp report-imageScan.md audit-report/report.md
 ```
 
-### TODO
+## TODOs
 
 - use trivy library rather than the command line
 - use docker library rather than the command line
 - change the scan template to support (again) pagination
-- restructure the code for better encapsulation 
+- restructure the code for better encapsulation
+- releasing
