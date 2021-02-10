@@ -61,7 +61,6 @@ func report(_ *cobra.Command, _ []string) {
 	if err != nil {
 		logr.Errorf("Error scanning images with config %v: %v", config, err)
 	}
-	// logr.Infof("imageScanReport %v, %v", imageScanReport, err)
 
 	k := kubebench.New(kubeconfig, clientset)
 
@@ -75,9 +74,6 @@ func report(_ *cobra.Command, _ []string) {
 	if err != nil {
 		logr.Errorf("Error scanning images with config %v: %v", config, err)
 	}
-
-	logr.Infof("result images ImageSpecsSortByCriticalityTop20MostReplicas kube-rbac %s", imageScanReport.ImageSpecsSortByCriticalityTop20MostReplicas[0].ImageName)
-	logr.Infof("result images ImageSpecsSortByCriticalityTop20 registry %s ", imageScanReport.ImageSpecsSortByCriticalityTop20[0].ImageName)
 
 	l := linuxbench.New(kubeconfig, clientset)
 
@@ -101,7 +97,6 @@ func report(_ *cobra.Command, _ []string) {
 
 	err = r.GenerateMarkdown(fullReport, "report.md.tmpl", "report.md")
 	if err != nil {
-		// return nil, err
 		logr.Error(err)
 	}
 

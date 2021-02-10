@@ -39,8 +39,8 @@ type ImageSpec struct {
 
 // Report is top level structure holding the results of the image scan
 type Report struct {
-	ImageSpecs                                   map[string]*ImageSpec
-	ImageByArea                                  map[string]*ImagePerArea
+	ImageSpecs  map[string]*ImageSpec
+	ImageByArea map[string]*ImagePerArea
 }
 
 // AreaSummary defines the summary for an area
@@ -52,7 +52,7 @@ type AreaSummary struct {
 
 // TeamSummary defines the summary for an team
 type TeamSummary struct {
-	ImageVulnerabilitySummary        map[string]VulnerabilitySummary
+	ImageVulnerabilitySummary map[string]VulnerabilitySummary
 }
 
 // VulnerabilitySummary defines
@@ -70,12 +70,12 @@ type ImagePerArea struct {
 
 // ImagePerTeam regroups image vulnerabilities for a team
 type ImagePerTeam struct {
-	TeamName                    string
-	Summary						*TeamSummary
-	PodCount                    int
-	ImageCount                  int
-	Pods                        []PodSummary
-	Images                      []ImageSpec
+	TeamName   string
+	Summary    *TeamSummary
+	PodCount   int
+	ImageCount int
+	Pods       []PodSummary
+	Images     []ImageSpec
 }
 
 // Vulnerabilities is the object representation of the trivy vulnerability table for an image
@@ -141,11 +141,6 @@ func (l *Scanner) ScanImages() (*Report, error) {
 		"podList": podList,
 	}).Debug("Pod List")
 
-	// TODO
-	// add integration test with kind
-	// create metrics for the worker queue, number of images scanned, number of images gathered from cluster
-	// use database to store scan result to avoid lost during restart of the application, also to create async scan and get the report later on from the database
-	// do we want to scan non-running pods like job, cronjob, mock scaled down
 	imageList, err := l.getImagesList(podList)
 	if err != nil {
 		return nil, err
@@ -171,32 +166,7 @@ type teamKey struct {
 }
 
 func (l *Scanner) generateAreaGrouping(imageSpecs map[string]*ImageSpec) (map[string]*ImagePerArea, error) {
-	imagesSpecByTeam := make(map[teamKey]map[string]ImageSpec)
-	podsByTeam := make(map[teamKey][]PodSummary)
-	var podAreaLabel, podTeamsLabel string
-	for _, specs := range imageSpecs {
-
-		for _, podSummary := range specs.Pods {
-			podAreaLabel = podSummary.NamespaceLabels[l.config.AreaLabels]
-			podTeamsLabel = podSummary.NamespaceLabels[l.config.TeamsLabels]
-
-			if podAreaLabel == "" {
-				podAreaLabel = "all"
-			}
-			if podTeamsLabel == "" {
-				podTeamsLabel = "all"
-			}
-
-			key := teamKey{area: podAreaLabel, team: podTeamsLabel}
-			podsByTeam[key] = append(podsByTeam[key], podSummary)
-
-			if _, ok := imagesSpecByTeam[key]; !ok {
-				imagesSpecByTeam[key] = make(map[string]ImageSpec)
-			}
-			imagesSpecByTeam[key][specs.ImageName] = *specs
-		}
-	}
-
+	imagesSpecByTeam, podsByTeam := l.groupImagesAndPodsByTeamAndArea(imageSpecs)
 	imagesByArea := make(map[string]*ImagePerArea)
 	for key := range podsByTeam {
 		if _, ok := imagesByArea[key.area]; !ok {
@@ -205,20 +175,83 @@ func (l *Scanner) generateAreaGrouping(imageSpecs map[string]*ImageSpec) (map[st
 		if _, ok := imagesByArea[key.area].Teams[key.team]; !ok {
 			imagesByArea[key.area].Teams[key.team] = &ImagePerTeam{TeamName: key.team}
 		}
-		imagesByArea[key.area].Teams[key.team].PodCount = len(podsByTeam[key])
-		imagesByArea[key.area].Teams[key.team].Pods = podsByTeam[key]
 
 		var teamImages []ImageSpec
 		for _, imageSpec := range imagesSpecByTeam[key] {
 			teamImages = append(teamImages, imageSpec)
 		}
 
-		logr.Infof("Sort area %s, teams %s", key.area, key.team)
+		imagesByArea[key.area].Teams[key.team].PodCount = len(podsByTeam[key])
+		imagesByArea[key.area].Teams[key.team].Pods = podsByTeam[key]
 		imagesByArea[key.area].Teams[key.team].Images = sortByCriticality(teamImages)
 		imagesByArea[key.area].Teams[key.team].ImageCount = len(teamImages)
+		imagesByArea[key.area].Teams[key.team].Summary = buildTeamSummary(teamImages)
+	}
+
+	for area, areaImages := range imagesByArea {
+		imagesByArea[area].Summary = buildAreaSummary(areaImages)
 	}
 
 	return imagesByArea, nil
+}
+
+func (l *Scanner) groupImagesAndPodsByTeamAndArea(imageSpecs map[string]*ImageSpec) (map[teamKey]map[string]ImageSpec, map[teamKey][]PodSummary) {
+	imagesSpecByTeam := make(map[teamKey]map[string]ImageSpec)
+	podsByTeam := make(map[teamKey][]PodSummary)
+	var areaLabel, teamsLabel string
+	for _, specs := range imageSpecs {
+		for _, podSummary := range specs.Pods {
+			areaLabel = podSummary.NamespaceLabels[l.config.AreaLabels]
+			teamsLabel = podSummary.NamespaceLabels[l.config.TeamsLabels]
+
+			if areaLabel == "" {
+				areaLabel = "all"
+			}
+			if teamsLabel == "" {
+				teamsLabel = "all"
+			}
+
+			key := teamKey{area: areaLabel, team: teamsLabel}
+			podsByTeam[key] = append(podsByTeam[key], podSummary)
+
+			if _, ok := imagesSpecByTeam[key]; !ok {
+				imagesSpecByTeam[key] = make(map[string]ImageSpec)
+			}
+			imagesSpecByTeam[key][specs.ImageName] = *specs
+		}
+	}
+	return imagesSpecByTeam, podsByTeam
+}
+
+func buildAreaSummary(areaImages *ImagePerArea) *AreaSummary {
+	summary := AreaSummary{}
+	for _, teamImages := range areaImages.Teams {
+		summary.ImageCount += teamImages.ImageCount
+		summary.PodCount += teamImages.PodCount
+		for _, vulnerabilitySummary := range teamImages.Summary.ImageVulnerabilitySummary {
+			if summary.TotalVulnerabilityPerCriticality == nil {
+				summary.TotalVulnerabilityPerCriticality = make(map[string]int)
+			}
+			for severity, count := range vulnerabilitySummary.TotalVulnerabilityPerCriticality {
+				summary.TotalVulnerabilityPerCriticality[severity] += count
+			}
+		}
+	}
+	return &summary
+}
+
+func buildTeamSummary(teamImages []ImageSpec) *TeamSummary {
+	summary := TeamSummary{}
+	for _, image := range teamImages {
+		if summary.ImageVulnerabilitySummary == nil {
+			summary.ImageVulnerabilitySummary = make(map[string]VulnerabilitySummary)
+		}
+		summary.ImageVulnerabilitySummary[image.ImageName] = VulnerabilitySummary{
+			PodCount:                         len(image.Pods),
+			TotalVulnerabilityPerCriticality: image.TotalVulnerabilityPerCriticality,
+		}
+	}
+	return &summary
 }
 
 func sortByCriticality(imageArr []ImageSpec) []ImageSpec {
@@ -255,7 +288,6 @@ func sortByCriticality(imageArr []ImageSpec) []ImageSpec {
 	})
 	return imageArr
 }
-
 
 func (l *Scanner) getNamespaces(config *Config) (*v1.NamespaceList, error) {
 

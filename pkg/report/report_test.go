@@ -25,7 +25,7 @@ type TestReport struct {
 	ImageScan *scanner.Report
 }
 
-var _ = Describe("Generating report Images", func() {
+var _ = Describe("Generating vulnerability report", func() {
 	var (
 		tmpDir string
 	)
@@ -62,7 +62,7 @@ var _ = Describe("Generating report Images", func() {
 						},
 						Teams: map[string]*scanner.ImagePerTeam{
 							"team-1": {
-								TeamName:   "team-1",
+								TeamName: "team-1",
 								Summary: &scanner.TeamSummary{
 									ImageVulnerabilitySummary: map[string]scanner.VulnerabilitySummary{
 										"debian:latest": {
@@ -86,7 +86,7 @@ var _ = Describe("Generating report Images", func() {
 								},
 							},
 							"team-2": {
-								TeamName:   "team-2",
+								TeamName: "team-2",
 								Summary: &scanner.TeamSummary{
 									ImageVulnerabilitySummary: map[string]scanner.VulnerabilitySummary{
 										"ubuntu:18.04": {
@@ -103,14 +103,14 @@ var _ = Describe("Generating report Images", func() {
 					},
 					"area-2": {
 						AreaName: "area-2",
-						Summary:  &scanner.AreaSummary{
+						Summary: &scanner.AreaSummary{
 							ImageCount:                       10,
 							PodCount:                         10,
 							TotalVulnerabilityPerCriticality: map[string]int{"CRITICAL": 4, "HIGH": 12, "MEDIUM": 5, "LOW": 26, "UNKNOWN": 1},
 						},
 						Teams: map[string]*scanner.ImagePerTeam{
 							"team-3": {
-								TeamName:  "team-3",
+								TeamName: "team-3",
 								Summary: &scanner.TeamSummary{
 									ImageVulnerabilitySummary: map[string]scanner.VulnerabilitySummary{
 										"debian:latest": {
