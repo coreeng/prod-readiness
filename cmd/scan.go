@@ -42,27 +42,25 @@ func scan(_ *cobra.Command, _ []string) {
 		FilterLabels:         filterLabels,
 		Severity:             severity,
 	}
-	t := scanner.New(kubeconfig, clientset, config)
+	t := scanner.New(clientset, config)
 
 	imageScanReport, err := t.ScanImages()
 	if err != nil {
-		logr.Errorf("Error scanning images with config %v: %v", config, err)
+		logr.Fatalf("Error scanning images with config %v: %v", config, err)
 	}
-	// logr.Infof("imageScanReport %v, %v", imageScanReport, err)
 
 	fullReport := &FullReport{
 		ImageScan: imageScanReport,
 	}
 	err = r.GenerateMarkdown(fullReport, "report-imageScan.md.tmpl", "report-imageScan.md")
 	if err != nil {
-		// return nil, err
-		logr.Error(err)
+		logr.Fatal(err)
 	}
 
 	if jsonReportFile != "" {
 		err = r.SaveReport(fullReport, jsonReportFile)
 		if err != nil {
-			logr.Error(err)
+			logr.Fatal(err)
 		}
 	}
 

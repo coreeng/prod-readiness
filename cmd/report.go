@@ -56,7 +56,7 @@ func report(_ *cobra.Command, _ []string) {
 		Severity:             severity,
 	}
 
-	t := scanner.New(kubeconfig, clientset, config)
+	t := scanner.New(clientset, config)
 	imageScanReport, err := t.ScanImages()
 	if err != nil {
 		logr.Errorf("Error scanning images with config %v: %v", config, err)

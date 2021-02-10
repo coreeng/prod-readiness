@@ -116,10 +116,9 @@ type Config struct {
 	Severity             string
 }
 
-// New creates a Scanner
-func New(kubeconfig *rest.Config, kubeClient *kubernetes.Clientset, config *Config) *Scanner {
+// New creates a Scanner to find vulnerabilities in container images
+func New(kubeClient *kubernetes.Clientset, config *Config) *Scanner {
 	return &Scanner{
-		kubeconfig: kubeconfig,
 		kubeClient: kubeClient,
 		config:     config,
 	}
