@@ -26,15 +26,15 @@ type Scanner struct {
 
 // ImageSpec define the information of an image
 type ImageSpec struct {
-	TrivyOutput                      []TrivyOutput `json:"trivyCommand"`
-	TrivyErrOutput                   string        `json:"trivyErrCommand"`
-	DockerPullCommand                string        `json:"dockerPullCommand"`
-	DockerPullErrCommand             string        `json:"dockerPullErrCommand"`
-	DockerRmiCommand                 string        `json:"dockerRmiCommand"`
-	DockerRmiErrCommand              string        `json:"dockerRmiErrCommand"`
-	Pods                             []PodSummary  `json:"pods"`
-	TotalVulnerabilityPerCriticality map[string]int
-	ImageName                        string
+	TrivyOutput                  []TrivyOutput `json:"trivyCommand"`
+	TrivyErrOutput               string        `json:"trivyErrCommand"`
+	DockerPullCommand            string        `json:"dockerPullCommand"`
+	DockerPullErrCommand         string        `json:"dockerPullErrCommand"`
+	DockerRmiCommand             string        `json:"dockerRmiCommand"`
+	DockerRmiErrCommand          string        `json:"dockerRmiErrCommand"`
+	Pods                         []PodSummary  `json:"pods"`
+	TotalVulnerabilityBySeverity map[string]int
+	ImageName                    string
 }
 
 // Report is top level structure holding the results of the image scan
@@ -45,9 +45,9 @@ type Report struct {
 
 // AreaSummary defines the summary for an area
 type AreaSummary struct {
-	ImageCount                       int `json:"number_images_scanned"`
-	PodCount                         int `json:"number_pods_scanned"`
-	TotalVulnerabilityPerCriticality map[string]int
+	ImageCount                   int `json:"number_images_scanned"`
+	PodCount                     int `json:"number_pods_scanned"`
+	TotalVulnerabilityBySeverity map[string]int
 }
 
 // TeamSummary defines the summary for an team
@@ -57,8 +57,8 @@ type TeamSummary struct {
 
 // VulnerabilitySummary defines
 type VulnerabilitySummary struct {
-	PodCount                         int
-	TotalVulnerabilityPerCriticality map[string]int
+	PodCount                     int
+	TotalVulnerabilityBySeverity map[string]int
 }
 
 // ImagePerArea regroups image vulnerabilities for an area/department
@@ -151,6 +151,13 @@ func (l *Scanner) ScanImages() (*Report, error) {
 	}
 
 	logr.Infof("Generating report")
+	return l.generateReport(scannedImages)
+}
+
+func (l *Scanner) generateReport(scannedImages map[string]*ImageSpec) (*Report, error) {
+	for _, imageSpec := range scannedImages {
+		imageSpec.TotalVulnerabilityBySeverity = computeTotalVulnerabilityBySeverity(imageSpec)
+	}
 	imagesByArea, err := l.generateAreaGrouping(scannedImages)
 	if err != nil {
 		return nil, err
@@ -159,6 +166,16 @@ func (l *Scanner) ScanImages() (*Report, error) {
 		ImageSpecs:  scannedImages,
 		ImageByArea: imagesByArea,
 	}, nil
+}
+
+func computeTotalVulnerabilityBySeverity(imageSpec *ImageSpec) map[string]int {
+	severityMap := make(map[string]int)
+	for _, target := range imageSpec.TrivyOutput {
+		for _, vulnerability := range target.Vulnerabilities {
+			severityMap[vulnerability.Severity] = severityMap[vulnerability.Severity] + 1
+		}
+	}
+	return severityMap
 }
 
 type teamKey struct {
@@ -183,7 +200,7 @@ func (l *Scanner) generateAreaGrouping(imageSpecs map[string]*ImageSpec) (map[st
 
 		imagesByArea[key.area].Teams[key.team].PodCount = len(podsByTeam[key])
 		imagesByArea[key.area].Teams[key.team].Pods = podsByTeam[key]
-		imagesByArea[key.area].Teams[key.team].Images = sortByCriticality(teamImages)
+		imagesByArea[key.area].Teams[key.team].Images = sortBySeverity(teamImages)
 		imagesByArea[key.area].Teams[key.team].ImageCount = len(teamImages)
 		imagesByArea[key.area].Teams[key.team].Summary = buildTeamSummary(teamImages)
 	}
@@ -229,11 +246,11 @@ func buildAreaSummary(areaImages *ImagePerArea) *AreaSummary {
 		summary.ImageCount += teamImages.ImageCount
 		summary.PodCount += teamImages.PodCount
 		for _, vulnerabilitySummary := range teamImages.Summary.ImageVulnerabilitySummary {
-			if summary.TotalVulnerabilityPerCriticality == nil {
-				summary.TotalVulnerabilityPerCriticality = make(map[string]int)
+			if summary.TotalVulnerabilityBySeverity == nil {
+				summary.TotalVulnerabilityBySeverity = make(map[string]int)
 			}
-			for severity, count := range vulnerabilitySummary.TotalVulnerabilityPerCriticality {
-				summary.TotalVulnerabilityPerCriticality[severity] += count
+			for severity, count := range vulnerabilitySummary.TotalVulnerabilityBySeverity {
+				summary.TotalVulnerabilityBySeverity[severity] += count
 			}
 		}
 	}
@@ -247,42 +264,42 @@ func buildTeamSummary(teamImages []ImageSpec) *TeamSummary {
 			summary.ImageVulnerabilitySummary = make(map[string]VulnerabilitySummary)
 		}
 		summary.ImageVulnerabilitySummary[image.ImageName] = VulnerabilitySummary{
-			PodCount:                         len(image.Pods),
-			TotalVulnerabilityPerCriticality: image.TotalVulnerabilityPerCriticality,
+			PodCount:                     len(image.Pods),
+			TotalVulnerabilityBySeverity: image.TotalVulnerabilityBySeverity,
 		}
 	}
 	return &summary
 }
 
-func sortByCriticality(imageArr []ImageSpec) []ImageSpec {
+func sortBySeverity(imageArr []ImageSpec) []ImageSpec {
 	sort.Slice(imageArr, func(i, j int) bool {
 
 		firstItemScore := 0
 		secondItemScore := 0
-		if _, ok := imageArr[i].TotalVulnerabilityPerCriticality["CRITICAL"]; ok {
-			firstItemScore = firstItemScore + imageArr[i].TotalVulnerabilityPerCriticality["CRITICAL"]*1000000
+		if _, ok := imageArr[i].TotalVulnerabilityBySeverity["CRITICAL"]; ok {
+			firstItemScore = firstItemScore + imageArr[i].TotalVulnerabilityBySeverity["CRITICAL"]*1000000
 		}
-		if _, ok := imageArr[i].TotalVulnerabilityPerCriticality["HIGH"]; ok {
-			firstItemScore = firstItemScore + imageArr[i].TotalVulnerabilityPerCriticality["HIGH"]*10000
+		if _, ok := imageArr[i].TotalVulnerabilityBySeverity["HIGH"]; ok {
+			firstItemScore = firstItemScore + imageArr[i].TotalVulnerabilityBySeverity["HIGH"]*10000
 		}
-		if _, ok := imageArr[i].TotalVulnerabilityPerCriticality["MEDIUM"]; ok {
-			firstItemScore = firstItemScore + imageArr[i].TotalVulnerabilityPerCriticality["MEDIUM"]*100
+		if _, ok := imageArr[i].TotalVulnerabilityBySeverity["MEDIUM"]; ok {
+			firstItemScore = firstItemScore + imageArr[i].TotalVulnerabilityBySeverity["MEDIUM"]*100
 		}
-		if _, ok := imageArr[i].TotalVulnerabilityPerCriticality["LOW"]; ok {
-			firstItemScore = firstItemScore + imageArr[i].TotalVulnerabilityPerCriticality["LOW"]
+		if _, ok := imageArr[i].TotalVulnerabilityBySeverity["LOW"]; ok {
+			firstItemScore = firstItemScore + imageArr[i].TotalVulnerabilityBySeverity["LOW"]
 		}
 
-		if _, ok := imageArr[j].TotalVulnerabilityPerCriticality["CRITICAL"]; ok {
-			secondItemScore = secondItemScore + imageArr[j].TotalVulnerabilityPerCriticality["CRITICAL"]*1000000
+		if _, ok := imageArr[j].TotalVulnerabilityBySeverity["CRITICAL"]; ok {
+			secondItemScore = secondItemScore + imageArr[j].TotalVulnerabilityBySeverity["CRITICAL"]*1000000
 		}
-		if _, ok := imageArr[j].TotalVulnerabilityPerCriticality["HIGH"]; ok {
-			secondItemScore = secondItemScore + imageArr[j].TotalVulnerabilityPerCriticality["HIGH"]*10000
+		if _, ok := imageArr[j].TotalVulnerabilityBySeverity["HIGH"]; ok {
+			secondItemScore = secondItemScore + imageArr[j].TotalVulnerabilityBySeverity["HIGH"]*10000
 		}
-		if _, ok := imageArr[j].TotalVulnerabilityPerCriticality["MEDIUM"]; ok {
-			secondItemScore = secondItemScore + imageArr[j].TotalVulnerabilityPerCriticality["MEDIUM"]*100
+		if _, ok := imageArr[j].TotalVulnerabilityBySeverity["MEDIUM"]; ok {
+			secondItemScore = secondItemScore + imageArr[j].TotalVulnerabilityBySeverity["MEDIUM"]*100
 		}
-		if _, ok := imageArr[j].TotalVulnerabilityPerCriticality["LOW"]; ok {
-			secondItemScore = secondItemScore + imageArr[j].TotalVulnerabilityPerCriticality["LOW"]
+		if _, ok := imageArr[j].TotalVulnerabilityBySeverity["LOW"]; ok {
+			secondItemScore = secondItemScore + imageArr[j].TotalVulnerabilityBySeverity["LOW"]
 		}
 		return firstItemScore > secondItemScore
 	})

@@ -6,7 +6,7 @@
 
 | Total Image Count | Total Replica Count | Total Critical| Total High | Total Medium | Total Low | Total Unknown |
 |--------|----------|---------|------|--------|-----|-----|
-| {{ $area.Summary.ImageCount }} | {{ $area.Summary.PodCount }} | {{ index $area.Summary.TotalVulnerabilityPerCriticality "CRITICAL" }} | {{ index $area.Summary.TotalVulnerabilityPerCriticality "HIGH" }} | {{ index $area.Summary.TotalVulnerabilityPerCriticality "MEDIUM" }} | {{ index $area.Summary.TotalVulnerabilityPerCriticality "LOW" }} | {{ index $area.Summary.TotalVulnerabilityPerCriticality "UNKNOWN" }}|
+| {{ $area.Summary.ImageCount }} | {{ $area.Summary.PodCount }} | {{ index $area.Summary.TotalVulnerabilityBySeverity "CRITICAL" }} | {{ index $area.Summary.TotalVulnerabilityBySeverity "HIGH" }} | {{ index $area.Summary.TotalVulnerabilityBySeverity "MEDIUM" }} | {{ index $area.Summary.TotalVulnerabilityBySeverity "LOW" }} | {{ index $area.Summary.TotalVulnerabilityBySeverity "UNKNOWN" }}|
 
 {{- range $keyTeam, $team := $area.Teams }}
 
@@ -17,7 +17,7 @@
 | Images | Replicas | Critical| High | Medium | Low | Unknown |
 |--------|----------|---------|------|--------|-----|-----|
 {{- range $key, $specs := $team.Summary.ImageVulnerabilitySummary }}
-| {{ $key }} | {{ $specs.PodCount }} | {{ index $specs.TotalVulnerabilityPerCriticality "CRITICAL" }} | {{ index $specs.TotalVulnerabilityPerCriticality "HIGH" }} | {{ index $specs.TotalVulnerabilityPerCriticality "MEDIUM" }} | {{ index $specs.TotalVulnerabilityPerCriticality "LOW" }} | {{ index $specs.TotalVulnerabilityPerCriticality "UNKNOWN" }}|
+| {{ $key }} | {{ $specs.PodCount }} | {{ index $specs.TotalVulnerabilityBySeverity "CRITICAL" }} | {{ index $specs.TotalVulnerabilityBySeverity "HIGH" }} | {{ index $specs.TotalVulnerabilityBySeverity "MEDIUM" }} | {{ index $specs.TotalVulnerabilityBySeverity "LOW" }} | {{ index $specs.TotalVulnerabilityBySeverity "UNKNOWN" }}|
 {{- end }}
 
 #### Vulnerabilities details

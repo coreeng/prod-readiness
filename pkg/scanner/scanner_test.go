@@ -21,7 +21,7 @@ func TestManager(t *testing.T) {
 
 var _ = Describe("Scan Images", func() {
 
-	Context("string replacement", func() {
+	Describe("string replacement", func() {
 		var (
 			scan *Scanner
 		)
@@ -58,7 +58,7 @@ var _ = Describe("Scan Images", func() {
 		})
 	})
 
-	Context("GetImagesList", func() {
+	Describe("GetImagesList", func() {
 		var (
 			scan *Scanner
 		)
@@ -153,7 +153,70 @@ var _ = Describe("Scan Images", func() {
 		})
 	})
 
-	Context("Area grouping", func() {
+	Describe("Compute vulnerability breakdown", func() {
+		It("count the number of vulnerability per severity", func() {
+			imageSpec := ImageSpec{
+				TrivyOutput: []TrivyOutput{
+					{
+						Vulnerabilities: []Vulnerabilities{
+							{
+								Severity: "CRITICAL",
+							},
+							{
+								Severity: "MEDIUM",
+							},
+						},
+					},
+					{
+						Vulnerabilities: []Vulnerabilities{
+							{
+								Severity: "CRITICAL",
+							},
+							{
+								Severity: "CRITICAL",
+							},
+							{
+								Severity: "HIGH",
+							},
+							{
+								Severity: "HIGH",
+							},
+							{
+								Severity: "MEDIUM",
+							},
+							{
+								Severity: "MEDIUM",
+							},
+							{
+								Severity: "LOW",
+							},
+							{
+								Severity: "LOW",
+							},
+							{
+								Severity: "LOW",
+							},
+							{
+								Severity: "UNKNOWN",
+							},
+							{
+								Severity: "UNKNOWN",
+							},
+							{
+								Severity: "UNKNOWN",
+							},
+						},
+					},
+				},
+			}
+			severityMap := computeTotalVulnerabilityBySeverity(&imageSpec)
+			Expect(severityMap).To(Equal(
+				map[string]int{"CRITICAL": 3, "HIGH": 2, "MEDIUM": 3, "LOW": 3, "UNKNOWN": 3}),
+			)
+		})
+	})
+
+	Describe("Area grouping", func() {
 
 		var (
 			areaLabel, teamLabel string
@@ -299,7 +362,7 @@ var _ = Describe("Scan Images", func() {
 				"mostCriticalTeam2": {
 					ImageName: "mostCriticalTeam2",
 					Pods:      []PodSummary{team2Pod},
-					TotalVulnerabilityPerCriticality: map[string]int{
+					TotalVulnerabilityBySeverity: map[string]int{
 						"CRITICAL": 1,
 						"HIGH":     5,
 						"MEDIUM":   0,
@@ -309,7 +372,7 @@ var _ = Describe("Scan Images", func() {
 				"leastCriticalTeam2": {
 					ImageName: "leastCriticalTeam2",
 					Pods:      []PodSummary{team2Pod},
-					TotalVulnerabilityPerCriticality: map[string]int{
+					TotalVulnerabilityBySeverity: map[string]int{
 						"CRITICAL": 0,
 						"HIGH":     6,
 						"MEDIUM":   10,
@@ -319,7 +382,7 @@ var _ = Describe("Scan Images", func() {
 				"mostCritical": {
 					ImageName: "mostCritical",
 					Pods:      []PodSummary{team1Pod},
-					TotalVulnerabilityPerCriticality: map[string]int{
+					TotalVulnerabilityBySeverity: map[string]int{
 						"CRITICAL": 4,
 						"HIGH":     5,
 						"MEDIUM":   10,
@@ -329,7 +392,7 @@ var _ = Describe("Scan Images", func() {
 				"mostHighAfterSameCritical": {
 					ImageName: "mostHighAfterSameCritical",
 					Pods:      []PodSummary{team1Pod},
-					TotalVulnerabilityPerCriticality: map[string]int{
+					TotalVulnerabilityBySeverity: map[string]int{
 						"CRITICAL": 3,
 						"HIGH":     6,
 						"MEDIUM":   11,
@@ -339,7 +402,7 @@ var _ = Describe("Scan Images", func() {
 				"mostMediumAfterSameCriticalAndHigh": {
 					ImageName: "mostMediumAfterSameCriticalAndHigh",
 					Pods:      []PodSummary{team1Pod},
-					TotalVulnerabilityPerCriticality: map[string]int{
+					TotalVulnerabilityBySeverity: map[string]int{
 						"CRITICAL": 3,
 						"HIGH":     5,
 						"MEDIUM":   12,
@@ -349,7 +412,7 @@ var _ = Describe("Scan Images", func() {
 				"leastCriticalTeam1": {
 					ImageName: "leastCriticalTeam1",
 					Pods:      []PodSummary{team1Pod},
-					TotalVulnerabilityPerCriticality: map[string]int{
+					TotalVulnerabilityBySeverity: map[string]int{
 						"CRITICAL": 3,
 						"HIGH":     5,
 						"MEDIUM":   11,
@@ -405,7 +468,7 @@ var _ = Describe("Scan Images", func() {
 				"area1-team1-image1": {
 					ImageName: "area1-team1-image1",
 					Pods:      []PodSummary{team1Pod},
-					TotalVulnerabilityPerCriticality: map[string]int{
+					TotalVulnerabilityBySeverity: map[string]int{
 						"CRITICAL": 1,
 						"HIGH":     5,
 						"MEDIUM":   0,
@@ -416,7 +479,7 @@ var _ = Describe("Scan Images", func() {
 				"area1-team1-image2": {
 					ImageName: "area1-team1-image2",
 					Pods:      []PodSummary{team1Pod},
-					TotalVulnerabilityPerCriticality: map[string]int{
+					TotalVulnerabilityBySeverity: map[string]int{
 						"CRITICAL": 2,
 						"HIGH":     12,
 						"MEDIUM":   4,
@@ -427,7 +490,7 @@ var _ = Describe("Scan Images", func() {
 				"area1-team2-image2": {
 					ImageName: "area1-team1-image2",
 					Pods:      []PodSummary{team2Pod},
-					TotalVulnerabilityPerCriticality: map[string]int{
+					TotalVulnerabilityBySeverity: map[string]int{
 						"CRITICAL": 1,
 						"HIGH":     2,
 						"MEDIUM":   4,
@@ -438,7 +501,7 @@ var _ = Describe("Scan Images", func() {
 				"area2-team3-image1": {
 					ImageName: "area2-team3-image1",
 					Pods:      []PodSummary{team3Pod1, team3Pod2, team3Pod3},
-					TotalVulnerabilityPerCriticality: map[string]int{
+					TotalVulnerabilityBySeverity: map[string]int{
 						"CRITICAL": 1,
 						"HIGH":     5,
 						"MEDIUM":   0,
@@ -456,21 +519,21 @@ var _ = Describe("Scan Images", func() {
 			Expect(imageByArea).To(HaveLen(2))
 			Expect(imageByArea["area1"].Summary.ImageCount).To(Equal(3))
 			Expect(imageByArea["area1"].Summary.PodCount).To(Equal(3))
-			Expect(imageByArea["area1"].Summary.TotalVulnerabilityPerCriticality).To(Equal(
+			Expect(imageByArea["area1"].Summary.TotalVulnerabilityBySeverity).To(Equal(
 				map[string]int{"CRITICAL": 4, "HIGH": 19, "MEDIUM": 8, "LOW": 4, "UNKNOWN": 1}),
 			)
 			Expect(imageByArea["area1"].Teams["team1"].Summary.ImageVulnerabilitySummary["area1-team1-image1"].PodCount).To(Equal(1))
-			Expect(imageByArea["area1"].Teams["team1"].Summary.ImageVulnerabilitySummary["area1-team1-image1"].TotalVulnerabilityPerCriticality).To(Equal(
+			Expect(imageByArea["area1"].Teams["team1"].Summary.ImageVulnerabilitySummary["area1-team1-image1"].TotalVulnerabilityBySeverity).To(Equal(
 				map[string]int{"CRITICAL": 1, "HIGH": 5, "MEDIUM": 0, "LOW": 2, "UNKNOWN": 1},
 			))
 
 			Expect(imageByArea["area2"].Summary.ImageCount).To(Equal(1))
 			Expect(imageByArea["area2"].Summary.PodCount).To(Equal(3))
-			Expect(imageByArea["area2"].Summary.TotalVulnerabilityPerCriticality).To(Equal(
+			Expect(imageByArea["area2"].Summary.TotalVulnerabilityBySeverity).To(Equal(
 				map[string]int{"CRITICAL": 1, "HIGH": 5, "MEDIUM": 0, "LOW": 0, "UNKNOWN": 0}),
 			)
 			Expect(imageByArea["area2"].Teams["team3"].Summary.ImageVulnerabilitySummary["area2-team3-image1"].PodCount).To(Equal(3))
-			Expect(imageByArea["area2"].Teams["team3"].Summary.ImageVulnerabilitySummary["area2-team3-image1"].TotalVulnerabilityPerCriticality).To(Equal(
+			Expect(imageByArea["area2"].Teams["team3"].Summary.ImageVulnerabilitySummary["area2-team3-image1"].TotalVulnerabilityBySeverity).To(Equal(
 				map[string]int{"CRITICAL": 1, "HIGH": 5, "MEDIUM": 0, "LOW": 0, "UNKNOWN": 0},
 			))
 		})

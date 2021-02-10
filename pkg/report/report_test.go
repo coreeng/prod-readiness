@@ -56,9 +56,9 @@ var _ = Describe("Generating vulnerability report", func() {
 					"area-1": {
 						AreaName: "area-1",
 						Summary: &scanner.AreaSummary{
-							ImageCount:                       7,
-							PodCount:                         10,
-							TotalVulnerabilityPerCriticality: map[string]int{"CRITICAL": 4, "HIGH": 12, "MEDIUM": 5, "LOW": 26, "UNKNOWN": 1},
+							ImageCount:                   7,
+							PodCount:                     10,
+							TotalVulnerabilityBySeverity: map[string]int{"CRITICAL": 4, "HIGH": 12, "MEDIUM": 5, "LOW": 26, "UNKNOWN": 1},
 						},
 						Teams: map[string]*scanner.ImagePerTeam{
 							"team-1": {
@@ -66,16 +66,16 @@ var _ = Describe("Generating vulnerability report", func() {
 								Summary: &scanner.TeamSummary{
 									ImageVulnerabilitySummary: map[string]scanner.VulnerabilitySummary{
 										"debian:latest": {
-											PodCount:                         2,
-											TotalVulnerabilityPerCriticality: map[string]int{"CRITICAL": 0, "HIGH": 10, "MEDIUM": 5, "LOW": 20, "UNKNOWN": 0},
+											PodCount:                     2,
+											TotalVulnerabilityBySeverity: map[string]int{"CRITICAL": 0, "HIGH": 10, "MEDIUM": 5, "LOW": 20, "UNKNOWN": 0},
 										},
 										"alpine:latest": {
-											PodCount:                         1,
-											TotalVulnerabilityPerCriticality: map[string]int{"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 2, "UNKNOWN": 0},
+											PodCount:                     1,
+											TotalVulnerabilityBySeverity: map[string]int{"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 2, "UNKNOWN": 0},
 										},
 										"ubuntu:18.04": {
-											PodCount:                         3,
-											TotalVulnerabilityPerCriticality: map[string]int{"CRITICAL": 2, "HIGH": 1, "MEDIUM": 0, "LOW": 2, "UNKNOWN": 1},
+											PodCount:                     3,
+											TotalVulnerabilityBySeverity: map[string]int{"CRITICAL": 2, "HIGH": 1, "MEDIUM": 0, "LOW": 2, "UNKNOWN": 1},
 										},
 									},
 								},
@@ -90,8 +90,8 @@ var _ = Describe("Generating vulnerability report", func() {
 								Summary: &scanner.TeamSummary{
 									ImageVulnerabilitySummary: map[string]scanner.VulnerabilitySummary{
 										"ubuntu:18.04": {
-											PodCount:                         3,
-											TotalVulnerabilityPerCriticality: map[string]int{"CRITICAL": 2, "HIGH": 1, "MEDIUM": 0, "LOW": 2, "UNKNOWN": 1},
+											PodCount:                     3,
+											TotalVulnerabilityBySeverity: map[string]int{"CRITICAL": 2, "HIGH": 1, "MEDIUM": 0, "LOW": 2, "UNKNOWN": 1},
 										},
 									},
 								},
@@ -104,9 +104,9 @@ var _ = Describe("Generating vulnerability report", func() {
 					"area-2": {
 						AreaName: "area-2",
 						Summary: &scanner.AreaSummary{
-							ImageCount:                       10,
-							PodCount:                         10,
-							TotalVulnerabilityPerCriticality: map[string]int{"CRITICAL": 4, "HIGH": 12, "MEDIUM": 5, "LOW": 26, "UNKNOWN": 1},
+							ImageCount:                   10,
+							PodCount:                     10,
+							TotalVulnerabilityBySeverity: map[string]int{"CRITICAL": 4, "HIGH": 12, "MEDIUM": 5, "LOW": 26, "UNKNOWN": 1},
 						},
 						Teams: map[string]*scanner.ImagePerTeam{
 							"team-3": {
@@ -114,8 +114,8 @@ var _ = Describe("Generating vulnerability report", func() {
 								Summary: &scanner.TeamSummary{
 									ImageVulnerabilitySummary: map[string]scanner.VulnerabilitySummary{
 										"debian:latest": {
-											PodCount:                         2,
-											TotalVulnerabilityPerCriticality: map[string]int{"CRITICAL": 10, "HIGH": 10, "MEDIUM": 5, "LOW": 20, "UNKNOWN": 0},
+											PodCount:                     2,
+											TotalVulnerabilityBySeverity: map[string]int{"CRITICAL": 10, "HIGH": 10, "MEDIUM": 5, "LOW": 20, "UNKNOWN": 0},
 										},
 									},
 								},
@@ -159,9 +159,9 @@ var _ = Describe("Saving json report", func() {
 					"area-1": {
 						AreaName: "area-1",
 						Summary: &scanner.AreaSummary{
-							ImageCount:                       7,
-							PodCount:                         10,
-							TotalVulnerabilityPerCriticality: map[string]int{"CRITICAL": 4, "HIGH": 12, "MEDIUM": 5, "LOW": 26, "UNKNOWN": 1},
+							ImageCount:                   7,
+							PodCount:                     10,
+							TotalVulnerabilityBySeverity: map[string]int{"CRITICAL": 4, "HIGH": 12, "MEDIUM": 5, "LOW": 26, "UNKNOWN": 1},
 						},
 					},
 				},
@@ -208,7 +208,7 @@ func anAlpineImageScan(vulnerabilitiesDefinition map[string]int) scanner.ImageSp
 		Pods: []scanner.PodSummary{
 			{},
 		},
-		TotalVulnerabilityPerCriticality: map[string]int{"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0, "UNKNOWN": 0},
+		TotalVulnerabilityBySeverity: map[string]int{"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0, "UNKNOWN": 0},
 		TrivyOutput: []scanner.TrivyOutput{
 			{
 				Target:          "alpine (alpine 3.13.1)",
@@ -225,7 +225,7 @@ func aDebianImageScan(vulnerabilitiesDefinition map[string]int) scanner.ImageSpe
 		Pods: []scanner.PodSummary{
 			{},
 		},
-		TotalVulnerabilityPerCriticality: vulnerabilitiesDefinition,
+		TotalVulnerabilityBySeverity: vulnerabilitiesDefinition,
 		TrivyOutput: []scanner.TrivyOutput{
 			{
 				Target:          "debian (debian 10.7)",
@@ -242,7 +242,7 @@ func anUbuntuImageScan(vulnerabilitiesDefinition map[string]int) scanner.ImageSp
 		Pods: []scanner.PodSummary{
 			{},
 		},
-		TotalVulnerabilityPerCriticality: vulnerabilitiesDefinition,
+		TotalVulnerabilityBySeverity: vulnerabilitiesDefinition,
 		TrivyOutput: []scanner.TrivyOutput{
 			{
 				Target:          "ubuntu (ubuntu 18.04)",
