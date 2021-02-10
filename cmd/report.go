@@ -16,8 +16,8 @@ var (
 		Short: "Will create a full audit of a cluster and generate presentation and json output",
 		Run:   report,
 	}
-	kubeContext, kubeconfigPath, imageNameReplacement, areaLabel, teamLabels, filterLabels string
-	workersScan, workersKubeBench, workersLinuxBench                                       int
+	kubeContext, kubeconfigPath, imageNameReplacement, areaLabel, teamLabels, filterLabels, severity, jsonReportFile string
+	workersScan, workersKubeBench, workersLinuxBench                                                                 int
 )
 
 func init() {
@@ -31,6 +31,8 @@ func init() {
 	reportCmd.Flags().StringVar(&areaLabel, "area-labels", "", "string allowing to split per area the image scan")
 	reportCmd.Flags().StringVar(&teamLabels, "teams-labels", "", "string allowing to split per team the image scan")
 	reportCmd.Flags().StringVar(&filterLabels, "filters-labels", "", "string allowing to filter the namespaces string separated by comma")
+	reportCmd.Flags().StringVar(&severity, "severity", "UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL", "severities of vulnerabilities to be reported (comma separated) ")
+	reportCmd.Flags().StringVar(&jsonReportFile, "json-report-filename", "", "optional filename where the json representation of the report will be saved")
 }
 
 // FullReport - FullReport
@@ -43,7 +45,6 @@ type FullReport struct {
 func report(_ *cobra.Command, _ []string) {
 	kubeconfig := k8s.KubernetesConfig(kubeContext, kubeconfigPath)
 	clientset := k8s.KubernetesClient(kubeconfig)
-	t := scanner.New(kubeconfig, clientset)
 
 	config := &scanner.Config{
 		LogLevel:             logLevel,
@@ -52,13 +53,14 @@ func report(_ *cobra.Command, _ []string) {
 		AreaLabels:           areaLabel,
 		TeamsLabels:          teamLabels,
 		FilterLabels:         filterLabels,
+		Severity:             severity,
 	}
 
-	imageScanReport, err := t.ScanImages(config)
+	t := scanner.New(kubeconfig, clientset, config)
+	imageScanReport, err := t.ScanImages()
 	if err != nil {
 		logr.Errorf("Error scanning images with config %v: %v", config, err)
 	}
-	// logr.Infof("imageScanReport %v, %v", imageScanReport, err)
 
 	k := kubebench.New(kubeconfig, clientset)
 
@@ -72,9 +74,6 @@ func report(_ *cobra.Command, _ []string) {
 	if err != nil {
 		logr.Errorf("Error scanning images with config %v: %v", config, err)
 	}
-
-	logr.Infof("result images ImageSpecsSortByCriticalityTop20MostReplicas kube-rbac %s", imageScanReport.ImageSpecsSortByCriticalityTop20MostReplicas[0].ImageName)
-	logr.Infof("result images ImageSpecsSortByCriticalityTop20 registry %s ", imageScanReport.ImageSpecsSortByCriticalityTop20[0].ImageName)
 
 	l := linuxbench.New(kubeconfig, clientset)
 
@@ -96,15 +95,15 @@ func report(_ *cobra.Command, _ []string) {
 		LinuxCIS:  linuxReport,
 	}
 
-	_, err = r.GenerateMarkdown(fullReport, "report.md.tmpl", "report.md")
+	err = r.GenerateMarkdown(fullReport, "report.md.tmpl", "report.md")
 	if err != nil {
-		// return nil, err
 		logr.Error(err)
 	}
 
-	err = r.SaveReport(fullReport, "report")
-	if err != nil {
-		// return nil, err
-		logr.Error(err)
+	if jsonReportFile != "" {
+		err = r.SaveReport(fullReport, jsonReportFile)
+		if err != nil {
+			logr.Error(err)
+		}
 	}
 }

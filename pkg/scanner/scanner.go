@@ -21,51 +21,64 @@ import (
 type Scanner struct {
 	kubeconfig *rest.Config
 	kubeClient *kubernetes.Clientset
+	config     *Config
 }
 
 // ImageSpec define the information of an image
 type ImageSpec struct {
-	TrivyOutput                      []TrivyOutput `json:"trivyCommand"`
-	TrivyErrOutput                   string        `json:"trivyErrCommand"`
-	DockerPullCommand                string        `json:"dockerPullCommand"`
-	DockerPullErrCommand             string        `json:"dockerPullErrCommand"`
-	DockerRmiCommand                 string        `json:"dockerRmiCommand"`
-	DockerRmiErrCommand              string        `json:"dockerRmiErrCommand"`
-	Pods                             []PodDetail   `json:"pods"`
-	TotalVulnerabilityPerCriticality map[string]int
-	ImageName                        string
+	TrivyOutput                  []TrivyOutput `json:"trivyCommand"`
+	TrivyErrOutput               string        `json:"trivyErrCommand"`
+	DockerPullCommand            string        `json:"dockerPullCommand"`
+	DockerPullErrCommand         string        `json:"dockerPullErrCommand"`
+	DockerRmiCommand             string        `json:"dockerRmiCommand"`
+	DockerRmiErrCommand          string        `json:"dockerRmiErrCommand"`
+	Pods                         []PodSummary  `json:"pods"`
+	TotalVulnerabilityBySeverity map[string]int
+	ImageName                    string
 }
 
-// ImageSummary define the summary
-type ImageSummary struct {
-	NumberImagesScanned              int `json:"number_images_scanned"`
-	NumberPodsScanned                int `json:"number_pods_scanned"`
-	NumberImagesFromExternalRegistry int `json:"number_images_from_external_registry"`
-	NumberPodsFromExternalRegistry   int `json:"number_pods_from_external_registry"`
-	ImagePerRegistry                 map[string]*ImagePerRegistry
-	TotalVulnerabilityPerCriticality map[string]int
-}
-
-// Report define report
+// Report is top level structure holding the results of the image scan
 type Report struct {
-	ImageSummary                                 *ImageSummary
-	ImageSpecs                                   map[string]*ImageSpec
-	ImageSpecsSortByCriticality                  []ImageSpec
-	ImageSpecsSortByCriticalityTop20             []ImageSpec
-	ImageSpecsSortByCriticalityTop20MostReplicas []ImageSpec
-	ImageByArea                                  map[string]*ImagePerArea
+	ImageSpecs  map[string]*ImageSpec
+	ImageByArea map[string]*ImagePerArea
 }
 
-// ImagePerRegistry define ImagePerRegistry
-type ImagePerRegistry struct {
-	RegistryName string
-	PodCount     int
-	ImageCount   int
-	Pods         []PodDetail
-	Images       []string
+// AreaSummary defines the summary for an area
+type AreaSummary struct {
+	ImageCount                   int `json:"number_images_scanned"`
+	PodCount                     int `json:"number_pods_scanned"`
+	TotalVulnerabilityBySeverity map[string]int
 }
 
-// Vulnerabilities defines Vulnerabilities
+// TeamSummary defines the summary for an team
+type TeamSummary struct {
+	ImageVulnerabilitySummary map[string]VulnerabilitySummary
+}
+
+// VulnerabilitySummary defines
+type VulnerabilitySummary struct {
+	PodCount                     int
+	TotalVulnerabilityBySeverity map[string]int
+}
+
+// ImagePerArea regroups image vulnerabilities for an area/department
+type ImagePerArea struct {
+	AreaName string
+	Summary  *AreaSummary
+	Teams    map[string]*ImagePerTeam
+}
+
+// ImagePerTeam regroups image vulnerabilities for a team
+type ImagePerTeam struct {
+	TeamName   string
+	Summary    *TeamSummary
+	PodCount   int
+	ImageCount int
+	Pods       []PodSummary
+	Images     []ImageSpec
+}
+
+// Vulnerabilities is the object representation of the trivy vulnerability table for an image
 type Vulnerabilities struct {
 	Description      string
 	Severity         string
@@ -79,14 +92,14 @@ type Vulnerabilities struct {
 	Layer            *Layer
 }
 
-// TrivyOutput defines TrivyOutput
+// TrivyOutput is an object representation of the trivy output for an image scan
 type TrivyOutput struct {
 	Vulnerabilities []Vulnerabilities
 	Type            string
 	Target          string
 }
 
-// Layer defines layer
+// Layer is the object representation of the trivy image layer
 type Layer struct {
 	DiffID string
 	Digest string
@@ -100,24 +113,26 @@ type Config struct {
 	AreaLabels           string
 	TeamsLabels          string
 	FilterLabels         string
+	Severity             string
 }
 
 // New creates a Scanner
-func New(kubeconfig *rest.Config, kubeClient *kubernetes.Clientset) *Scanner {
+func New(kubeconfig *rest.Config, kubeClient *kubernetes.Clientset, config *Config) *Scanner {
 	return &Scanner{
 		kubeconfig: kubeconfig,
 		kubeClient: kubeClient,
+		config:     config,
 	}
 }
 
 // ScanImages get all the images available in a cluster and scan them
-func (l *Scanner) ScanImages(config *Config) (*Report, error) {
+func (l *Scanner) ScanImages() (*Report, error) {
 	logr.Infof("Running scanner")
 
 	// get all pods running for now
 	// then we could get all the deployment and statefulset, job, cronjob, to gather all the images which are not running during the scan
 	// pod manifest should be available in the kube-system namespace
-	podList, err := l.getPods(config)
+	podList, err := l.getPods(l.config)
 	if err != nil {
 		return nil, err
 	}
@@ -126,293 +141,169 @@ func (l *Scanner) ScanImages(config *Config) (*Report, error) {
 		"podList": podList,
 	}).Debug("Pod List")
 
-	// TODO
-	// add integration test with kind
-	// create metrics for the worker queue, number of images scanned, number of images gathered from cluster
-	// use database to store scan result to avoid lost during restart of the application, also to create async scan and get the report later on from the database
-	// do we want to scan non-running pods like job, cronjob, mock scaled down
 	imageList, err := l.getImagesList(podList)
 	if err != nil {
 		return nil, err
 	}
-
-	listScanned, err := l.scanList(imageList, config)
+	scannedImages, err := l.scanList(imageList)
 	if err != nil {
 		return nil, err
 	}
 
-	logr.Infof("All namespaces have been scanned.")
+	logr.Infof("Generating report")
+	return l.generateReport(scannedImages)
+}
 
-	report := &Report{
-		ImageSummary: &ImageSummary{},
-		ImageSpecs:   listScanned,
-		ImageByArea:  map[string]*ImagePerArea{},
+func (l *Scanner) generateReport(scannedImages map[string]*ImageSpec) (*Report, error) {
+	for _, imageSpec := range scannedImages {
+		imageSpec.TotalVulnerabilityBySeverity = computeTotalVulnerabilityBySeverity(imageSpec)
 	}
-
-	logr.Infof("calculateKpis")
-	_, err = l.calculateKpis(report)
+	imagesByArea, err := l.generateAreaGrouping(scannedImages)
 	if err != nil {
 		return nil, err
 	}
-
-	logr.Infof("generateAreaOutput")
-	_, err = l.generateAreaOutput(report, config)
-	if err != nil {
-		return nil, err
-	}
-
-	return report, nil
+	return &Report{
+		ImageSpecs:  scannedImages,
+		ImageByArea: imagesByArea,
+	}, nil
 }
 
-func (l *Scanner) generateAreaOutput(report *Report, config *Config) (*Report, error) {
-	var podAreaLabel, podTeamsLabel string
-	for _, specs := range report.ImageSpecs {
-
-		for _, podDetail := range specs.Pods {
-			podAreaLabel = podDetail.Namespace.Labels[config.AreaLabels]
-			podTeamsLabel = podDetail.Namespace.Labels[config.TeamsLabels]
-
-			if podAreaLabel == "" {
-				podAreaLabel = "all"
-			}
-			if podTeamsLabel == "" {
-				podTeamsLabel = "all"
-			}
-
-			// if key doesn't exist
-			if _, ok := report.ImageByArea[podAreaLabel]; !ok {
-				report.ImageByArea[podAreaLabel] = &ImagePerArea{AreaName: podAreaLabel, Teams: map[string]*ImagePerTeam{}}
-			}
-			// if key doesn't exist
-			if _, ok := report.ImageByArea[podAreaLabel].Teams[podTeamsLabel]; !ok {
-				report.ImageByArea[podAreaLabel].Teams[podTeamsLabel] = &ImagePerTeam{TeamName: podTeamsLabel}
-			}
-
-			report.ImageByArea[podAreaLabel].Teams[podTeamsLabel].ImageCount++
-			report.ImageByArea[podAreaLabel].Teams[podTeamsLabel].PodCount++
-			report.ImageByArea[podAreaLabel].Teams[podTeamsLabel].Pods = append(report.ImageByArea[podAreaLabel].Teams[podTeamsLabel].Pods, podDetail)
-			report.ImageByArea[podAreaLabel].Teams[podTeamsLabel].Images = append(report.ImageByArea[podAreaLabel].Teams[podTeamsLabel].Images, *specs)
-
+func computeTotalVulnerabilityBySeverity(imageSpec *ImageSpec) map[string]int {
+	severityMap := make(map[string]int)
+	for _, target := range imageSpec.TrivyOutput {
+		for _, vulnerability := range target.Vulnerabilities {
+			severityMap[vulnerability.Severity] = severityMap[vulnerability.Severity] + 1
 		}
 	}
-
-	for _, area := range report.ImageByArea {
-		for _, teams := range area.Teams {
-			logr.Infof("Sort area %s, teams %s", area.AreaName, teams.TeamName)
-			teams.Images = sortByCriticality(teams.Images, false)
-
-			teams.ImageSummary = kpisImages(teams.Images)
-			imagesArr := []ImageSpec{}
-			for _, specs := range teams.Images {
-				for _, trivy := range specs.TrivyOutput {
-					if len(trivy.Vulnerabilities) > 0 {
-						imagesArr = append(imagesArr, specs)
-					}
-				}
-			}
-
-			teams.ImageSpecsSortByCriticality = sortByCriticality(imagesArr, true)
-		}
-	}
-
-	return report, nil
+	return severityMap
 }
 
-// ImagePerArea - define ImagePerArea
-type ImagePerArea struct {
-	AreaName string
-	Teams    map[string]*ImagePerTeam
+type teamKey struct {
+	area, team string
 }
 
-// ImagePerTeam define ImagePerTeam
-type ImagePerTeam struct {
-	TeamName                    string
-	PodCount                    int
-	ImageCount                  int
-	Pods                        []PodDetail
-	Images                      []ImageSpec
-	ImageSummary                *ImageSummary
-	ImageSpecsSortByCriticality []ImageSpec
-}
-
-func kpisImages(images []ImageSpec) *ImageSummary {
-
-	imageSum := ImageSummary{}
-
-	imageSum.NumberImagesScanned = len(images)
-
-	imageSum.NumberPodsScanned = 0
-
-	imageSum.ImagePerRegistry = map[string]*ImagePerRegistry{}
-
-	imageSum.TotalVulnerabilityPerCriticality = map[string]int{}
-	imageSum.TotalVulnerabilityPerCriticality["CRITICAL"] = 0
-	imageSum.TotalVulnerabilityPerCriticality["HIGH"] = 0
-	imageSum.TotalVulnerabilityPerCriticality["MEDIUM"] = 0
-	imageSum.TotalVulnerabilityPerCriticality["LOW"] = 0
-
-	imageSum.ImagePerRegistry["docker.io"] = &ImagePerRegistry{RegistryName: "docker.io", Pods: []PodDetail{}}
-
-	for _, specs := range images {
-		specs.TotalVulnerabilityPerCriticality = map[string]int{}
-		specs.TotalVulnerabilityPerCriticality["CRITICAL"] = 0
-		specs.TotalVulnerabilityPerCriticality["HIGH"] = 0
-		specs.TotalVulnerabilityPerCriticality["MEDIUM"] = 0
-		specs.TotalVulnerabilityPerCriticality["LOW"] = 0
-
-		imageSum.NumberPodsScanned = imageSum.NumberPodsScanned + len(specs.Pods)
-
-		imageNamWitoutTag := strings.Split(specs.ImageName, ":")
-		imageNameArr := strings.Split(imageNamWitoutTag[0], "/")
-		// if contains . then it's a domain name, otherwise it's plain image like ubuntu:latest
-		if strings.Contains(imageNameArr[0], ".") {
-			// if key doesn't exist
-			if _, ok := imageSum.ImagePerRegistry[imageNameArr[0]]; !ok {
-				imageSum.ImagePerRegistry[imageNameArr[0]] = &ImagePerRegistry{RegistryName: imageNameArr[0], Pods: []PodDetail{}}
-			}
-
-			imageSum.ImagePerRegistry[imageNameArr[0]].Pods = append(imageSum.ImagePerRegistry[imageNameArr[0]].Pods, specs.Pods...)
-			imageSum.ImagePerRegistry[imageNameArr[0]].Images = append(imageSum.ImagePerRegistry[imageNameArr[0]].Images, specs.ImageName)
-		} else {
-			imageSum.ImagePerRegistry["docker.io"].Pods = append(imageSum.ImagePerRegistry["docker.io"].Pods, specs.Pods...)
-			imageSum.ImagePerRegistry["docker.io"].Images = append(imageSum.ImagePerRegistry["docker.io"].Images, specs.ImageName)
+func (l *Scanner) generateAreaGrouping(imageSpecs map[string]*ImageSpec) (map[string]*ImagePerArea, error) {
+	imagesSpecByTeam, podsByTeam := l.groupImagesAndPodsByTeamAndArea(imageSpecs)
+	imagesByArea := make(map[string]*ImagePerArea)
+	for key := range podsByTeam {
+		if _, ok := imagesByArea[key.area]; !ok {
+			imagesByArea[key.area] = &ImagePerArea{AreaName: key.area, Teams: map[string]*ImagePerTeam{}}
+		}
+		if _, ok := imagesByArea[key.area].Teams[key.team]; !ok {
+			imagesByArea[key.area].Teams[key.team] = &ImagePerTeam{TeamName: key.team}
 		}
 
-		for _, output := range specs.TrivyOutput {
-			for _, vul := range output.Vulnerabilities {
-
-				// if key doesn't exist
-				if _, ok := imageSum.TotalVulnerabilityPerCriticality[vul.Severity]; !ok {
-					imageSum.TotalVulnerabilityPerCriticality[vul.Severity] = 0
-				}
-				if _, ok := specs.TotalVulnerabilityPerCriticality[vul.Severity]; !ok {
-					specs.TotalVulnerabilityPerCriticality[vul.Severity] = 0
-				}
-				imageSum.TotalVulnerabilityPerCriticality[vul.Severity]++
-				specs.TotalVulnerabilityPerCriticality[vul.Severity]++
-			}
+		var teamImages []ImageSpec
+		for _, imageSpec := range imagesSpecByTeam[key] {
+			teamImages = append(teamImages, imageSpec)
 		}
 
+		imagesByArea[key.area].Teams[key.team].PodCount = len(podsByTeam[key])
+		imagesByArea[key.area].Teams[key.team].Pods = podsByTeam[key]
+		imagesByArea[key.area].Teams[key.team].Images = sortBySeverity(teamImages)
+		imagesByArea[key.area].Teams[key.team].ImageCount = len(teamImages)
+		imagesByArea[key.area].Teams[key.team].Summary = buildTeamSummary(teamImages)
 	}
 
-	imageSum.NumberImagesFromExternalRegistry = 0
-	imageSum.NumberPodsFromExternalRegistry = 0
-	extenalRegistryName := []string{"docker.io", "quay.io", "gcr.io"}
-	for registryName, specs := range imageSum.ImagePerRegistry {
-		// if key exists
-		if contains(extenalRegistryName, registryName) {
-			imageSum.NumberPodsFromExternalRegistry = imageSum.NumberPodsFromExternalRegistry + len(specs.Pods)
-			imageSum.NumberImagesFromExternalRegistry = imageSum.NumberImagesFromExternalRegistry + len(specs.Images)
-		}
-		specs.PodCount = len(specs.Pods)
-		specs.ImageCount = len(specs.Images)
+	for area, areaImages := range imagesByArea {
+		imagesByArea[area].Summary = buildAreaSummary(areaImages)
 	}
 
-	return &imageSum
+	return imagesByArea, nil
 }
 
-func (l *Scanner) convertMapToArrayImageSpecs(images map[string]*ImageSpec, keepOnlyImgWithVul bool) []ImageSpec {
-	var imagesArr []ImageSpec
-	for _, specs := range images {
-		for _, trivy := range specs.TrivyOutput {
-			if len(trivy.Vulnerabilities) > 0 && keepOnlyImgWithVul {
-				imagesArr = append(imagesArr, *specs)
-			} else {
-				imagesArr = append(imagesArr, *specs)
+func (l *Scanner) groupImagesAndPodsByTeamAndArea(imageSpecs map[string]*ImageSpec) (map[teamKey]map[string]ImageSpec, map[teamKey][]PodSummary) {
+	imagesSpecByTeam := make(map[teamKey]map[string]ImageSpec)
+	podsByTeam := make(map[teamKey][]PodSummary)
+	var areaLabel, teamsLabel string
+	for _, specs := range imageSpecs {
+		for _, podSummary := range specs.Pods {
+			areaLabel = podSummary.NamespaceLabels[l.config.AreaLabels]
+			teamsLabel = podSummary.NamespaceLabels[l.config.TeamsLabels]
+
+			if areaLabel == "" {
+				areaLabel = "all"
+			}
+			if teamsLabel == "" {
+				teamsLabel = "all"
+			}
+
+			key := teamKey{area: areaLabel, team: teamsLabel}
+			podsByTeam[key] = append(podsByTeam[key], podSummary)
+
+			if _, ok := imagesSpecByTeam[key]; !ok {
+				imagesSpecByTeam[key] = make(map[string]ImageSpec)
+			}
+			imagesSpecByTeam[key][specs.ImageName] = *specs
+		}
+	}
+	return imagesSpecByTeam, podsByTeam
+}
+
+func buildAreaSummary(areaImages *ImagePerArea) *AreaSummary {
+	summary := AreaSummary{}
+	for _, teamImages := range areaImages.Teams {
+		summary.ImageCount += teamImages.ImageCount
+		summary.PodCount += teamImages.PodCount
+		for _, vulnerabilitySummary := range teamImages.Summary.ImageVulnerabilitySummary {
+			if summary.TotalVulnerabilityBySeverity == nil {
+				summary.TotalVulnerabilityBySeverity = make(map[string]int)
+			}
+			for severity, count := range vulnerabilitySummary.TotalVulnerabilityBySeverity {
+				summary.TotalVulnerabilityBySeverity[severity] += count
 			}
 		}
 	}
-	return imagesArr
+	return &summary
 }
 
-func (l *Scanner) calculateKpis(report *Report) (*Report, error) {
-
-	report.ImageSpecsSortByCriticality = l.convertMapToArrayImageSpecs(report.ImageSpecs, true)
-	images := l.convertMapToArrayImageSpecs(report.ImageSpecs, false)
-	report.ImageSummary = kpisImages(images)
-
-	// TOP 20 IMAGES CONTAINING THE MOST CRITICAL and high VULNERABILITIES
-	// - count all vulnerabilities high + critical
-	// TOP 20 IMAGES CONTAINING CRITICAL VULNERABILITIES WITH THE MOST REPLICAS:
-	// - count all vulnerabilities most replicas
-
-	logr.Infof("Sorted by Criticality and replicas")
-	report.ImageSpecsSortByCriticality = sortByCriticality(report.ImageSpecsSortByCriticality, true)
-
-	for index, image := range report.ImageSpecsSortByCriticality {
-		if index < 20 {
-			report.ImageSpecsSortByCriticalityTop20MostReplicas = append(report.ImageSpecsSortByCriticalityTop20MostReplicas, image)
-		} else {
-			break
+func buildTeamSummary(teamImages []ImageSpec) *TeamSummary {
+	summary := TeamSummary{}
+	for _, image := range teamImages {
+		if summary.ImageVulnerabilitySummary == nil {
+			summary.ImageVulnerabilitySummary = make(map[string]VulnerabilitySummary)
+		}
+		summary.ImageVulnerabilitySummary[image.ImageName] = VulnerabilitySummary{
+			PodCount:                     len(image.Pods),
+			TotalVulnerabilityBySeverity: image.TotalVulnerabilityBySeverity,
 		}
 	}
-
-	logr.Infof("Sorted by Criticality")
-
-	report.ImageSpecsSortByCriticality = sortByCriticality(report.ImageSpecsSortByCriticality, false)
-	for index, image := range report.ImageSpecsSortByCriticality {
-		if index < 20 {
-			report.ImageSpecsSortByCriticalityTop20 = append(report.ImageSpecsSortByCriticalityTop20, image)
-		} else {
-			break
-		}
-	}
-
-	return report, nil
+	return &summary
 }
 
-func sortByCriticality(imageArr []ImageSpec, includePodCount bool) []ImageSpec {
+func sortBySeverity(imageArr []ImageSpec) []ImageSpec {
 	sort.Slice(imageArr, func(i, j int) bool {
 
 		firstItemScore := 0
 		secondItemScore := 0
-		if _, ok := imageArr[i].TotalVulnerabilityPerCriticality["CRITICAL"]; ok {
-			firstItemScore = firstItemScore + imageArr[i].TotalVulnerabilityPerCriticality["CRITICAL"]*1000
+		if _, ok := imageArr[i].TotalVulnerabilityBySeverity["CRITICAL"]; ok {
+			firstItemScore = firstItemScore + imageArr[i].TotalVulnerabilityBySeverity["CRITICAL"]*1000000
 		}
-		if _, ok := imageArr[i].TotalVulnerabilityPerCriticality["HIGH"]; ok {
-			firstItemScore = firstItemScore + imageArr[i].TotalVulnerabilityPerCriticality["HIGH"]*500
+		if _, ok := imageArr[i].TotalVulnerabilityBySeverity["HIGH"]; ok {
+			firstItemScore = firstItemScore + imageArr[i].TotalVulnerabilityBySeverity["HIGH"]*10000
 		}
-		if _, ok := imageArr[i].TotalVulnerabilityPerCriticality["MEDIUM"]; ok {
-			firstItemScore = firstItemScore + imageArr[i].TotalVulnerabilityPerCriticality["MEDIUM"]*100
+		if _, ok := imageArr[i].TotalVulnerabilityBySeverity["MEDIUM"]; ok {
+			firstItemScore = firstItemScore + imageArr[i].TotalVulnerabilityBySeverity["MEDIUM"]*100
 		}
-		if _, ok := imageArr[i].TotalVulnerabilityPerCriticality["LOW"]; ok {
-			firstItemScore = firstItemScore + imageArr[i].TotalVulnerabilityPerCriticality["LOW"]
-		}
-
-		if _, ok := imageArr[j].TotalVulnerabilityPerCriticality["CRITICAL"]; ok {
-			secondItemScore = secondItemScore + imageArr[j].TotalVulnerabilityPerCriticality["CRITICAL"]*1000
-		}
-		if _, ok := imageArr[j].TotalVulnerabilityPerCriticality["HIGH"]; ok {
-			secondItemScore = secondItemScore + imageArr[j].TotalVulnerabilityPerCriticality["HIGH"]*500
-		}
-		if _, ok := imageArr[j].TotalVulnerabilityPerCriticality["MEDIUM"]; ok {
-			secondItemScore = secondItemScore + imageArr[j].TotalVulnerabilityPerCriticality["MEDIUM"]*100
-		}
-		if _, ok := imageArr[j].TotalVulnerabilityPerCriticality["LOW"]; ok {
-			secondItemScore = secondItemScore + imageArr[j].TotalVulnerabilityPerCriticality["LOW"]
+		if _, ok := imageArr[i].TotalVulnerabilityBySeverity["LOW"]; ok {
+			firstItemScore = firstItemScore + imageArr[i].TotalVulnerabilityBySeverity["LOW"]
 		}
 
-		if includePodCount {
-
-			// logr.Infof(" %d, %d", len(imageArr[i].Pods)*10000, len(imageArr[j].Pods)*10000)
-			firstItemScore = firstItemScore + len(imageArr[i].Pods)*10000
-			secondItemScore = secondItemScore + len(imageArr[j].Pods)*10000
+		if _, ok := imageArr[j].TotalVulnerabilityBySeverity["CRITICAL"]; ok {
+			secondItemScore = secondItemScore + imageArr[j].TotalVulnerabilityBySeverity["CRITICAL"]*1000000
 		}
-
-		// logr.Infof("%s, %d, %v", imageArr[i].ImageName, firstItemScore, imageArr[i].TotalVulnerabilityPerCriticality)
-		// logr.Infof("%s, %d, %v ", imageArr[j].ImageName, secondItemScore, imageArr[j].TotalVulnerabilityPerCriticality)
+		if _, ok := imageArr[j].TotalVulnerabilityBySeverity["HIGH"]; ok {
+			secondItemScore = secondItemScore + imageArr[j].TotalVulnerabilityBySeverity["HIGH"]*10000
+		}
+		if _, ok := imageArr[j].TotalVulnerabilityBySeverity["MEDIUM"]; ok {
+			secondItemScore = secondItemScore + imageArr[j].TotalVulnerabilityBySeverity["MEDIUM"]*100
+		}
+		if _, ok := imageArr[j].TotalVulnerabilityBySeverity["LOW"]; ok {
+			secondItemScore = secondItemScore + imageArr[j].TotalVulnerabilityBySeverity["LOW"]
+		}
 		return firstItemScore > secondItemScore
 	})
 	return imageArr
-}
-
-func contains(arr []string, str string) bool {
-	for _, a := range arr {
-		if a == str {
-			return true
-		}
-	}
-	return false
 }
 
 func (l *Scanner) getNamespaces(config *Config) (*v1.NamespaceList, error) {
@@ -434,15 +325,21 @@ func (l *Scanner) getNamespaces(config *Config) (*v1.NamespaceList, error) {
 	return namespaceList, nil
 }
 
-// PodDetail - PodDetail
-type PodDetail struct {
+type podDetail struct {
 	Pod       v1.Pod
 	Namespace v1.Namespace
 }
 
-func (l *Scanner) getPods(config *Config) ([]PodDetail, error) {
+// PodSummary - cut down version of the podDetail
+type PodSummary struct {
+	Name            string
+	Namespace       string
+	NamespaceLabels map[string]string
+}
+
+func (l *Scanner) getPods(config *Config) ([]podDetail, error) {
 	var podList *v1.PodList
-	var podDetailList []PodDetail
+	var podDetailList []podDetail
 	var namespaceList *v1.NamespaceList
 	var err error
 
@@ -456,7 +353,7 @@ func (l *Scanner) getPods(config *Config) ([]PodDetail, error) {
 		podList, err = l.kubeClient.CoreV1().Pods(namespace.Name).List(metaV1.ListOptions{})
 
 		for _, pod := range podList.Items {
-			podDetailList = append(podDetailList, PodDetail{Pod: pod, Namespace: namespace})
+			podDetailList = append(podDetailList, podDetail{Pod: pod, Namespace: namespace})
 		}
 		logr.Infof("Get pods from namespace %s", namespace.Name)
 
@@ -471,18 +368,17 @@ func (l *Scanner) getPods(config *Config) ([]PodDetail, error) {
 	return podDetailList, nil
 }
 
-func (l *Scanner) getImagesList(podList []PodDetail) (map[string]*ImageSpec, error) {
+func (l *Scanner) getImagesList(podList []podDetail) (map[string]*ImageSpec, error) {
 	imageList := map[string]*ImageSpec{}
 	for _, pod := range podList {
-		logr.Infof("pod %s in namespace %s", pod.Pod.Name, pod.Pod.Namespace)
-		podItem := pod
+		logr.Infof("pod %s in namespace %s", pod.Pod.Name, pod.Namespace.Name)
+		podItem := PodSummary{Namespace: pod.Namespace.Name, NamespaceLabels: pod.Namespace.Labels, Name: pod.Pod.Name}
 		for _, container := range pod.Pod.Spec.Containers {
 			// if key exists
 			if image, ok := imageList[container.Image]; ok {
 				image.Pods = append(image.Pods, podItem)
 			} else {
-				podDetail := []PodDetail{{Pod: podItem.Pod, Namespace: podItem.Namespace}}
-				imageList[container.Image] = &ImageSpec{Pods: podDetail}
+				imageList[container.Image] = &ImageSpec{Pods: []PodSummary{podItem}}
 			}
 		}
 	}
@@ -499,7 +395,7 @@ func (l *Scanner) stringReplacement(imageName string, stringReplacement string) 
 				logr.Debugf("String replacement from imageName: %s, match: %s, replace %s", imageName, replacementItems[0], replacementItems[1])
 				imageName = strings.Replace(imageName, replacementItems[0], replacementItems[1], -1)
 			} else {
-				return imageName, fmt.Errorf("String Replacement pattern is not in the right format '$matchingString|$replacementString,$matchingString|$replacementString'")
+				return imageName, fmt.Errorf("string Replacement pattern is not in the right format '$matchingString|$replacementString,$matchingString|$replacementString'")
 			}
 
 		}
@@ -508,20 +404,21 @@ func (l *Scanner) stringReplacement(imageName string, stringReplacement string) 
 	return imageName, nil
 }
 
-func (l *Scanner) scanList(imageList map[string]*ImageSpec, config *Config) (map[string]*ImageSpec, error) {
-	wp := workerpool.New(config.Workers)
+func (l *Scanner) scanList(imageList map[string]*ImageSpec) (map[string]*ImageSpec, error) {
+	wp := workerpool.New(l.config.Workers)
 
 	err := l.execTrivyDB()
 	if err != nil {
 		logr.Errorf("Failed to download trivy db: %s", err)
 	}
 
+	logr.Infof("Scanning %d images with %d workers", len(imageList), l.config.Workers)
 	for imageName, imageSpec := range imageList {
 		// allocate var to allow access inside the worker submission
 		imageSpec := imageSpec
-		imageName, err := l.stringReplacement(imageName, config.ImageNameReplacement)
+		imageName, err := l.stringReplacement(imageName, l.config.ImageNameReplacement)
 		if err != nil {
-			logr.Errorf("Error string replacement failed, image_name : %s, image_replacement_string: %s, error: %s", imageName, config.ImageNameReplacement, err)
+			logr.Errorf("Error string replacement failed, image_name : %s, image_replacement_string: %s, error: %s", imageName, l.config.ImageNameReplacement, err)
 		}
 
 		wp.Submit(func() {
@@ -621,9 +518,9 @@ func (l *Scanner) execTrivyDB() error {
 
 func (l *Scanner) execTrivy(imageName string, imageSpec *ImageSpec) error {
 
-	logr.Infof("worker image: %s, pod_name: %s", imageName, imageSpec.Pods[0].Pod.Name)
+	logr.Infof("worker image: %s, pod_name: %s", imageName, imageSpec.Pods[0].Name)
 	cmd := "trivy"
-	args := []string{"-q", "image", "-f", "json", "--skip-update", "--no-progress", imageName}
+	args := []string{"-q", "image", "-f", "json", "--skip-update", "--no-progress", "--severity", l.config.Severity, imageName}
 
 	output, errOutput, err := execCmd.Execute(cmd, args)
 

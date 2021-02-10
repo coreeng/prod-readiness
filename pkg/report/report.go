@@ -1,20 +1,17 @@
 package report
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"html/template"
-	"io/ioutil"
 	"os"
-	"time"
 
 	logr "github.com/sirupsen/logrus"
 )
 
 // GenerateMarkdown - GenerateMarkdown
-func GenerateMarkdown(report interface{}, templateFilename string, filename string) (bool, error) {
-
+func GenerateMarkdown(report interface{}, templateFilename string, filename string) error {
+	logr.Infof("Generating mark-down based on template %s", templateFilename)
 	tmp := template.New(templateFilename)
 	tmp.Funcs(template.FuncMap{
 		"safe": func(s string) template.HTML { return template.HTML(s) },
@@ -54,51 +51,40 @@ func GenerateMarkdown(report interface{}, templateFilename string, filename stri
 	tmpl, err := tmp.ParseFiles(templateFilename)
 
 	if err != nil {
-		return false, err
+		return err
 	}
 
-	var output bytes.Buffer
-
-	err = tmpl.Execute(&output, report)
-
+	reportMarkdownFile, err := os.Create(filename)
 	if err != nil {
-		return false, fmt.Errorf("unable to create file from template: %v", err)
+		return fmt.Errorf("could not create mark-down file %s: %v", filename, err)
 	}
 
-	output.Bytes()
-	return writeFile(filename, output.Bytes())
+	err = tmpl.Execute(reportMarkdownFile, report)
+	if err != nil {
+		return err
+	}
+	logr.Infof("Generated mark-down file: %s", templateFilename)
+	return nil
 }
 
 // SaveReport - SaveReport
 func SaveReport(report interface{}, filename string) error {
+	logr.Infof("Saving report to: %s", filename)
 
 	// saving the ouput into a file
-	file, _ := json.MarshalIndent(report, "", " ")
-	date := time.Now()
-	dateFormatted := fmt.Sprintf("%d-%02d-%02dT%02d:%02d:%02d",
-		date.Year(), date.Month(), date.Day(),
-		date.Hour(), date.Minute(), date.Second())
-
-	directory := "results"
-	os.Mkdir(directory, 0755)
-
-	filenameSaved := fmt.Sprintf("%s/%s_%s.json", directory, filename, dateFormatted)
-	err := ioutil.WriteFile(filenameSaved, file, 0644)
-
+	reportJSONFile, err := os.Create(filename)
 	if err != nil {
-		logr.Errorf("Error saving report %s", err)
+		return fmt.Errorf("could not create report json file %s: %v", filename, err)
+	}
+
+	encoder := json.NewEncoder(reportJSONFile)
+	err = encoder.Encode(report)
+	if err != nil {
+		logr.Errorf("Error encoding report to json %v", err)
 		return err
 	}
 
-	logr.Infof("Report saved into: %s", filenameSaved)
+	logr.Infof("Report saved into: %s", filename)
 
 	return nil
-}
-
-func writeFile(location string, contents []byte) (bool, error) {
-	err := ioutil.WriteFile(location, contents, 0644)
-	if err != nil {
-		return false, err
-	}
-	return true, nil
 }

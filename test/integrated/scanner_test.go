@@ -27,18 +27,17 @@ var _ = Describe("Scan Images", func() {
 		kubeconfigPath := fmt.Sprintf("%s/.kube/kind-production-readiness", os.Getenv("HOME"))
 		kubeconfig := k8s.KubernetesConfig(kubeContext, kubeconfigPath)
 		clientset := k8s.KubernetesClient(kubeconfig)
-		scan = scanner.New(kubeconfig, clientset)
-	})
-
-	It("should scan images", func() {
 		config := &scanner.Config{
 			LogLevel:             "info",
 			Workers:              5,
 			ImageNameReplacement: "",
 		}
+		scan = scanner.New(kubeconfig, clientset, config)
+	})
 
+	It("should scan images", func() {
 		// to be finished includes all the function inside ScanImages to test output of each of them
-		err := scan.ScanImages(config)
+		_, err := scan.ScanImages()
 		Expect(err).NotTo(HaveOccurred())
 	})
 })
