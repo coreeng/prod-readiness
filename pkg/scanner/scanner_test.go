@@ -288,20 +288,20 @@ var _ = Describe("Scan Images", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(imageByArea["area1"].Teams).Should(HaveLen(2))
 			Expect(imageByArea["area1"].Teams["team1"].Images).Should(HaveImages("image1", "image2"))
-			Expect(imageByArea["area1"].Teams["team1"].Pods[0].NamespaceLabels).Should(And(
+			Expect(imageByArea["area1"].Teams["team1"].Containers[0].NamespaceLabels).Should(And(
 				HaveKeyWithValue(areaLabel, "area1"),
 				HaveKeyWithValue(teamLabel, "team1"),
 			))
 
 			Expect(imageByArea["area1"].Teams["team2"].Images).Should(HaveImages("image3"))
-			Expect(imageByArea["area1"].Teams["team2"].Pods[0].NamespaceLabels).Should(And(
+			Expect(imageByArea["area1"].Teams["team2"].Containers[0].NamespaceLabels).Should(And(
 				HaveKeyWithValue(areaLabel, "area1"),
 				HaveKeyWithValue(teamLabel, "team2"),
 			))
 
 			Expect(imageByArea["area2"].Teams).Should(HaveLen(1))
 			Expect(imageByArea["area2"].Teams["team3"].Images).Should(HaveImages("image4"))
-			Expect(imageByArea["area2"].Teams["team3"].Pods[0].NamespaceLabels).Should(And(
+			Expect(imageByArea["area2"].Teams["team3"].Containers[0].NamespaceLabels).Should(And(
 				HaveKeyWithValue(areaLabel, "area2"),
 				HaveKeyWithValue(teamLabel, "team3"),
 			))
@@ -338,16 +338,16 @@ var _ = Describe("Scan Images", func() {
 			Expect(imageByArea["area1"].Teams).Should(HaveLen(2))
 			Expect(imageByArea["area1"].Teams["team1"].Images).Should(HaveImages("image1"))
 			Expect(imageByArea["area1"].Teams["team1"].ImageCount).Should(Equal(1))
-			Expect(imageByArea["area1"].Teams["team1"].Pods).Should(HaveLen(2))
+			Expect(imageByArea["area1"].Teams["team1"].Containers).Should(HaveLen(2))
 			Expect(imageByArea["area1"].Teams["team1"].ContainerCount).Should(Equal(2))
-			Expect(imageByArea["area1"].Teams["team1"].Pods[0].PodName).Should(Equal("pod1"))
-			Expect(imageByArea["area1"].Teams["team1"].Pods[1].PodName).Should(Equal("pod2"))
+			Expect(imageByArea["area1"].Teams["team1"].Containers[0].PodName).Should(Equal("pod1"))
+			Expect(imageByArea["area1"].Teams["team1"].Containers[1].PodName).Should(Equal("pod2"))
 
 			Expect(imageByArea["area1"].Teams["team2"].Images).Should(HaveImages("image1"))
 			Expect(imageByArea["area1"].Teams["team2"].ImageCount).Should(Equal(1))
-			Expect(imageByArea["area1"].Teams["team2"].Pods).Should(HaveLen(1))
+			Expect(imageByArea["area1"].Teams["team2"].Containers).Should(HaveLen(1))
 			Expect(imageByArea["area1"].Teams["team2"].ContainerCount).Should(Equal(1))
-			Expect(imageByArea["area1"].Teams["team2"].Pods[0].PodName).Should(Equal("pod3"))
+			Expect(imageByArea["area1"].Teams["team2"].Containers[0].PodName).Should(Equal("pod3"))
 		})
 
 		It("sort teams images by criticality", func() {

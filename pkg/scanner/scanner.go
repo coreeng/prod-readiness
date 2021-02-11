@@ -74,7 +74,7 @@ type ImagePerTeam struct {
 	Summary        *TeamSummary
 	ContainerCount int
 	ImageCount     int
-	Pods           []ContainerSummary
+	Containers     []ContainerSummary
 	Images         []ImageSpec
 }
 
@@ -182,7 +182,7 @@ type teamKey struct {
 }
 
 func (l *Scanner) generateAreaGrouping(imageSpecs map[string]*ImageSpec) (map[string]*ImagePerArea, error) {
-	imagesSpecByTeam, podsByTeam := l.groupImagesAndPodsByTeamAndArea(imageSpecs)
+	imagesSpecByTeam, podsByTeam := l.groupImagesAndContainersByTeamAndArea(imageSpecs)
 	imagesByArea := make(map[string]*ImagePerArea)
 	for key := range podsByTeam {
 		if _, ok := imagesByArea[key.area]; !ok {
@@ -198,7 +198,7 @@ func (l *Scanner) generateAreaGrouping(imageSpecs map[string]*ImageSpec) (map[st
 		}
 
 		imagesByArea[key.area].Teams[key.team].ContainerCount = len(podsByTeam[key])
-		imagesByArea[key.area].Teams[key.team].Pods = podsByTeam[key]
+		imagesByArea[key.area].Teams[key.team].Containers = podsByTeam[key]
 		imagesByArea[key.area].Teams[key.team].Images = sortBySeverity(teamImages)
 		imagesByArea[key.area].Teams[key.team].ImageCount = len(teamImages)
 		imagesByArea[key.area].Teams[key.team].Summary = buildTeamSummary(teamImages)
@@ -211,9 +211,9 @@ func (l *Scanner) generateAreaGrouping(imageSpecs map[string]*ImageSpec) (map[st
 	return imagesByArea, nil
 }
 
-func (l *Scanner) groupImagesAndPodsByTeamAndArea(imageSpecs map[string]*ImageSpec) (map[teamKey]map[string]ImageSpec, map[teamKey][]ContainerSummary) {
+func (l *Scanner) groupImagesAndContainersByTeamAndArea(imageSpecs map[string]*ImageSpec) (map[teamKey]map[string]ImageSpec, map[teamKey][]ContainerSummary) {
 	imagesSpecByTeam := make(map[teamKey]map[string]ImageSpec)
-	podsByTeam := make(map[teamKey][]ContainerSummary)
+	containersByTeam := make(map[teamKey][]ContainerSummary)
 	var areaLabel, teamsLabel string
 	for _, specs := range imageSpecs {
 		for _, podSummary := range specs.Containers {
@@ -228,7 +228,7 @@ func (l *Scanner) groupImagesAndPodsByTeamAndArea(imageSpecs map[string]*ImageSp
 			}
 
 			key := teamKey{area: areaLabel, team: teamsLabel}
-			podsByTeam[key] = append(podsByTeam[key], podSummary)
+			containersByTeam[key] = append(containersByTeam[key], podSummary)
 
 			if _, ok := imagesSpecByTeam[key]; !ok {
 				imagesSpecByTeam[key] = make(map[string]ImageSpec)
@@ -236,7 +236,7 @@ func (l *Scanner) groupImagesAndPodsByTeamAndArea(imageSpecs map[string]*ImageSp
 			imagesSpecByTeam[key][specs.ImageName] = *specs
 		}
 	}
-	return imagesSpecByTeam, podsByTeam
+	return imagesSpecByTeam, containersByTeam
 }
 
 func buildAreaSummary(areaImages *ImagePerArea) *AreaSummary {
