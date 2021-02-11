@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"html/template"
 	"os"
+	"path/filepath"
 
 	logr "github.com/sirupsen/logrus"
 )
@@ -12,7 +13,7 @@ import (
 // GenerateMarkdown - GenerateMarkdown
 func GenerateMarkdown(report interface{}, templateFilename string, filename string) error {
 	logr.Infof("Generating mark-down based on template %s", templateFilename)
-	tmp := template.New(templateFilename)
+	tmp := template.New(filepath.Base(templateFilename))
 	tmp.Funcs(template.FuncMap{
 		"safe": func(s string) template.HTML { return template.HTML(s) },
 	})
