@@ -67,6 +67,12 @@ There are two available templates for convenience:
 
 A custom template file can be specified using the `--report-template-filename` command line argument.
 
+HTML files can be converted to PDF files in various ways.
+One tool that works for us is [wkhtmltopdf](https://wkhtmltopdf.org/downloads.html) which can be use as follows:
+```
+wkhtmltopdf <report.html> <report.pdf>
+```
+
 ## TODOs
 
 - use trivy library rather than the command line
