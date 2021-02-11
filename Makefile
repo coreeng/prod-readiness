@@ -104,3 +104,6 @@ endif
 ifeq (, $(shell which kind))
 	$(error "kind not found in PATH")
 endif
+ifeq (, $(shell which trivy))
+	$(error "trivy not found in PATH")
+endif
