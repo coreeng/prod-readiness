@@ -29,10 +29,18 @@ Run `make format` to fix any formatting errors.
 
 #### Integrated tests
 
-_This is work in progress_
+Integrated tests will run an image scan against a local [Kind](https://kind.sigs.k8s.io/) cluster.
+To prepare your environment you must install [trivy](https://github.com/aquasecurity/trivy) and `docker`
 
-`make integrated-test`
+To create a [Kind](https://kind.sigs.k8s.io/) Kubernetes cluster:
+```
+make kind
+```
 
+To run the integrated tests:
+```
+make integrated-test
+```
 
 ## Releasing
 
@@ -42,6 +50,9 @@ _To be defined_
 ## Cheatsheet
 
 ### Run images scan
+
+To prepare your environment you must install [trivy](https://github.com/aquasecurity/trivy) and `docker`
+as the image scan utility require both command line tools.
 
 ```
 production-readiness scan  --context cluster-name  --area-labels=area-name --teams-labels=team --image-name-replacement='mirror.registry:5000|registry.new.url,mirror-2.registry:5000|registry.new.url'
@@ -57,3 +68,11 @@ See [Render-presentation](audit-report/Readme.md#Render-presentation)
 ```
 cp report-imageScan.md audit-report/report.md
 ```
+
+## TODOs
+
+- use trivy library rather than the command line
+- use docker library rather than the command line
+- change the scan template to support (again) pagination
+- restructure the code for better encapsulation
+- releasing
