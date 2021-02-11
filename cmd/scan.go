@@ -26,8 +26,8 @@ func init() {
 	scanCmd.Flags().StringVar(&filterLabels, "filters-labels", "", "string allowing to filter the namespaces string separated by comma")
 	scanCmd.Flags().StringVar(&severity, "severity", "UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL", "severities of vulnerabilities to be reported (comma separated) ")
 	scanCmd.Flags().IntVar(&workersScan, "workers-scan", 10, "number of worker to process images scan in parallel")
-	scanCmd.Flags().StringVar(&reportTemplate, "report-template-filename", "report-imageScan.md.tmpl", "input filename that will be used as report template")
-	scanCmd.Flags().StringVar(&reportFile, "report-filename", "report-imageScan.md", "output filename where that will contain the generated report based on the report-template")
+	scanCmd.Flags().StringVar(&reportTemplate, "report-template-filename", "report-imageScan.html.tmpl", "input filename that will be used as report template")
+	scanCmd.Flags().StringVar(&reportFile, "report-filename", "report-imageScan.html", "output filename where that will contain the generated report based on the report-template")
 	scanCmd.Flags().StringVar(&jsonReportFile, "json-report-filename", "", "output filename where the json representation of the report will be saved. No json representation will be created unless this option is specified")
 }
 
