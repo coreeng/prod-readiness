@@ -58,7 +58,7 @@ var _ = Describe("Scan Images", func() {
 		})
 	})
 
-	Describe("GetImagesList", func() {
+	Describe("GroupContainersByImageName", func() {
 		var (
 			scan *Scanner
 		)
@@ -67,7 +67,7 @@ var _ = Describe("Scan Images", func() {
 			scan = &Scanner{}
 		})
 
-		It("GetImagesList should return an unique map", func() {
+		It("GroupContainersByImageName should return an unique map", func() {
 			podList1 := podDetail{
 				Pod: v1.Pod{
 					ObjectMeta: metaV1.ObjectMeta{
@@ -91,7 +91,7 @@ var _ = Describe("Scan Images", func() {
 				},
 				Namespace: v1.Namespace{
 					ObjectMeta: metaV1.ObjectMeta{
-						Name: "test-namespace",
+						Name: "test-namespace1",
 						Labels: map[string]string{
 							"teams-name": "team1",
 						},
@@ -122,7 +122,7 @@ var _ = Describe("Scan Images", func() {
 				},
 				Namespace: v1.Namespace{
 					ObjectMeta: metaV1.ObjectMeta{
-						Name: "test-namespace",
+						Name: "test-namespace2",
 						Labels: map[string]string{
 							"teams-name": "team2",
 						},
@@ -131,25 +131,30 @@ var _ = Describe("Scan Images", func() {
 			}
 
 			// when
-			imageList, err := scan.getImagesList([]podDetail{podList1, podList2})
+			actualMap, err := scan.groupContainersByImageName([]podDetail{podList1, podList2})
 
 			// then
-			podSummary1 := PodSummary{Name: podList1.Pod.Name, Namespace: podList1.Namespace.Name, NamespaceLabels: podList1.Namespace.Labels}
-			podSummary2 := PodSummary{Name: podList2.Pod.Name, Namespace: podList2.Namespace.Name, NamespaceLabels: podList2.Namespace.Labels}
-			imageListExpected := map[string]*ImageSpec{
+			expectedMap := map[string]*ImageSpec{
 				"ubuntu:latest": {
-					Pods: []PodSummary{podSummary1, podSummary2},
+					Containers: []ContainerSummary{
+						{PodName: "podName1", ContainerName: "containerName1", Namespace: "test-namespace1", NamespaceLabels: map[string]string{"teams-name": "team1"}},
+						{PodName: "podName2", ContainerName: "containerName3", Namespace: "test-namespace2", NamespaceLabels: map[string]string{"teams-name": "team2"}},
+					},
 				},
 				"ubuntu:trusty": {
-					Pods: []PodSummary{podSummary1},
+					Containers: []ContainerSummary{
+						{PodName: "podName1", ContainerName: "containerName2", Namespace: "test-namespace1", NamespaceLabels: map[string]string{"teams-name": "team1"}},
+					},
 				},
 				"gcr.io:name": {
-					Pods: []PodSummary{podSummary2},
+					Containers: []ContainerSummary{
+						{PodName: "podName2", ContainerName: "containerName4", Namespace: "test-namespace2", NamespaceLabels: map[string]string{"teams-name": "team2"}},
+					},
 				},
 			}
 
 			Expect(err).NotTo(HaveOccurred())
-			Expect(imageList).To(Equal(imageListExpected))
+			Expect(actualMap).To(Equal(expectedMap))
 		})
 	})
 
@@ -236,40 +241,40 @@ var _ = Describe("Scan Images", func() {
 			imageSpecs := map[string]*ImageSpec{
 				"image1": {
 					ImageName: "image1",
-					Pods: []PodSummary{
+					Containers: []ContainerSummary{
 						{
 							Namespace:       "namespace1",
 							NamespaceLabels: map[string]string{areaLabel: "area1", teamLabel: "team1"},
-							Name:            "pod1",
+							PodName:         "pod1",
 						},
 					},
 				},
 				"image2": {
 					ImageName: "image2",
-					Pods: []PodSummary{
+					Containers: []ContainerSummary{
 						{
 							Namespace:       "namespace1",
 							NamespaceLabels: map[string]string{areaLabel: "area1", teamLabel: "team1"},
-							Name:            "pod2",
+							PodName:         "pod2",
 						},
 					},
 				},
 				"image3": {
 					ImageName: "image3",
-					Pods: []PodSummary{
+					Containers: []ContainerSummary{
 						{
 							Namespace:       "namespace2",
-							Name:            "pod3",
+							PodName:         "pod3",
 							NamespaceLabels: map[string]string{areaLabel: "area1", teamLabel: "team2"},
 						},
 					},
 				},
 				"image4": {
 					ImageName: "image4",
-					Pods: []PodSummary{
+					Containers: []ContainerSummary{
 						{
 							Namespace:       "namespace3",
-							Name:            "pod4",
+							PodName:         "pod4",
 							NamespaceLabels: map[string]string{areaLabel: "area2", teamLabel: "team3"},
 						},
 					},
@@ -306,21 +311,21 @@ var _ = Describe("Scan Images", func() {
 			imageSpecs := map[string]*ImageSpec{
 				"image1": {
 					ImageName: "image1",
-					Pods: []PodSummary{
+					Containers: []ContainerSummary{
 						{
 							Namespace:       "namespace1",
 							NamespaceLabels: map[string]string{areaLabel: "area1", teamLabel: "team1"},
-							Name:            "pod1",
+							PodName:         "pod1",
 						},
 						{
 							Namespace:       "namespace1",
 							NamespaceLabels: map[string]string{areaLabel: "area1", teamLabel: "team1"},
-							Name:            "pod2",
+							PodName:         "pod2",
 						},
 						{
 							Namespace:       "namespace2",
 							NamespaceLabels: map[string]string{areaLabel: "area1", teamLabel: "team2"},
-							Name:            "pod3",
+							PodName:         "pod3",
 						},
 					},
 				},
@@ -334,34 +339,34 @@ var _ = Describe("Scan Images", func() {
 			Expect(imageByArea["area1"].Teams["team1"].Images).Should(HaveImages("image1"))
 			Expect(imageByArea["area1"].Teams["team1"].ImageCount).Should(Equal(1))
 			Expect(imageByArea["area1"].Teams["team1"].Pods).Should(HaveLen(2))
-			Expect(imageByArea["area1"].Teams["team1"].PodCount).Should(Equal(2))
-			Expect(imageByArea["area1"].Teams["team1"].Pods[0].Name).Should(Equal("pod1"))
-			Expect(imageByArea["area1"].Teams["team1"].Pods[1].Name).Should(Equal("pod2"))
+			Expect(imageByArea["area1"].Teams["team1"].ContainerCount).Should(Equal(2))
+			Expect(imageByArea["area1"].Teams["team1"].Pods[0].PodName).Should(Equal("pod1"))
+			Expect(imageByArea["area1"].Teams["team1"].Pods[1].PodName).Should(Equal("pod2"))
 
 			Expect(imageByArea["area1"].Teams["team2"].Images).Should(HaveImages("image1"))
 			Expect(imageByArea["area1"].Teams["team2"].ImageCount).Should(Equal(1))
 			Expect(imageByArea["area1"].Teams["team2"].Pods).Should(HaveLen(1))
-			Expect(imageByArea["area1"].Teams["team2"].PodCount).Should(Equal(1))
-			Expect(imageByArea["area1"].Teams["team2"].Pods[0].Name).Should(Equal("pod3"))
+			Expect(imageByArea["area1"].Teams["team2"].ContainerCount).Should(Equal(1))
+			Expect(imageByArea["area1"].Teams["team2"].Pods[0].PodName).Should(Equal("pod3"))
 		})
 
 		It("sort teams images by criticality", func() {
-			team1Pod := PodSummary{
+			team1Pod := ContainerSummary{
 				Namespace:       "namespace1",
 				NamespaceLabels: map[string]string{areaLabel: "area1", teamLabel: "team1"},
-				Name:            "pod1",
+				PodName:         "pod1",
 			}
 
-			team2Pod := PodSummary{
+			team2Pod := ContainerSummary{
 				Namespace:       "namespace1",
 				NamespaceLabels: map[string]string{areaLabel: "area1", teamLabel: "team2"},
-				Name:            "pod1",
+				PodName:         "pod1",
 			}
 
 			imageSpecs := map[string]*ImageSpec{
 				"mostCriticalTeam2": {
-					ImageName: "mostCriticalTeam2",
-					Pods:      []PodSummary{team2Pod},
+					ImageName:  "mostCriticalTeam2",
+					Containers: []ContainerSummary{team2Pod},
 					TotalVulnerabilityBySeverity: map[string]int{
 						"CRITICAL": 1,
 						"HIGH":     5,
@@ -370,8 +375,8 @@ var _ = Describe("Scan Images", func() {
 					},
 				},
 				"leastCriticalTeam2": {
-					ImageName: "leastCriticalTeam2",
-					Pods:      []PodSummary{team2Pod},
+					ImageName:  "leastCriticalTeam2",
+					Containers: []ContainerSummary{team2Pod},
 					TotalVulnerabilityBySeverity: map[string]int{
 						"CRITICAL": 0,
 						"HIGH":     6,
@@ -380,8 +385,8 @@ var _ = Describe("Scan Images", func() {
 					},
 				},
 				"mostCritical": {
-					ImageName: "mostCritical",
-					Pods:      []PodSummary{team1Pod},
+					ImageName:  "mostCritical",
+					Containers: []ContainerSummary{team1Pod},
 					TotalVulnerabilityBySeverity: map[string]int{
 						"CRITICAL": 4,
 						"HIGH":     5,
@@ -390,8 +395,8 @@ var _ = Describe("Scan Images", func() {
 					},
 				},
 				"mostHighAfterSameCritical": {
-					ImageName: "mostHighAfterSameCritical",
-					Pods:      []PodSummary{team1Pod},
+					ImageName:  "mostHighAfterSameCritical",
+					Containers: []ContainerSummary{team1Pod},
 					TotalVulnerabilityBySeverity: map[string]int{
 						"CRITICAL": 3,
 						"HIGH":     6,
@@ -400,8 +405,8 @@ var _ = Describe("Scan Images", func() {
 					},
 				},
 				"mostMediumAfterSameCriticalAndHigh": {
-					ImageName: "mostMediumAfterSameCriticalAndHigh",
-					Pods:      []PodSummary{team1Pod},
+					ImageName:  "mostMediumAfterSameCriticalAndHigh",
+					Containers: []ContainerSummary{team1Pod},
 					TotalVulnerabilityBySeverity: map[string]int{
 						"CRITICAL": 3,
 						"HIGH":     5,
@@ -410,8 +415,8 @@ var _ = Describe("Scan Images", func() {
 					},
 				},
 				"leastCriticalTeam1": {
-					ImageName: "leastCriticalTeam1",
-					Pods:      []PodSummary{team1Pod},
+					ImageName:  "leastCriticalTeam1",
+					Containers: []ContainerSummary{team1Pod},
 					TotalVulnerabilityBySeverity: map[string]int{
 						"CRITICAL": 3,
 						"HIGH":     5,
@@ -438,36 +443,36 @@ var _ = Describe("Scan Images", func() {
 		})
 
 		It("sum up the vulnerabilities per area and criticality", func() {
-			team1Pod := PodSummary{
+			team1Pod := ContainerSummary{
 				Namespace:       "namespace1",
 				NamespaceLabels: map[string]string{areaLabel: "area1", teamLabel: "team1"},
-				Name:            "pod1",
+				PodName:         "pod1",
 			}
-			team2Pod := PodSummary{
+			team2Pod := ContainerSummary{
 				Namespace:       "namespace1",
 				NamespaceLabels: map[string]string{areaLabel: "area1", teamLabel: "team2"},
-				Name:            "pod1",
+				PodName:         "pod1",
 			}
-			team3Pod1 := PodSummary{
+			team3Pod1 := ContainerSummary{
 				Namespace:       "namespace1",
 				NamespaceLabels: map[string]string{areaLabel: "area2", teamLabel: "team3"},
-				Name:            "pod1",
+				PodName:         "pod1",
 			}
-			team3Pod2 := PodSummary{
+			team3Pod2 := ContainerSummary{
 				Namespace:       "namespace1",
 				NamespaceLabels: map[string]string{areaLabel: "area2", teamLabel: "team3"},
-				Name:            "pod2",
+				PodName:         "pod2",
 			}
-			team3Pod3 := PodSummary{
+			team3Pod3 := ContainerSummary{
 				Namespace:       "namespace2",
 				NamespaceLabels: map[string]string{areaLabel: "area2", teamLabel: "team3"},
-				Name:            "pod3",
+				PodName:         "pod3",
 			}
 
 			imageSpecs := map[string]*ImageSpec{
 				"area1-team1-image1": {
-					ImageName: "area1-team1-image1",
-					Pods:      []PodSummary{team1Pod},
+					ImageName:  "area1-team1-image1",
+					Containers: []ContainerSummary{team1Pod},
 					TotalVulnerabilityBySeverity: map[string]int{
 						"CRITICAL": 1,
 						"HIGH":     5,
@@ -477,8 +482,8 @@ var _ = Describe("Scan Images", func() {
 					},
 				},
 				"area1-team1-image2": {
-					ImageName: "area1-team1-image2",
-					Pods:      []PodSummary{team1Pod},
+					ImageName:  "area1-team1-image2",
+					Containers: []ContainerSummary{team1Pod},
 					TotalVulnerabilityBySeverity: map[string]int{
 						"CRITICAL": 2,
 						"HIGH":     12,
@@ -488,8 +493,8 @@ var _ = Describe("Scan Images", func() {
 					},
 				},
 				"area1-team2-image2": {
-					ImageName: "area1-team1-image2",
-					Pods:      []PodSummary{team2Pod},
+					ImageName:  "area1-team1-image2",
+					Containers: []ContainerSummary{team2Pod},
 					TotalVulnerabilityBySeverity: map[string]int{
 						"CRITICAL": 1,
 						"HIGH":     2,
@@ -499,8 +504,8 @@ var _ = Describe("Scan Images", func() {
 					},
 				},
 				"area2-team3-image1": {
-					ImageName: "area2-team3-image1",
-					Pods:      []PodSummary{team3Pod1, team3Pod2, team3Pod3},
+					ImageName:  "area2-team3-image1",
+					Containers: []ContainerSummary{team3Pod1, team3Pod2, team3Pod3},
 					TotalVulnerabilityBySeverity: map[string]int{
 						"CRITICAL": 1,
 						"HIGH":     5,
@@ -518,21 +523,21 @@ var _ = Describe("Scan Images", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(imageByArea).To(HaveLen(2))
 			Expect(imageByArea["area1"].Summary.ImageCount).To(Equal(3))
-			Expect(imageByArea["area1"].Summary.PodCount).To(Equal(3))
+			Expect(imageByArea["area1"].Summary.ContainerCount).To(Equal(3))
 			Expect(imageByArea["area1"].Summary.TotalVulnerabilityBySeverity).To(Equal(
 				map[string]int{"CRITICAL": 4, "HIGH": 19, "MEDIUM": 8, "LOW": 4, "UNKNOWN": 1}),
 			)
-			Expect(imageByArea["area1"].Teams["team1"].Summary.ImageVulnerabilitySummary["area1-team1-image1"].PodCount).To(Equal(1))
+			Expect(imageByArea["area1"].Teams["team1"].Summary.ImageVulnerabilitySummary["area1-team1-image1"].ContainerCount).To(Equal(1))
 			Expect(imageByArea["area1"].Teams["team1"].Summary.ImageVulnerabilitySummary["area1-team1-image1"].TotalVulnerabilityBySeverity).To(Equal(
 				map[string]int{"CRITICAL": 1, "HIGH": 5, "MEDIUM": 0, "LOW": 2, "UNKNOWN": 1},
 			))
 
 			Expect(imageByArea["area2"].Summary.ImageCount).To(Equal(1))
-			Expect(imageByArea["area2"].Summary.PodCount).To(Equal(3))
+			Expect(imageByArea["area2"].Summary.ContainerCount).To(Equal(3))
 			Expect(imageByArea["area2"].Summary.TotalVulnerabilityBySeverity).To(Equal(
 				map[string]int{"CRITICAL": 1, "HIGH": 5, "MEDIUM": 0, "LOW": 0, "UNKNOWN": 0}),
 			)
-			Expect(imageByArea["area2"].Teams["team3"].Summary.ImageVulnerabilitySummary["area2-team3-image1"].PodCount).To(Equal(3))
+			Expect(imageByArea["area2"].Teams["team3"].Summary.ImageVulnerabilitySummary["area2-team3-image1"].ContainerCount).To(Equal(3))
 			Expect(imageByArea["area2"].Teams["team3"].Summary.ImageVulnerabilitySummary["area2-team3-image1"].TotalVulnerabilityBySeverity).To(Equal(
 				map[string]int{"CRITICAL": 1, "HIGH": 5, "MEDIUM": 0, "LOW": 0, "UNKNOWN": 0},
 			))

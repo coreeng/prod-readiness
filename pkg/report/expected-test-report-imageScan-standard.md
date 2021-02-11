@@ -2,7 +2,7 @@
 
 ## Vulnerabilities for area-1
 
-| Total Image Count | Total Replica Count | Total Critical| Total High | Total Medium | Total Low | Total Unknown |
+| Total Image Count | Total Container Count | Total Critical| Total High | Total Medium | Total Low | Total Unknown |
 |--------|----------|---------|------|--------|-----|-----|
 | 7 | 10 | 4 | 12 | 5 | 26 | 1|
 
@@ -10,7 +10,7 @@
 
 #### Summary
 
-| Images | Replicas | Critical| High | Medium | Low | Unknown |
+| Images | Containers | Critical| High | Medium | Low | Unknown |
 |--------|----------|---------|------|--------|-----|-----|
 | alpine:latest | 1 | 0 | 0 | 0 | 2 | 0|
 | debian:latest | 2 | 0 | 10 | 5 | 20 | 0|
@@ -74,7 +74,7 @@
 
 #### Summary
 
-| Images | Replicas | Critical| High | Medium | Low | Unknown |
+| Images | Containers | Critical| High | Medium | Low | Unknown |
 |--------|----------|---------|------|--------|-----|-----|
 | ubuntu:18.04 | 3 | 2 | 1 | 0 | 2 | 1|
 
@@ -99,7 +99,7 @@
 
 ## Vulnerabilities for area-2
 
-| Total Image Count | Total Replica Count | Total Critical| Total High | Total Medium | Total Low | Total Unknown |
+| Total Image Count | Total Container Count | Total Critical| Total High | Total Medium | Total Low | Total Unknown |
 |--------|----------|---------|------|--------|-----|-----|
 | 10 | 10 | 4 | 12 | 5 | 26 | 1|
 
@@ -107,7 +107,7 @@
 
 #### Summary
 
-| Images | Replicas | Critical| High | Medium | Low | Unknown |
+| Images | Containers | Critical| High | Medium | Low | Unknown |
 |--------|----------|---------|------|--------|-----|-----|
 | debian:latest | 2 | 10 | 10 | 5 | 20 | 0|
 

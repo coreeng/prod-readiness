@@ -104,7 +104,7 @@ var _ = Describe("Scan Images", func() {
 		Expect(report.ImageSpecs).To(HaveLen(3))
 		Expect(report.ImageByArea).To(HaveLen(1))
 		Expect(report.ImageByArea["area1"].Summary.ImageCount).To(Equal(3))
-		//Expect(report.ImageByArea["area1"].Summary.PodCount).To(Equal(3)) // TODO fix this currently reports 4...
+		Expect(report.ImageByArea["area1"].Summary.ContainerCount).To(Equal(4))
 		Expect(vulnerabilityCountOf(report.ImageByArea["area1"].Summary.TotalVulnerabilityBySeverity)).To(BeNumerically(">", 0))
 		Expect(report.ImageByArea["area1"].Summary.TotalVulnerabilityBySeverity).To(And(
 			HaveKey("CRITICAL"),
@@ -114,9 +114,9 @@ var _ = Describe("Scan Images", func() {
 		))
 		Expect(report.ImageByArea["area1"].Teams).To(HaveLen(2))
 		Expect(report.ImageByArea["area1"].Teams["team1"].ImageCount).To(Equal(2))
-		//Expect(report.ImageByArea["area1"].Teams["team1"].PodCount).To(Equal(1)) //TODO fix this currently reports 2...
+		Expect(report.ImageByArea["area1"].Teams["team1"].ContainerCount).To(Equal(2))
 		Expect(report.ImageByArea["area1"].Teams["team2"].ImageCount).To(Equal(1))
-		Expect(report.ImageByArea["area1"].Teams["team2"].PodCount).To(Equal(2))
+		Expect(report.ImageByArea["area1"].Teams["team2"].ContainerCount).To(Equal(2))
 	})
 })
 

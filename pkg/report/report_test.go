@@ -57,7 +57,7 @@ var _ = Describe("Generating vulnerability report", func() {
 						AreaName: "area-1",
 						Summary: &scanner.AreaSummary{
 							ImageCount:                   7,
-							PodCount:                     10,
+							ContainerCount:               10,
 							TotalVulnerabilityBySeverity: map[string]int{"CRITICAL": 4, "HIGH": 12, "MEDIUM": 5, "LOW": 26, "UNKNOWN": 1},
 						},
 						Teams: map[string]*scanner.ImagePerTeam{
@@ -66,15 +66,15 @@ var _ = Describe("Generating vulnerability report", func() {
 								Summary: &scanner.TeamSummary{
 									ImageVulnerabilitySummary: map[string]scanner.VulnerabilitySummary{
 										"debian:latest": {
-											PodCount:                     2,
+											ContainerCount:               2,
 											TotalVulnerabilityBySeverity: map[string]int{"CRITICAL": 0, "HIGH": 10, "MEDIUM": 5, "LOW": 20, "UNKNOWN": 0},
 										},
 										"alpine:latest": {
-											PodCount:                     1,
+											ContainerCount:               1,
 											TotalVulnerabilityBySeverity: map[string]int{"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 2, "UNKNOWN": 0},
 										},
 										"ubuntu:18.04": {
-											PodCount:                     3,
+											ContainerCount:               3,
 											TotalVulnerabilityBySeverity: map[string]int{"CRITICAL": 2, "HIGH": 1, "MEDIUM": 0, "LOW": 2, "UNKNOWN": 1},
 										},
 									},
@@ -90,7 +90,7 @@ var _ = Describe("Generating vulnerability report", func() {
 								Summary: &scanner.TeamSummary{
 									ImageVulnerabilitySummary: map[string]scanner.VulnerabilitySummary{
 										"ubuntu:18.04": {
-											PodCount:                     3,
+											ContainerCount:               3,
 											TotalVulnerabilityBySeverity: map[string]int{"CRITICAL": 2, "HIGH": 1, "MEDIUM": 0, "LOW": 2, "UNKNOWN": 1},
 										},
 									},
@@ -105,7 +105,7 @@ var _ = Describe("Generating vulnerability report", func() {
 						AreaName: "area-2",
 						Summary: &scanner.AreaSummary{
 							ImageCount:                   10,
-							PodCount:                     10,
+							ContainerCount:               10,
 							TotalVulnerabilityBySeverity: map[string]int{"CRITICAL": 4, "HIGH": 12, "MEDIUM": 5, "LOW": 26, "UNKNOWN": 1},
 						},
 						Teams: map[string]*scanner.ImagePerTeam{
@@ -114,7 +114,7 @@ var _ = Describe("Generating vulnerability report", func() {
 								Summary: &scanner.TeamSummary{
 									ImageVulnerabilitySummary: map[string]scanner.VulnerabilitySummary{
 										"debian:latest": {
-											PodCount:                     2,
+											ContainerCount:               2,
 											TotalVulnerabilityBySeverity: map[string]int{"CRITICAL": 10, "HIGH": 10, "MEDIUM": 5, "LOW": 20, "UNKNOWN": 0},
 										},
 									},
@@ -160,7 +160,7 @@ var _ = Describe("Saving json report", func() {
 						AreaName: "area-1",
 						Summary: &scanner.AreaSummary{
 							ImageCount:                   7,
-							PodCount:                     10,
+							ContainerCount:               10,
 							TotalVulnerabilityBySeverity: map[string]int{"CRITICAL": 4, "HIGH": 12, "MEDIUM": 5, "LOW": 26, "UNKNOWN": 1},
 						},
 					},
@@ -205,7 +205,7 @@ func fileContentEqual(filename1, filename2 string) (bool, error) {
 func anAlpineImageScan(vulnerabilitiesDefinition map[string]int) scanner.ImageSpec {
 	return scanner.ImageSpec{
 		ImageName: "alpine:latest",
-		Pods: []scanner.PodSummary{
+		Containers: []scanner.ContainerSummary{
 			{},
 		},
 		TotalVulnerabilityBySeverity: map[string]int{"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0, "UNKNOWN": 0},
@@ -222,7 +222,7 @@ func anAlpineImageScan(vulnerabilitiesDefinition map[string]int) scanner.ImageSp
 func aDebianImageScan(vulnerabilitiesDefinition map[string]int) scanner.ImageSpec {
 	return scanner.ImageSpec{
 		ImageName: "debian:latest",
-		Pods: []scanner.PodSummary{
+		Containers: []scanner.ContainerSummary{
 			{},
 		},
 		TotalVulnerabilityBySeverity: vulnerabilitiesDefinition,
@@ -239,7 +239,7 @@ func aDebianImageScan(vulnerabilitiesDefinition map[string]int) scanner.ImageSpe
 func anUbuntuImageScan(vulnerabilitiesDefinition map[string]int) scanner.ImageSpec {
 	return scanner.ImageSpec{
 		ImageName: "ubuntu:18.04",
-		Pods: []scanner.PodSummary{
+		Containers: []scanner.ContainerSummary{
 			{},
 		},
 		TotalVulnerabilityBySeverity: vulnerabilitiesDefinition,
