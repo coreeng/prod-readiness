@@ -54,7 +54,7 @@ func scan(_ *cobra.Command, _ []string) {
 	fullReport := &FullReport{
 		ImageScan: imageScanReport,
 	}
-	err = r.GenerateMarkdown(fullReport, reportTemplate, reportFile)
+	err = r.GenerateReportFromTemplate(fullReport, reportTemplate, reportFile)
 	if err != nil {
 		logr.Fatal(err)
 	}

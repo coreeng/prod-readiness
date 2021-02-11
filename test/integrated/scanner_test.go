@@ -101,7 +101,7 @@ var _ = Describe("Scan Images", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		// then
-		Expect(report.ImageSpecs).To(HaveLen(3))
+		Expect(report.ScannedImages).To(HaveLen(3))
 		Expect(report.ImageByArea).To(HaveLen(1))
 		Expect(report.ImageByArea["area1"].Summary.ImageCount).To(Equal(3))
 		Expect(report.ImageByArea["area1"].Summary.ContainerCount).To(Equal(4))

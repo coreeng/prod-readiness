@@ -43,7 +43,7 @@ func linuxBench(_ *cobra.Command, _ []string) {
 	fullReport := &FullReport{
 		LinuxCIS: linuxReport,
 	}
-	err = r.GenerateMarkdown(fullReport, "report-linuxCIS.md.tmpl", "report-linuxCIS.md")
+	err = r.GenerateReportFromTemplate(fullReport, "report-linuxCIS.md.tmpl", "report-linuxCIS.md")
 	if err != nil {
 		// return nil, err
 		logr.Error(err)

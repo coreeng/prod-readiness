@@ -45,7 +45,7 @@ var _ = Describe("Generating vulnerability report", func() {
 	It("should generate the report according to the md template file", func() {
 		actualReportFile := filepath.Join(tmpDir, "actual-report.md")
 		reportTemplate := filepath.Join(findProjectDir(), "report-imageScan.md.tmpl")
-		err := GenerateMarkdown(aReport(), reportTemplate, actualReportFile)
+		err := GenerateReportFromTemplate(aReport(), reportTemplate, actualReportFile)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(fileContentEqual("expected-test-report-imageScan.md", actualReportFile)).To(BeTrue())
 	})
@@ -53,7 +53,7 @@ var _ = Describe("Generating vulnerability report", func() {
 	It("should generate the report according to the html template file", func() {
 		actualReportFile := filepath.Join(tmpDir, "actual-report.html")
 		reportTemplate := filepath.Join(findProjectDir(), "report-imageScan.html.tmpl")
-		err := GenerateMarkdown(aReport(), reportTemplate, actualReportFile)
+		err := GenerateReportFromTemplate(aReport(), reportTemplate, actualReportFile)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(fileContentEqual("expected-test-report-imageScan.html", actualReportFile, "-w")).To(BeTrue())
 	})
@@ -65,11 +65,7 @@ func aReport() *TestReport {
 	alpineImageScan := anAlpineImageScan(map[string]int{})
 	return &TestReport{
 		ImageScan: &scanner.Report{
-			ImageSpecs: map[string]*scanner.ImageSpec{
-				"debian:latest": &debianImageScan,
-				"alpine:latest": &alpineImageScan,
-				"ubuntu:18.04":  &ubuntuImageScan,
-			},
+			ScannedImages: []scanner.ScannedImage{debianImageScan, alpineImageScan, ubuntuImageScan},
 			ImageByArea: map[string]*scanner.ImagePerArea{
 				"area-1": {
 					AreaName: "area-1",
@@ -97,7 +93,7 @@ func aReport() *TestReport {
 									},
 								},
 							},
-							Images: []scanner.ImageSpec{
+							Images: []scanner.ScannedImage{
 								debianImageScan,
 								alpineImageScan,
 								ubuntuImageScan,
@@ -113,7 +109,7 @@ func aReport() *TestReport {
 									},
 								},
 							},
-							Images: []scanner.ImageSpec{
+							Images: []scanner.ScannedImage{
 								ubuntuImageScan,
 							},
 						},
@@ -137,7 +133,7 @@ func aReport() *TestReport {
 									},
 								},
 							},
-							Images: []scanner.ImageSpec{
+							Images: []scanner.ScannedImage{
 								debianImageScan,
 							},
 						},
@@ -219,8 +215,8 @@ func fileContentEqual(filename1, filename2 string, diffOptions ...string) (bool,
 	return true, nil
 }
 
-func anAlpineImageScan(vulnerabilitiesDefinition map[string]int) scanner.ImageSpec {
-	return scanner.ImageSpec{
+func anAlpineImageScan(vulnerabilitiesDefinition map[string]int) scanner.ScannedImage {
+	return scanner.ScannedImage{
 		ImageName: "alpine:latest",
 		Containers: []scanner.ContainerSummary{
 			{},
@@ -236,8 +232,8 @@ func anAlpineImageScan(vulnerabilitiesDefinition map[string]int) scanner.ImageSp
 	}
 }
 
-func aDebianImageScan(vulnerabilitiesDefinition map[string]int) scanner.ImageSpec {
-	return scanner.ImageSpec{
+func aDebianImageScan(vulnerabilitiesDefinition map[string]int) scanner.ScannedImage {
+	return scanner.ScannedImage{
 		ImageName: "debian:latest",
 		Containers: []scanner.ContainerSummary{
 			{},
@@ -253,8 +249,8 @@ func aDebianImageScan(vulnerabilitiesDefinition map[string]int) scanner.ImageSpe
 	}
 }
 
-func anUbuntuImageScan(vulnerabilitiesDefinition map[string]int) scanner.ImageSpec {
-	return scanner.ImageSpec{
+func anUbuntuImageScan(vulnerabilitiesDefinition map[string]int) scanner.ScannedImage {
+	return scanner.ScannedImage{
 		ImageName: "ubuntu:18.04",
 		Containers: []scanner.ContainerSummary{
 			{},

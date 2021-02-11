@@ -97,7 +97,7 @@ func report(_ *cobra.Command, _ []string) {
 		LinuxCIS:  linuxReport,
 	}
 
-	err = r.GenerateMarkdown(fullReport, reportTemplate, reportFile)
+	err = r.GenerateReportFromTemplate(fullReport, reportTemplate, reportFile)
 	if err != nil {
 		logr.Error(err)
 	}

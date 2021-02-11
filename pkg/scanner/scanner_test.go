@@ -134,22 +134,16 @@ var _ = Describe("Scan Images", func() {
 			actualMap, err := scan.groupContainersByImageName([]podDetail{podList1, podList2})
 
 			// then
-			expectedMap := map[string]*ImageSpec{
+			expectedMap := map[string][]ContainerSummary{
 				"ubuntu:latest": {
-					Containers: []ContainerSummary{
-						{PodName: "podName1", ContainerName: "containerName1", Namespace: "test-namespace1", NamespaceLabels: map[string]string{"teams-name": "team1"}},
-						{PodName: "podName2", ContainerName: "containerName3", Namespace: "test-namespace2", NamespaceLabels: map[string]string{"teams-name": "team2"}},
-					},
+					{PodName: "podName1", ContainerName: "containerName1", Namespace: "test-namespace1", NamespaceLabels: map[string]string{"teams-name": "team1"}},
+					{PodName: "podName2", ContainerName: "containerName3", Namespace: "test-namespace2", NamespaceLabels: map[string]string{"teams-name": "team2"}},
 				},
 				"ubuntu:trusty": {
-					Containers: []ContainerSummary{
-						{PodName: "podName1", ContainerName: "containerName2", Namespace: "test-namespace1", NamespaceLabels: map[string]string{"teams-name": "team1"}},
-					},
+					{PodName: "podName1", ContainerName: "containerName2", Namespace: "test-namespace1", NamespaceLabels: map[string]string{"teams-name": "team1"}},
 				},
 				"gcr.io:name": {
-					Containers: []ContainerSummary{
-						{PodName: "podName2", ContainerName: "containerName4", Namespace: "test-namespace2", NamespaceLabels: map[string]string{"teams-name": "team2"}},
-					},
+					{PodName: "podName2", ContainerName: "containerName4", Namespace: "test-namespace2", NamespaceLabels: map[string]string{"teams-name": "team2"}},
 				},
 			}
 
@@ -160,61 +154,59 @@ var _ = Describe("Scan Images", func() {
 
 	Describe("Compute vulnerability breakdown", func() {
 		It("count the number of vulnerability per severity", func() {
-			imageSpec := ImageSpec{
-				TrivyOutput: []TrivyOutput{
-					{
-						Vulnerabilities: []Vulnerabilities{
-							{
-								Severity: "CRITICAL",
-							},
-							{
-								Severity: "MEDIUM",
-							},
+			trivyOutput := []TrivyOutput{
+				{
+					Vulnerabilities: []Vulnerabilities{
+						{
+							Severity: "CRITICAL",
+						},
+						{
+							Severity: "MEDIUM",
 						},
 					},
-					{
-						Vulnerabilities: []Vulnerabilities{
-							{
-								Severity: "CRITICAL",
-							},
-							{
-								Severity: "CRITICAL",
-							},
-							{
-								Severity: "HIGH",
-							},
-							{
-								Severity: "HIGH",
-							},
-							{
-								Severity: "MEDIUM",
-							},
-							{
-								Severity: "MEDIUM",
-							},
-							{
-								Severity: "LOW",
-							},
-							{
-								Severity: "LOW",
-							},
-							{
-								Severity: "LOW",
-							},
-							{
-								Severity: "UNKNOWN",
-							},
-							{
-								Severity: "UNKNOWN",
-							},
-							{
-								Severity: "UNKNOWN",
-							},
+				},
+				{
+					Vulnerabilities: []Vulnerabilities{
+						{
+							Severity: "CRITICAL",
+						},
+						{
+							Severity: "CRITICAL",
+						},
+						{
+							Severity: "HIGH",
+						},
+						{
+							Severity: "HIGH",
+						},
+						{
+							Severity: "MEDIUM",
+						},
+						{
+							Severity: "MEDIUM",
+						},
+						{
+							Severity: "LOW",
+						},
+						{
+							Severity: "LOW",
+						},
+						{
+							Severity: "LOW",
+						},
+						{
+							Severity: "UNKNOWN",
+						},
+						{
+							Severity: "UNKNOWN",
+						},
+						{
+							Severity: "UNKNOWN",
 						},
 					},
 				},
 			}
-			severityMap := computeTotalVulnerabilityBySeverity(&imageSpec)
+			severityMap := computeTotalVulnerabilityBySeverity(trivyOutput)
 			Expect(severityMap).To(Equal(
 				map[string]int{"CRITICAL": 3, "HIGH": 2, "MEDIUM": 3, "LOW": 3, "UNKNOWN": 3}),
 			)
@@ -238,8 +230,8 @@ var _ = Describe("Scan Images", func() {
 		})
 
 		It("groups images per team and area", func() {
-			imageSpecs := map[string]*ImageSpec{
-				"image1": {
+			imageSpecs := []ScannedImage{
+				{
 					ImageName: "image1",
 					Containers: []ContainerSummary{
 						{
@@ -249,7 +241,7 @@ var _ = Describe("Scan Images", func() {
 						},
 					},
 				},
-				"image2": {
+				{
 					ImageName: "image2",
 					Containers: []ContainerSummary{
 						{
@@ -259,7 +251,7 @@ var _ = Describe("Scan Images", func() {
 						},
 					},
 				},
-				"image3": {
+				{
 					ImageName: "image3",
 					Containers: []ContainerSummary{
 						{
@@ -269,7 +261,7 @@ var _ = Describe("Scan Images", func() {
 						},
 					},
 				},
-				"image4": {
+				{
 					ImageName: "image4",
 					Containers: []ContainerSummary{
 						{
@@ -308,8 +300,8 @@ var _ = Describe("Scan Images", func() {
 		})
 
 		It("list the same image found in multiple pods only once", func() {
-			imageSpecs := map[string]*ImageSpec{
-				"image1": {
+			scannedImages := []ScannedImage{
+				{
 					ImageName: "image1",
 					Containers: []ContainerSummary{
 						{
@@ -331,7 +323,7 @@ var _ = Describe("Scan Images", func() {
 				},
 			}
 			// when
-			imageByArea, err := scan.generateAreaGrouping(imageSpecs)
+			imageByArea, err := scan.generateAreaGrouping(scannedImages)
 
 			// then
 			Expect(err).NotTo(HaveOccurred())
@@ -363,8 +355,8 @@ var _ = Describe("Scan Images", func() {
 				PodName:         "pod1",
 			}
 
-			imageSpecs := map[string]*ImageSpec{
-				"mostCriticalTeam2": {
+			scannedImages := []ScannedImage{
+				{
 					ImageName:  "mostCriticalTeam2",
 					Containers: []ContainerSummary{team2Pod},
 					TotalVulnerabilityBySeverity: map[string]int{
@@ -374,7 +366,7 @@ var _ = Describe("Scan Images", func() {
 						"LOW":      0,
 					},
 				},
-				"leastCriticalTeam2": {
+				{
 					ImageName:  "leastCriticalTeam2",
 					Containers: []ContainerSummary{team2Pod},
 					TotalVulnerabilityBySeverity: map[string]int{
@@ -384,7 +376,7 @@ var _ = Describe("Scan Images", func() {
 						"LOW":      25,
 					},
 				},
-				"mostCritical": {
+				{
 					ImageName:  "mostCritical",
 					Containers: []ContainerSummary{team1Pod},
 					TotalVulnerabilityBySeverity: map[string]int{
@@ -394,7 +386,7 @@ var _ = Describe("Scan Images", func() {
 						"LOW":      25,
 					},
 				},
-				"mostHighAfterSameCritical": {
+				{
 					ImageName:  "mostHighAfterSameCritical",
 					Containers: []ContainerSummary{team1Pod},
 					TotalVulnerabilityBySeverity: map[string]int{
@@ -404,7 +396,7 @@ var _ = Describe("Scan Images", func() {
 						"LOW":      26,
 					},
 				},
-				"mostMediumAfterSameCriticalAndHigh": {
+				{
 					ImageName:  "mostMediumAfterSameCriticalAndHigh",
 					Containers: []ContainerSummary{team1Pod},
 					TotalVulnerabilityBySeverity: map[string]int{
@@ -414,7 +406,7 @@ var _ = Describe("Scan Images", func() {
 						"LOW":      27,
 					},
 				},
-				"leastCriticalTeam1": {
+				{
 					ImageName:  "leastCriticalTeam1",
 					Containers: []ContainerSummary{team1Pod},
 					TotalVulnerabilityBySeverity: map[string]int{
@@ -427,7 +419,7 @@ var _ = Describe("Scan Images", func() {
 			}
 
 			// when
-			imageByArea, err := scan.generateAreaGrouping(imageSpecs)
+			imageByArea, err := scan.generateAreaGrouping(scannedImages)
 
 			// then
 			Expect(err).NotTo(HaveOccurred())
@@ -469,8 +461,8 @@ var _ = Describe("Scan Images", func() {
 				PodName:         "pod3",
 			}
 
-			imageSpecs := map[string]*ImageSpec{
-				"area1-team1-image1": {
+			scannedImages := []ScannedImage{
+				{
 					ImageName:  "area1-team1-image1",
 					Containers: []ContainerSummary{team1Pod},
 					TotalVulnerabilityBySeverity: map[string]int{
@@ -481,7 +473,7 @@ var _ = Describe("Scan Images", func() {
 						"UNKNOWN":  1,
 					},
 				},
-				"area1-team1-image2": {
+				{
 					ImageName:  "area1-team1-image2",
 					Containers: []ContainerSummary{team1Pod},
 					TotalVulnerabilityBySeverity: map[string]int{
@@ -492,7 +484,7 @@ var _ = Describe("Scan Images", func() {
 						"UNKNOWN":  0,
 					},
 				},
-				"area1-team2-image2": {
+				{
 					ImageName:  "area1-team1-image2",
 					Containers: []ContainerSummary{team2Pod},
 					TotalVulnerabilityBySeverity: map[string]int{
@@ -503,7 +495,7 @@ var _ = Describe("Scan Images", func() {
 						"UNKNOWN":  0,
 					},
 				},
-				"area2-team3-image1": {
+				{
 					ImageName:  "area2-team3-image1",
 					Containers: []ContainerSummary{team3Pod1, team3Pod2, team3Pod3},
 					TotalVulnerabilityBySeverity: map[string]int{
@@ -517,7 +509,7 @@ var _ = Describe("Scan Images", func() {
 			}
 
 			// when
-			imageByArea, err := scan.generateAreaGrouping(imageSpecs)
+			imageByArea, err := scan.generateAreaGrouping(scannedImages)
 
 			// then
 			Expect(err).NotTo(HaveOccurred())
@@ -543,6 +535,7 @@ var _ = Describe("Scan Images", func() {
 			))
 		})
 	})
+
 })
 
 func HaveImages(images ...string) types.GomegaMatcher {
@@ -555,7 +548,7 @@ type haveImages struct {
 
 func (m *haveImages) Match(actual interface{}) (success bool, err error) {
 	var actualImages []string
-	imagesSpecs := actual.([]ImageSpec)
+	imagesSpecs := actual.([]ScannedImage)
 	for _, imageSpec := range imagesSpecs {
 		actualImages = append(actualImages, imageSpec.ImageName)
 	}
