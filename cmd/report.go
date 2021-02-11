@@ -16,8 +16,8 @@ var (
 		Short: "Will create a full audit of a cluster and generate presentation and json output",
 		Run:   report,
 	}
-	kubeContext, kubeconfigPath, imageNameReplacement, areaLabel, teamLabels, filterLabels, severity, jsonReportFile string
-	workersScan, workersKubeBench, workersLinuxBench                                                                 int
+	kubeContext, kubeconfigPath, imageNameReplacement, areaLabel, teamLabels, filterLabels, severity, jsonReportFile, reportFile, reportTemplate string
+	workersScan, workersKubeBench, workersLinuxBench                                                                                             int
 )
 
 func init() {
@@ -32,7 +32,9 @@ func init() {
 	reportCmd.Flags().StringVar(&teamLabels, "teams-labels", "", "string allowing to split per team the image scan")
 	reportCmd.Flags().StringVar(&filterLabels, "filters-labels", "", "string allowing to filter the namespaces string separated by comma")
 	reportCmd.Flags().StringVar(&severity, "severity", "UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL", "severities of vulnerabilities to be reported (comma separated) ")
-	reportCmd.Flags().StringVar(&jsonReportFile, "json-report-filename", "", "optional filename where the json representation of the report will be saved")
+	reportCmd.Flags().StringVar(&reportTemplate, "report-template-filename", "report.md.tmpl", "input filename that will be used as report template")
+	reportCmd.Flags().StringVar(&reportFile, "report-filename", "report.md", "output filename that will contain the generated report based on the report-template")
+	reportCmd.Flags().StringVar(&jsonReportFile, "json-report-filename", "", "output filename where the json representation of the report will be saved. No json representation will be created unless this option is specified")
 }
 
 // FullReport - FullReport
@@ -95,7 +97,7 @@ func report(_ *cobra.Command, _ []string) {
 		LinuxCIS:  linuxReport,
 	}
 
-	err = r.GenerateMarkdown(fullReport, "report.md.tmpl", "report.md")
+	err = r.GenerateMarkdown(fullReport, reportTemplate, reportFile)
 	if err != nil {
 		logr.Error(err)
 	}

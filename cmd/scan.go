@@ -26,7 +26,9 @@ func init() {
 	scanCmd.Flags().StringVar(&filterLabels, "filters-labels", "", "string allowing to filter the namespaces string separated by comma")
 	scanCmd.Flags().StringVar(&severity, "severity", "UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL", "severities of vulnerabilities to be reported (comma separated) ")
 	scanCmd.Flags().IntVar(&workersScan, "workers-scan", 10, "number of worker to process images scan in parallel")
-	scanCmd.Flags().StringVar(&jsonReportFile, "json-report-filename", "", "optional filename where the json representation of the report will be saved")
+	scanCmd.Flags().StringVar(&reportTemplate, "report-template-filename", "report-imageScan.html.tmpl", "input filename that will be used as report template")
+	scanCmd.Flags().StringVar(&reportFile, "report-filename", "report-imageScan.html", "output filename where that will contain the generated report based on the report-template")
+	scanCmd.Flags().StringVar(&jsonReportFile, "json-report-filename", "", "output filename where the json representation of the report will be saved. No json representation will be created unless this option is specified")
 }
 
 func scan(_ *cobra.Command, _ []string) {
@@ -52,7 +54,7 @@ func scan(_ *cobra.Command, _ []string) {
 	fullReport := &FullReport{
 		ImageScan: imageScanReport,
 	}
-	err = r.GenerateMarkdown(fullReport, "report-imageScan.md.tmpl", "report-imageScan.md")
+	err = r.GenerateMarkdown(fullReport, reportTemplate, reportFile)
 	if err != nil {
 		logr.Fatal(err)
 	}

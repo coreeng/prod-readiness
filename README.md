@@ -60,14 +60,12 @@ production-readiness scan  --context cluster-name  --area-labels=area-name --tea
 
 ### Render the presentation 
 
-_This is work in progress_
+The vulnerability report can be rendered using the template of your choice.
+There are two available templates for convenience:
+- `html`: [report-image-scan.html.tmpl](./report-image-scan.html.tmpl)
+- `markdown`: [report-image-scan.md.tmpl](./report-image-scan.md.tmpl)
 
-Running the previous step should have given you a mark-down file called `report-imageScan.md` that you may want to convert to PDF.
-Copy the mark-down file in the `audit-report` directory to render it.
-See [Render-presentation](audit-report/Readme.md#Render-presentation)
-```
-cp report-imageScan.md audit-report/report.md
-```
+A custom template file can be specified using the `--report-template-filename` command line argument.
 
 ## TODOs
 
