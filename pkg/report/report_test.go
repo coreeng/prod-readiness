@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/coreeng/production-readiness/production-readiness/pkg/k8s"
+
 	logr "github.com/sirupsen/logrus"
 
 	"github.com/coreeng/production-readiness/production-readiness/pkg/scanner"
@@ -218,7 +220,7 @@ func fileContentEqual(filename1, filename2 string, diffOptions ...string) (bool,
 func anAlpineImageScan(vulnerabilitiesDefinition map[string]int) scanner.ScannedImage {
 	return scanner.ScannedImage{
 		ImageName: "alpine:latest",
-		Containers: []scanner.ContainerSummary{
+		Containers: []k8s.ContainerSummary{
 			{},
 		},
 		TotalVulnerabilityBySeverity: map[string]int{"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0, "UNKNOWN": 0},
@@ -235,7 +237,7 @@ func anAlpineImageScan(vulnerabilitiesDefinition map[string]int) scanner.Scanned
 func aDebianImageScan(vulnerabilitiesDefinition map[string]int) scanner.ScannedImage {
 	return scanner.ScannedImage{
 		ImageName: "debian:latest",
-		Containers: []scanner.ContainerSummary{
+		Containers: []k8s.ContainerSummary{
 			{},
 		},
 		TotalVulnerabilityBySeverity: vulnerabilitiesDefinition,
@@ -252,7 +254,7 @@ func aDebianImageScan(vulnerabilitiesDefinition map[string]int) scanner.ScannedI
 func anUbuntuImageScan(vulnerabilitiesDefinition map[string]int) scanner.ScannedImage {
 	return scanner.ScannedImage{
 		ImageName: "ubuntu:18.04",
-		Containers: []scanner.ContainerSummary{
+		Containers: []k8s.ContainerSummary{
 			{},
 		},
 		TotalVulnerabilityBySeverity: vulnerabilitiesDefinition,

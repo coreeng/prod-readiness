@@ -6,12 +6,12 @@ import (
 	"sort"
 	"testing"
 
+	"github.com/coreeng/production-readiness/production-readiness/pkg/k8s"
+
 	"github.com/onsi/gomega/types"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	v1 "k8s.io/api/core/v1"
-	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestManager(t *testing.T) {
@@ -68,86 +68,22 @@ var _ = Describe("Scan Images", func() {
 		})
 
 		It("GroupContainersByImageName should return an unique map", func() {
-			podList1 := podDetail{
-				Pod: v1.Pod{
-					ObjectMeta: metaV1.ObjectMeta{
-						Name: "podName1",
-						Labels: map[string]string{
-							"app.kubernetes.io/component": "test-app",
-						},
-					},
-					Spec: v1.PodSpec{
-						Containers: []v1.Container{
-							{
-								Name:  "containerName1",
-								Image: "ubuntu:latest",
-							},
-							{
-								Name:  "containerName2",
-								Image: "ubuntu:trusty",
-							},
-						},
-					},
-				},
-				Namespace: v1.Namespace{
-					ObjectMeta: metaV1.ObjectMeta{
-						Name: "test-namespace1",
-						Labels: map[string]string{
-							"teams-name": "team1",
-						},
-					},
-				},
-			}
-
-			podList2 := podDetail{
-				Pod: v1.Pod{
-					ObjectMeta: metaV1.ObjectMeta{
-						Name: "podName2",
-						Labels: map[string]string{
-							"app.kubernetes.io/component": "test-app",
-						},
-					},
-					Spec: v1.PodSpec{
-						Containers: []v1.Container{
-							{
-								Name:  "containerName3",
-								Image: "ubuntu:latest",
-							},
-							{
-								Name:  "containerName4",
-								Image: "gcr.io:name",
-							},
-						},
-					},
-				},
-				Namespace: v1.Namespace{
-					ObjectMeta: metaV1.ObjectMeta{
-						Name: "test-namespace2",
-						Labels: map[string]string{
-							"teams-name": "team2",
-						},
-					},
-				},
-			}
+			container1 := k8s.ContainerSummary{Image: "ubuntu:latest", PodName: "podName1", ContainerName: "containerName1"}
+			container2 := k8s.ContainerSummary{Image: "ubuntu:trusty", PodName: "podName1", ContainerName: "containerName2"}
+			container3 := k8s.ContainerSummary{Image: "ubuntu:latest", PodName: "podName2", ContainerName: "containerName3"}
+			container4 := k8s.ContainerSummary{Image: "gcr.io:name", PodName: "podName2", ContainerName: "containerName4"}
 
 			// when
-			actualMap, err := scan.groupContainersByImageName([]podDetail{podList1, podList2})
+			actualMap := scan.groupContainersByImageName([]k8s.ContainerSummary{
+				container1, container2, container3, container4,
+			})
 
 			// then
-			expectedMap := map[string][]ContainerSummary{
-				"ubuntu:latest": {
-					{PodName: "podName1", ContainerName: "containerName1", Namespace: "test-namespace1", NamespaceLabels: map[string]string{"teams-name": "team1"}},
-					{PodName: "podName2", ContainerName: "containerName3", Namespace: "test-namespace2", NamespaceLabels: map[string]string{"teams-name": "team2"}},
-				},
-				"ubuntu:trusty": {
-					{PodName: "podName1", ContainerName: "containerName2", Namespace: "test-namespace1", NamespaceLabels: map[string]string{"teams-name": "team1"}},
-				},
-				"gcr.io:name": {
-					{PodName: "podName2", ContainerName: "containerName4", Namespace: "test-namespace2", NamespaceLabels: map[string]string{"teams-name": "team2"}},
-				},
+			expectedMap := map[string][]k8s.ContainerSummary{
+				"ubuntu:latest": {container1, container3},
+				"ubuntu:trusty": {container2},
+				"gcr.io:name":   {container4},
 			}
-
-			Expect(err).NotTo(HaveOccurred())
 			Expect(actualMap).To(Equal(expectedMap))
 		})
 	})
@@ -198,7 +134,7 @@ var _ = Describe("Scan Images", func() {
 			imageSpecs := []ScannedImage{
 				{
 					ImageName: "image1",
-					Containers: []ContainerSummary{
+					Containers: []k8s.ContainerSummary{
 						{
 							Namespace:       "namespace1",
 							NamespaceLabels: map[string]string{areaLabel: "area1", teamLabel: "team1"},
@@ -208,7 +144,7 @@ var _ = Describe("Scan Images", func() {
 				},
 				{
 					ImageName: "image2",
-					Containers: []ContainerSummary{
+					Containers: []k8s.ContainerSummary{
 						{
 							Namespace:       "namespace1",
 							NamespaceLabels: map[string]string{areaLabel: "area1", teamLabel: "team1"},
@@ -218,7 +154,7 @@ var _ = Describe("Scan Images", func() {
 				},
 				{
 					ImageName: "image3",
-					Containers: []ContainerSummary{
+					Containers: []k8s.ContainerSummary{
 						{
 							Namespace:       "namespace2",
 							PodName:         "pod3",
@@ -228,7 +164,7 @@ var _ = Describe("Scan Images", func() {
 				},
 				{
 					ImageName: "image4",
-					Containers: []ContainerSummary{
+					Containers: []k8s.ContainerSummary{
 						{
 							Namespace:       "namespace3",
 							PodName:         "pod4",
@@ -268,7 +204,7 @@ var _ = Describe("Scan Images", func() {
 			scannedImages := []ScannedImage{
 				{
 					ImageName: "image1",
-					Containers: []ContainerSummary{
+					Containers: []k8s.ContainerSummary{
 						{
 							Namespace:       "namespace1",
 							NamespaceLabels: map[string]string{areaLabel: "area1", teamLabel: "team1"},
@@ -308,13 +244,13 @@ var _ = Describe("Scan Images", func() {
 		})
 
 		It("sort teams images by criticality", func() {
-			team1Pod := ContainerSummary{
+			team1Pod := k8s.ContainerSummary{
 				Namespace:       "namespace1",
 				NamespaceLabels: map[string]string{areaLabel: "area1", teamLabel: "team1"},
 				PodName:         "pod1",
 			}
 
-			team2Pod := ContainerSummary{
+			team2Pod := k8s.ContainerSummary{
 				Namespace:       "namespace1",
 				NamespaceLabels: map[string]string{areaLabel: "area1", teamLabel: "team2"},
 				PodName:         "pod1",
@@ -323,7 +259,7 @@ var _ = Describe("Scan Images", func() {
 			scannedImages := []ScannedImage{
 				{
 					ImageName:  "mostCriticalTeam2",
-					Containers: []ContainerSummary{team2Pod},
+					Containers: []k8s.ContainerSummary{team2Pod},
 					TotalVulnerabilityBySeverity: map[string]int{
 						"CRITICAL": 1,
 						"HIGH":     5,
@@ -333,7 +269,7 @@ var _ = Describe("Scan Images", func() {
 				},
 				{
 					ImageName:  "leastCriticalTeam2",
-					Containers: []ContainerSummary{team2Pod},
+					Containers: []k8s.ContainerSummary{team2Pod},
 					TotalVulnerabilityBySeverity: map[string]int{
 						"CRITICAL": 0,
 						"HIGH":     6,
@@ -343,7 +279,7 @@ var _ = Describe("Scan Images", func() {
 				},
 				{
 					ImageName:  "mostCritical",
-					Containers: []ContainerSummary{team1Pod},
+					Containers: []k8s.ContainerSummary{team1Pod},
 					TotalVulnerabilityBySeverity: map[string]int{
 						"CRITICAL": 4,
 						"HIGH":     5,
@@ -353,7 +289,7 @@ var _ = Describe("Scan Images", func() {
 				},
 				{
 					ImageName:  "mostHighAfterSameCritical",
-					Containers: []ContainerSummary{team1Pod},
+					Containers: []k8s.ContainerSummary{team1Pod},
 					TotalVulnerabilityBySeverity: map[string]int{
 						"CRITICAL": 3,
 						"HIGH":     6,
@@ -363,7 +299,7 @@ var _ = Describe("Scan Images", func() {
 				},
 				{
 					ImageName:  "mostMediumAfterSameCriticalAndHigh",
-					Containers: []ContainerSummary{team1Pod},
+					Containers: []k8s.ContainerSummary{team1Pod},
 					TotalVulnerabilityBySeverity: map[string]int{
 						"CRITICAL": 3,
 						"HIGH":     5,
@@ -373,7 +309,7 @@ var _ = Describe("Scan Images", func() {
 				},
 				{
 					ImageName:  "leastCriticalTeam1",
-					Containers: []ContainerSummary{team1Pod},
+					Containers: []k8s.ContainerSummary{team1Pod},
 					TotalVulnerabilityBySeverity: map[string]int{
 						"CRITICAL": 3,
 						"HIGH":     5,
@@ -400,27 +336,27 @@ var _ = Describe("Scan Images", func() {
 		})
 
 		It("sum up the vulnerabilities per area and criticality", func() {
-			team1Pod := ContainerSummary{
+			team1Pod := k8s.ContainerSummary{
 				Namespace:       "namespace1",
 				NamespaceLabels: map[string]string{areaLabel: "area1", teamLabel: "team1"},
 				PodName:         "pod1",
 			}
-			team2Pod := ContainerSummary{
+			team2Pod := k8s.ContainerSummary{
 				Namespace:       "namespace1",
 				NamespaceLabels: map[string]string{areaLabel: "area1", teamLabel: "team2"},
 				PodName:         "pod1",
 			}
-			team3Pod1 := ContainerSummary{
+			team3Pod1 := k8s.ContainerSummary{
 				Namespace:       "namespace1",
 				NamespaceLabels: map[string]string{areaLabel: "area2", teamLabel: "team3"},
 				PodName:         "pod1",
 			}
-			team3Pod2 := ContainerSummary{
+			team3Pod2 := k8s.ContainerSummary{
 				Namespace:       "namespace1",
 				NamespaceLabels: map[string]string{areaLabel: "area2", teamLabel: "team3"},
 				PodName:         "pod2",
 			}
-			team3Pod3 := ContainerSummary{
+			team3Pod3 := k8s.ContainerSummary{
 				Namespace:       "namespace2",
 				NamespaceLabels: map[string]string{areaLabel: "area2", teamLabel: "team3"},
 				PodName:         "pod3",
@@ -429,7 +365,7 @@ var _ = Describe("Scan Images", func() {
 			scannedImages := []ScannedImage{
 				{
 					ImageName:  "area1-team1-image1",
-					Containers: []ContainerSummary{team1Pod},
+					Containers: []k8s.ContainerSummary{team1Pod},
 					TotalVulnerabilityBySeverity: map[string]int{
 						"CRITICAL": 1,
 						"HIGH":     5,
@@ -440,7 +376,7 @@ var _ = Describe("Scan Images", func() {
 				},
 				{
 					ImageName:  "area1-team1-image2",
-					Containers: []ContainerSummary{team1Pod},
+					Containers: []k8s.ContainerSummary{team1Pod},
 					TotalVulnerabilityBySeverity: map[string]int{
 						"CRITICAL": 2,
 						"HIGH":     12,
@@ -451,7 +387,7 @@ var _ = Describe("Scan Images", func() {
 				},
 				{
 					ImageName:  "area1-team1-image2",
-					Containers: []ContainerSummary{team2Pod},
+					Containers: []k8s.ContainerSummary{team2Pod},
 					TotalVulnerabilityBySeverity: map[string]int{
 						"CRITICAL": 1,
 						"HIGH":     2,
@@ -462,7 +398,7 @@ var _ = Describe("Scan Images", func() {
 				},
 				{
 					ImageName:  "area2-team3-image1",
-					Containers: []ContainerSummary{team3Pod1, team3Pod2, team3Pod3},
+					Containers: []k8s.ContainerSummary{team3Pod1, team3Pod2, team3Pod3},
 					TotalVulnerabilityBySeverity: map[string]int{
 						"CRITICAL": 1,
 						"HIGH":     5,

@@ -32,9 +32,6 @@ func init() {
 }
 
 func scan(_ *cobra.Command, _ []string) {
-	kubeconfig := k8s.KubernetesConfig(kubeContext, kubeconfigPath)
-	clientset := k8s.KubernetesClient(kubeconfig)
-
 	config := &scanner.Config{
 		LogLevel:             logLevel,
 		Workers:              workersScan,
@@ -44,7 +41,7 @@ func scan(_ *cobra.Command, _ []string) {
 		FilterLabels:         filterLabels,
 		Severity:             severity,
 	}
-	t := scanner.New(clientset, config)
+	t := scanner.New(k8s.NewKubernetesClient(kubeContext, kubeconfigPath), config)
 
 	imageScanReport, err := t.ScanImages()
 	if err != nil {

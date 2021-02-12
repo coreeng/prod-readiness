@@ -3,6 +3,8 @@ package integrated
 import (
 	"testing"
 
+	"github.com/coreeng/production-readiness/production-readiness/pkg/k8s"
+
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -43,7 +45,7 @@ var _ = Describe("Scan Images", func() {
 			FilterLabels: areaLabel,
 			Severity:     "UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL",
 		}
-		scan = scanner.New(env.KubeClientset, config)
+		scan = scanner.New(k8s.NewKubernetesClientWith(env.KubeClientset), config)
 		f.DeleteNamespaces("namespace1", "namespace2")
 	})
 

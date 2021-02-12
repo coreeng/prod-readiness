@@ -5,29 +5,25 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/gammazero/workerpool"
-	"github.com/mitchellh/mapstructure"
-	logr "github.com/sirupsen/logrus"
-	v1 "k8s.io/api/core/v1"
+	"github.com/coreeng/production-readiness/production-readiness/pkg/k8s"
 
 	execCmd "github.com/coreeng/production-readiness/production-readiness/pkg/cmd"
 	"github.com/coreeng/production-readiness/production-readiness/pkg/utils"
-	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
+	"github.com/gammazero/workerpool"
+	"github.com/mitchellh/mapstructure"
+	logr "github.com/sirupsen/logrus"
 )
 
 // Scanner will scan images
 type Scanner struct {
-	kubeconfig *rest.Config
-	kubeClient *kubernetes.Clientset
-	config     *Config
+	config           *Config
+	kubernetesClient k8s.KubernetesClient
 }
 
 // ScannedImage define the information of an image
 type ScannedImage struct {
-	TrivyOutput                  []TrivyOutput      `json:"trivyCommand"`
-	Containers                   []ContainerSummary `json:"pods"`
+	TrivyOutput                  []TrivyOutput          `json:"trivyCommand"`
+	Containers                   []k8s.ContainerSummary `json:"pods"`
 	TotalVulnerabilityBySeverity map[string]int
 	ImageName                    string
 }
@@ -69,7 +65,7 @@ type ImagePerTeam struct {
 	Summary        *TeamSummary
 	ContainerCount int
 	ImageCount     int
-	Containers     []ContainerSummary
+	Containers     []k8s.ContainerSummary
 	Images         []ScannedImage
 }
 
@@ -112,34 +108,22 @@ type Config struct {
 }
 
 // New creates a Scanner to find vulnerabilities in container images
-func New(kubeClient *kubernetes.Clientset, config *Config) *Scanner {
+func New(kubernetesClient k8s.KubernetesClient, config *Config) *Scanner {
 	return &Scanner{
-		kubeClient: kubeClient,
-		config:     config,
+		config:           config,
+		kubernetesClient: kubernetesClient,
 	}
 }
 
 // ScanImages get all the images available in a cluster and scan them
 func (l *Scanner) ScanImages() (*Report, error) {
 	logr.Infof("Running scanner")
-
-	// get all pods running for now
-	// then we could get all the deployment and statefulset, job, cronjob, to gather all the images which are not running during the scan
-	// pod manifest should be available in the kube-system namespace
-	podList, err := l.getPods(l.config)
+	containers, err := l.kubernetesClient.GetContainersInNamespaces(l.config.FilterLabels)
 	if err != nil {
 		return nil, err
 	}
-
-	logr.WithFields(logr.Fields{
-		"podList": podList,
-	}).Debug("Pod List")
-
-	containerImages, err := l.groupContainersByImageName(podList)
-	if err != nil {
-		return nil, err
-	}
-	scannedImages, err := l.scanImages(containerImages)
+	containersByImageName := l.groupContainersByImageName(containers)
+	scannedImages, err := l.scanImages(containersByImageName)
 	if err != nil {
 		return nil, err
 	}
@@ -203,14 +187,14 @@ func (l *Scanner) generateAreaGrouping(scannedImages []ScannedImage) (map[string
 	return imagesByArea, nil
 }
 
-func (l *Scanner) groupImagesAndContainersByTeamAndArea(scannedImages []ScannedImage) (map[teamKey]map[string]ScannedImage, map[teamKey][]ContainerSummary) {
+func (l *Scanner) groupImagesAndContainersByTeamAndArea(scannedImages []ScannedImage) (map[teamKey]map[string]ScannedImage, map[teamKey][]k8s.ContainerSummary) {
 	scannedImagesByTeam := make(map[teamKey]map[string]ScannedImage)
-	containersByTeam := make(map[teamKey][]ContainerSummary)
+	containersByTeam := make(map[teamKey][]k8s.ContainerSummary)
 	var areaLabel, teamsLabel string
 	for _, scannedImage := range scannedImages {
-		for _, podSummary := range scannedImage.Containers {
-			areaLabel = podSummary.NamespaceLabels[l.config.AreaLabels]
-			teamsLabel = podSummary.NamespaceLabels[l.config.TeamsLabels]
+		for _, containerSummary := range scannedImage.Containers {
+			areaLabel = containerSummary.NamespaceLabels[l.config.AreaLabels]
+			teamsLabel = containerSummary.NamespaceLabels[l.config.TeamsLabels]
 
 			if areaLabel == "" {
 				areaLabel = "all"
@@ -220,7 +204,7 @@ func (l *Scanner) groupImagesAndContainersByTeamAndArea(scannedImages []ScannedI
 			}
 
 			key := teamKey{area: areaLabel, team: teamsLabel}
-			containersByTeam[key] = append(containersByTeam[key], podSummary)
+			containersByTeam[key] = append(containersByTeam[key], containerSummary)
 
 			if _, ok := scannedImagesByTeam[key]; !ok {
 				scannedImagesByTeam[key] = make(map[string]ScannedImage)
@@ -285,81 +269,15 @@ func sortBySeverity(scannedImages []ScannedImage) []ScannedImage {
 	return scannedImages
 }
 
-func (l *Scanner) getNamespaces(config *Config) (*v1.NamespaceList, error) {
-
-	options := metaV1.ListOptions{}
-	if config.FilterLabels != "" {
-		options.LabelSelector = config.FilterLabels
-	}
-
-	namespaceList, err := l.kubeClient.CoreV1().Namespaces().List(options)
-	if err != nil {
-		return nil, fmt.Errorf("unable to find namespaces: %v", err)
-	}
-
-	if len(namespaceList.Items) == 0 {
-		return nil, fmt.Errorf("no namespaces found")
-	}
-
-	return namespaceList, nil
-}
-
-type podDetail struct {
-	Pod       v1.Pod
-	Namespace v1.Namespace
-}
-
-// ContainerSummary holds details of the docker container
-type ContainerSummary struct {
-	ContainerName   string
-	PodName         string
-	Namespace       string
-	NamespaceLabels map[string]string
-}
-
-func (l *Scanner) getPods(config *Config) ([]podDetail, error) {
-	var podList *v1.PodList
-	var podDetailList []podDetail
-	var namespaceList *v1.NamespaceList
-	var err error
-
-	namespaceList, err = l.getNamespaces(config)
-	if err != nil {
-		return nil, fmt.Errorf("unable to list namespaces: %v", err)
-	}
-
-	for _, namespace := range namespaceList.Items {
-
-		podList, err = l.kubeClient.CoreV1().Pods(namespace.Name).List(metaV1.ListOptions{})
-		for _, pod := range podList.Items {
-			podDetailList = append(podDetailList, podDetail{Pod: pod, Namespace: namespace})
+func (l *Scanner) groupContainersByImageName(containers []k8s.ContainerSummary) map[string][]k8s.ContainerSummary {
+	images := make(map[string][]k8s.ContainerSummary)
+	for _, container := range containers {
+		if _, ok := images[container.Image]; !ok {
+			images[container.Image] = []k8s.ContainerSummary{}
 		}
-		logr.Infof("Get pods from namespace %s", namespace.Name)
-
-		if err != nil {
-			logr.Errorf("unable to find pods: %v", err)
-		}
+		images[container.Image] = append(images[container.Image], container)
 	}
-
-	if len(podDetailList) == 0 {
-		return nil, fmt.Errorf("no pod found")
-	}
-	return podDetailList, nil
-}
-
-func (l *Scanner) groupContainersByImageName(podList []podDetail) (map[string][]ContainerSummary, error) {
-	images := make(map[string][]ContainerSummary)
-	for _, pod := range podList {
-		logr.Infof("pod %s in namespace %s", pod.Pod.Name, pod.Namespace.Name)
-		for _, container := range pod.Pod.Spec.Containers {
-			if _, ok := images[container.Image]; !ok {
-				images[container.Image] = []ContainerSummary{}
-			}
-			containerItem := ContainerSummary{Namespace: pod.Namespace.Name, NamespaceLabels: pod.Namespace.Labels, PodName: pod.Pod.Name, ContainerName: container.Name}
-			images[container.Image] = append(images[container.Image], containerItem)
-		}
-	}
-	return images, nil
+	return images
 }
 
 func (l *Scanner) stringReplacement(imageName string, stringReplacement string) (string, error) {
@@ -380,7 +298,7 @@ func (l *Scanner) stringReplacement(imageName string, stringReplacement string) 
 	return imageName, nil
 }
 
-func (l *Scanner) scanImages(imageList map[string][]ContainerSummary) ([]ScannedImage, error) {
+func (l *Scanner) scanImages(imageList map[string][]k8s.ContainerSummary) ([]ScannedImage, error) {
 	var scannedImages []ScannedImage
 	wp := workerpool.New(l.config.Workers)
 	err := l.execTrivyDB()

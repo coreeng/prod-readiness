@@ -25,7 +25,7 @@ func init() {
 
 func kubeBench(_ *cobra.Command, _ []string) {
 	kubeconfig := k8s.KubernetesConfig(kubeContext, kubeconfigPath)
-	clientset := k8s.KubernetesClient(kubeconfig)
+	clientset := k8s.KubernetesClientset(kubeconfig)
 	t := kubebench.New(kubeconfig, clientset)
 
 	config := &kubebench.Config{

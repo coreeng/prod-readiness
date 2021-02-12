@@ -46,7 +46,7 @@ type FullReport struct {
 
 func report(_ *cobra.Command, _ []string) {
 	kubeconfig := k8s.KubernetesConfig(kubeContext, kubeconfigPath)
-	clientset := k8s.KubernetesClient(kubeconfig)
+	clientset := k8s.KubernetesClientset(kubeconfig)
 
 	config := &scanner.Config{
 		LogLevel:             logLevel,
@@ -58,7 +58,7 @@ func report(_ *cobra.Command, _ []string) {
 		Severity:             severity,
 	}
 
-	t := scanner.New(clientset, config)
+	t := scanner.New(k8s.NewKubernetesClientWith(clientset), config)
 	imageScanReport, err := t.ScanImages()
 	if err != nil {
 		logr.Errorf("Error scanning images with config %v: %v", config, err)
