@@ -263,34 +263,22 @@ func buildTeamSummary(teamImages []ScannedImage) *TeamSummary {
 }
 
 func sortBySeverity(scannedImages []ScannedImage) []ScannedImage {
-	sort.Slice(scannedImages, func(i, j int) bool {
+	severityScores := map[string]int{
+		"CRITICAL": 100000000, "HIGH": 1000000, "MEDIUM": 10000, "LOW": 100, "UNKNOWN": 1,
+	}
 
+	sort.Slice(scannedImages, func(i, j int) bool {
 		firstItemScore := 0
 		secondItemScore := 0
-		if _, ok := scannedImages[i].TotalVulnerabilityBySeverity["CRITICAL"]; ok {
-			firstItemScore = firstItemScore + scannedImages[i].TotalVulnerabilityBySeverity["CRITICAL"]*1000000
-		}
-		if _, ok := scannedImages[i].TotalVulnerabilityBySeverity["HIGH"]; ok {
-			firstItemScore = firstItemScore + scannedImages[i].TotalVulnerabilityBySeverity["HIGH"]*10000
-		}
-		if _, ok := scannedImages[i].TotalVulnerabilityBySeverity["MEDIUM"]; ok {
-			firstItemScore = firstItemScore + scannedImages[i].TotalVulnerabilityBySeverity["MEDIUM"]*100
-		}
-		if _, ok := scannedImages[i].TotalVulnerabilityBySeverity["LOW"]; ok {
-			firstItemScore = firstItemScore + scannedImages[i].TotalVulnerabilityBySeverity["LOW"]
+
+		for severity, count := range scannedImages[i].TotalVulnerabilityBySeverity {
+			severityScore := severityScores[severity]
+			firstItemScore = firstItemScore + count*severityScore
 		}
 
-		if _, ok := scannedImages[j].TotalVulnerabilityBySeverity["CRITICAL"]; ok {
-			secondItemScore = secondItemScore + scannedImages[j].TotalVulnerabilityBySeverity["CRITICAL"]*1000000
-		}
-		if _, ok := scannedImages[j].TotalVulnerabilityBySeverity["HIGH"]; ok {
-			secondItemScore = secondItemScore + scannedImages[j].TotalVulnerabilityBySeverity["HIGH"]*10000
-		}
-		if _, ok := scannedImages[j].TotalVulnerabilityBySeverity["MEDIUM"]; ok {
-			secondItemScore = secondItemScore + scannedImages[j].TotalVulnerabilityBySeverity["MEDIUM"]*100
-		}
-		if _, ok := scannedImages[j].TotalVulnerabilityBySeverity["LOW"]; ok {
-			secondItemScore = secondItemScore + scannedImages[j].TotalVulnerabilityBySeverity["LOW"]
+		for severity, count := range scannedImages[j].TotalVulnerabilityBySeverity {
+			severityScore := severityScores[severity]
+			secondItemScore = secondItemScore + count*severityScore
 		}
 		return firstItemScore > secondItemScore
 	})
@@ -422,17 +410,12 @@ func (l *Scanner) scanImages(imageList map[string][]ContainerSummary) ([]Scanned
 			if err != nil {
 				logr.Errorf("Error executing trivy for image %s: %s", resolvedImageName, err)
 			}
-			scannedImage := ScannedImage{
+			scannedImages = append(scannedImages, ScannedImage{
 				ImageName:                    resolvedImageName,
 				Containers:                   resolvedContainers,
-				TrivyOutput:                  trivyOutput,
+				TrivyOutput:                  sortTrivyVulnerabilities(trivyOutput),
 				TotalVulnerabilityBySeverity: computeTotalVulnerabilityBySeverity(trivyOutput),
-			}
-			err = l.sortTrivyVulnerabilities(&scannedImage)
-			if err != nil {
-				logr.Errorf("Error sortTrivyVulnerabilities: %v", err)
-			}
-			scannedImages = append(scannedImages, scannedImage)
+			})
 
 			err = l.execDockerRmi(imageName)
 			if err != nil {
@@ -445,6 +428,27 @@ func (l *Scanner) scanImages(imageList map[string][]ContainerSummary) ([]Scanned
 	return scannedImages, nil
 }
 
+func sortTrivyVulnerabilities(trivyOuput []TrivyOutput) []TrivyOutput {
+	severityScores := map[string]int{
+		"CRITICAL": 100000000, "HIGH": 1000000, "MEDIUM": 10000, "LOW": 100, "UNKNOWN": 1,
+	}
+
+	for z := 0; z < len(trivyOuput); z++ {
+		sort.Slice(trivyOuput[z].Vulnerabilities, func(i, j int) bool {
+			firstItemScore := 0
+			secondItemScore := 0
+
+			severityScore := severityScores[trivyOuput[z].Vulnerabilities[i].Severity]
+			firstItemScore = firstItemScore + severityScore
+
+			severityScore = severityScores[trivyOuput[z].Vulnerabilities[j].Severity]
+			secondItemScore = secondItemScore + severityScore
+			return firstItemScore > secondItemScore
+		})
+	}
+	return trivyOuput
+}
+
 func (l *Scanner) execTrivyDB() error {
 	logr.Infof("trivy download db")
 	cmd := "trivy"
@@ -453,60 +457,6 @@ func (l *Scanner) execTrivyDB() error {
 	_, _, err := execCmd.Execute(cmd, args)
 
 	return err
-}
-
-func (l *Scanner) sortTrivyVulnerabilities(imageSpec *ScannedImage) error {
-
-	for z := 0; z < len(imageSpec.TrivyOutput); z++ {
-		sort.Slice(imageSpec.TrivyOutput[z].Vulnerabilities, func(i, j int) bool {
-
-			firstItemScore := 0
-			secondItemScore := 0
-
-			if imageSpec.TrivyOutput[z].Vulnerabilities[i].Severity == "CRITICAL" {
-				firstItemScore = firstItemScore + 1000
-			}
-
-			if imageSpec.TrivyOutput[z].Vulnerabilities[i].Severity == "HIGH" {
-				firstItemScore = firstItemScore + 500
-			}
-
-			if imageSpec.TrivyOutput[z].Vulnerabilities[i].Severity == "MEDIUM" {
-				firstItemScore = firstItemScore + 100
-			}
-
-			if imageSpec.TrivyOutput[z].Vulnerabilities[i].Severity == "LOW" {
-				firstItemScore = firstItemScore + 10
-			}
-
-			if imageSpec.TrivyOutput[z].Vulnerabilities[i].Severity == "UNKNOWN" {
-				firstItemScore = firstItemScore + 1
-			}
-
-			if imageSpec.TrivyOutput[z].Vulnerabilities[j].Severity == "CRITICAL" {
-				secondItemScore = secondItemScore + 1000
-			}
-
-			if imageSpec.TrivyOutput[z].Vulnerabilities[j].Severity == "HIGH" {
-				secondItemScore = secondItemScore + 500
-			}
-
-			if imageSpec.TrivyOutput[z].Vulnerabilities[j].Severity == "MEDIUM" {
-				secondItemScore = secondItemScore + 100
-			}
-
-			if imageSpec.TrivyOutput[z].Vulnerabilities[j].Severity == "LOW" {
-				secondItemScore = secondItemScore + 10
-			}
-
-			if imageSpec.TrivyOutput[z].Vulnerabilities[j].Severity == "UNKNOWN" {
-				secondItemScore = secondItemScore + 1
-			}
-
-			return firstItemScore > secondItemScore
-		})
-	}
-	return nil
 }
 
 func (l *Scanner) execTrivy(imageName string) ([]TrivyOutput, error) {
@@ -524,7 +474,7 @@ func (l *Scanner) execTrivy(imageName string) ([]TrivyOutput, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error while decoding trivy output for image %s: %v", imageName, err)
 	}
-	return trivyOutput, nil
+	return sortTrivyVulnerabilities(trivyOutput), nil
 }
 
 func (l *Scanner) execDockerPull(imageName string) error {

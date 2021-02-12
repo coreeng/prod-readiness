@@ -157,52 +157,17 @@ var _ = Describe("Scan Images", func() {
 			trivyOutput := []TrivyOutput{
 				{
 					Vulnerabilities: []Vulnerabilities{
-						{
-							Severity: "CRITICAL",
-						},
-						{
-							Severity: "MEDIUM",
-						},
+						{Severity: "CRITICAL"},
+						{Severity: "MEDIUM"},
 					},
 				},
 				{
 					Vulnerabilities: []Vulnerabilities{
-						{
-							Severity: "CRITICAL",
-						},
-						{
-							Severity: "CRITICAL",
-						},
-						{
-							Severity: "HIGH",
-						},
-						{
-							Severity: "HIGH",
-						},
-						{
-							Severity: "MEDIUM",
-						},
-						{
-							Severity: "MEDIUM",
-						},
-						{
-							Severity: "LOW",
-						},
-						{
-							Severity: "LOW",
-						},
-						{
-							Severity: "LOW",
-						},
-						{
-							Severity: "UNKNOWN",
-						},
-						{
-							Severity: "UNKNOWN",
-						},
-						{
-							Severity: "UNKNOWN",
-						},
+						{Severity: "CRITICAL"}, {Severity: "CRITICAL"},
+						{Severity: "HIGH"}, {Severity: "HIGH"},
+						{Severity: "MEDIUM"}, {Severity: "MEDIUM"},
+						{Severity: "LOW"}, {Severity: "LOW"}, {Severity: "LOW"},
+						{Severity: "UNKNOWN"}, {Severity: "UNKNOWN"}, {Severity: "UNKNOWN"},
 					},
 				},
 			}
@@ -532,6 +497,41 @@ var _ = Describe("Scan Images", func() {
 			Expect(imageByArea["area2"].Teams["team3"].Summary.ImageVulnerabilitySummary["area2-team3-image1"].ContainerCount).To(Equal(3))
 			Expect(imageByArea["area2"].Teams["team3"].Summary.ImageVulnerabilitySummary["area2-team3-image1"].TotalVulnerabilityBySeverity).To(Equal(
 				map[string]int{"CRITICAL": 1, "HIGH": 5, "MEDIUM": 0, "LOW": 0, "UNKNOWN": 0},
+			))
+		})
+	})
+
+	Describe("Trivyoutput sorting", func() {
+		It("should sort the vulnerabilility by severity", func() {
+			output := []TrivyOutput{
+				{
+					Target: "allSeverities",
+					Vulnerabilities: []Vulnerabilities{
+						{Severity: "LOW"}, {Severity: "MEDIUM"}, {Severity: "UNKNOWN"}, {Severity: "HIGH"}, {Severity: "CRITICAL"},
+					},
+				},
+				{
+					Target: "multipleSeveritiesNoUnknowns",
+					Vulnerabilities: []Vulnerabilities{
+						{Severity: "MEDIUM"}, {Severity: "LOW"}, {Severity: "HIGH"}, {Severity: "CRITICAL"}, {Severity: "HIGH"}, {Severity: "CRITICAL"}, {Severity: "LOW"}, {Severity: "MEDIUM"},
+					},
+				},
+			}
+			sortedOutput := sortTrivyVulnerabilities(output)
+			Expect(sortedOutput).To(HaveLen(2))
+			Expect(sortedOutput[0].Target).To(Equal("allSeverities"))
+			Expect(sortedOutput[0].Vulnerabilities).To(HaveLen(5))
+			Expect(sortedOutput[0].Vulnerabilities).To(Equal(
+				[]Vulnerabilities{
+					{Severity: "CRITICAL"}, {Severity: "HIGH"}, {Severity: "MEDIUM"}, {Severity: "LOW"}, {Severity: "UNKNOWN"},
+				},
+			))
+			Expect(sortedOutput[1].Target).To(Equal("multipleSeveritiesNoUnknowns"))
+			Expect(sortedOutput[1].Vulnerabilities).To(HaveLen(8))
+			Expect(sortedOutput[1].Vulnerabilities).To(Equal(
+				[]Vulnerabilities{
+					{Severity: "CRITICAL"}, {Severity: "CRITICAL"}, {Severity: "HIGH"}, {Severity: "HIGH"}, {Severity: "MEDIUM"}, {Severity: "MEDIUM"}, {Severity: "LOW"}, {Severity: "LOW"},
+				},
 			))
 		})
 	})
