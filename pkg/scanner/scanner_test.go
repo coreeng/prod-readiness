@@ -1,7 +1,10 @@
 package scanner
 
 import (
+	"fmt"
 	"testing"
+
+	"github.com/stretchr/testify/mock"
 
 	"github.com/coreeng/production-readiness/production-readiness/pkg/k8s"
 
@@ -14,7 +17,7 @@ func TestScanner(t *testing.T) {
 	RunSpecs(t, "Scanner Suite")
 }
 
-var _ = Describe("Scan Images", func() {
+var _ = Describe("Scanner", func() {
 
 	Describe("string replacement", func() {
 		var (
@@ -109,39 +112,137 @@ var _ = Describe("Scan Images", func() {
 		})
 	})
 
-	Describe("Trivyoutput sorting", func() {
-		It("should sort the vulnerabilility by severity", func() {
-			output := []TrivyOutput{
+	Describe("scan processing", func() {
+		const (
+			areaLabel = "area-label"
+		)
+
+		var (
+			scan                 *Scanner
+			mockKubernetesClient *mockKubernetes
+			mockTrivyClient      *mockTrivy
+			mockDockerClient     *mockDocker
+		)
+
+		BeforeEach(func() {
+			mockKubernetesClient = &mockKubernetes{}
+			mockTrivyClient = &mockTrivy{}
+			mockDockerClient = &mockDocker{}
+			scan = &Scanner{
+				config: &Config{
+					Workers:              3,
+					FilterLabels:         areaLabel,
+					Severity:             "UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL",
+					ImageNameReplacement: "replace-this-registry|registry",
+				},
+				kubernetesClient: mockKubernetesClient,
+				trivyClient:      mockTrivyClient,
+				dockerClient:     mockDockerClient,
+			}
+		})
+
+		It("should delete the pulled docker images once the scan is complete", func() {
+			// given
+			containers := []k8s.ContainerSummary{
 				{
-					Target: "allSeverities",
-					Vulnerabilities: []Vulnerabilities{
-						{Severity: "LOW"}, {Severity: "MEDIUM"}, {Severity: "UNKNOWN"}, {Severity: "HIGH"}, {Severity: "CRITICAL"},
-					},
+					Image:   "alpine:3.11.0",
+					PodName: "pod1",
 				},
 				{
-					Target: "multipleSeveritiesNoUnknowns",
-					Vulnerabilities: []Vulnerabilities{
-						{Severity: "MEDIUM"}, {Severity: "LOW"}, {Severity: "HIGH"}, {Severity: "CRITICAL"}, {Severity: "HIGH"}, {Severity: "CRITICAL"}, {Severity: "LOW"}, {Severity: "MEDIUM"},
-					},
+					Image:   "replace-this-registry/image:0.1",
+					PodName: "pod1",
 				},
 			}
-			sortedOutput := sortTrivyVulnerabilities(output)
-			Expect(sortedOutput).To(HaveLen(2))
-			Expect(sortedOutput[0].Target).To(Equal("allSeverities"))
-			Expect(sortedOutput[0].Vulnerabilities).To(HaveLen(5))
-			Expect(sortedOutput[0].Vulnerabilities).To(Equal(
-				[]Vulnerabilities{
-					{Severity: "CRITICAL"}, {Severity: "HIGH"}, {Severity: "MEDIUM"}, {Severity: "LOW"}, {Severity: "UNKNOWN"},
+			mockKubernetesClient.On("GetContainersInNamespaces", areaLabel).Return(containers, nil)
+			mockTrivyClient.On("DownloadDatabase").Return(nil)
+			mockDockerClient.
+				On("PullImage", "alpine:3.11.0").Return(nil).
+				On("PullImage", "registry/image:0.1").Return(nil)
+			mockTrivyClient.
+				On("ScanImage", "alpine:3.11.0").Return([]TrivyOutput{}, nil).
+				On("ScanImage", "registry/image:0.1").Return([]TrivyOutput{}, nil)
+			mockDockerClient.
+				On("RmiImage", "alpine:3.11.0").Return(nil).
+				On("RmiImage", "registry/image:0.1").Return(nil)
+
+			// when
+			_, err := scan.ScanImages()
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should carry on processing the next image when error occurs processing the previous image", func() {
+			// given
+			containers := []k8s.ContainerSummary{
+				{
+					Image:   "alpine:3.11.0",
+					PodName: "pod1",
 				},
-			))
-			Expect(sortedOutput[1].Target).To(Equal("multipleSeveritiesNoUnknowns"))
-			Expect(sortedOutput[1].Vulnerabilities).To(HaveLen(8))
-			Expect(sortedOutput[1].Vulnerabilities).To(Equal(
-				[]Vulnerabilities{
-					{Severity: "CRITICAL"}, {Severity: "CRITICAL"}, {Severity: "HIGH"}, {Severity: "HIGH"}, {Severity: "MEDIUM"}, {Severity: "MEDIUM"}, {Severity: "LOW"}, {Severity: "LOW"},
+				{
+					Image:   "replace-this-registry/image:0.1",
+					PodName: "pod1",
 				},
-			))
+			}
+			mockKubernetesClient.On("GetContainersInNamespaces", areaLabel).Return(containers, nil)
+			mockTrivyClient.On("DownloadDatabase").Return(nil)
+			mockDockerClient.
+				On("PullImage", "alpine:3.11.0").Return(fmt.Errorf("some docker error")).
+				On("PullImage", "registry/image:0.1").Return(nil)
+			mockTrivyClient.
+				On("ScanImage", "alpine:3.11.0").Return([]TrivyOutput{}, fmt.Errorf("some trivy error")).
+				On("ScanImage", "registry/image:0.1").Return([]TrivyOutput{}, nil)
+			mockDockerClient.
+				On("RmiImage", "alpine:3.11.0").Return(fmt.Errorf("some docker error")).
+				On("RmiImage", "registry/image:0.1").Return(nil)
+
+			// when
+			_, err := scan.ScanImages()
+			Expect(err).NotTo(HaveOccurred())
 		})
 	})
 
 })
+
+type mockKubernetes struct {
+	mock.Mock
+}
+
+// force implementation of k8s.KubernetesClient at compilation time
+var _ k8s.KubernetesClient = &mockKubernetes{}
+
+func (k *mockKubernetes) GetContainersInNamespaces(labelSelector string) ([]k8s.ContainerSummary, error) {
+	args := k.Called(labelSelector)
+	return args.Get(0).([]k8s.ContainerSummary), args.Error(1)
+}
+
+type mockTrivy struct {
+	mock.Mock
+}
+
+// force implementation of TrivyClient at compilation time
+var _ TrivyClient = &mockTrivy{}
+
+func (t *mockTrivy) DownloadDatabase() error {
+	args := t.Called()
+	return args.Error(0)
+
+}
+func (t *mockTrivy) ScanImage(image string) ([]TrivyOutput, error) {
+	args := t.Called(image)
+	return args.Get(0).([]TrivyOutput), args.Error(1)
+}
+
+type mockDocker struct {
+	mock.Mock
+}
+
+var _ DockerClient = &mockDocker{}
+
+func (d *mockDocker) PullImage(image string) error {
+	args := d.Called(image)
+	return args.Error(0)
+}
+
+func (d *mockDocker) RmiImage(image string) error {
+	args := d.Called(image)
+	return args.Error(0)
+}

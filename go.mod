@@ -12,6 +12,7 @@ require (
 	github.com/sclevine/agouti v3.0.0+incompatible // indirect
 	github.com/sirupsen/logrus v1.7.0
 	github.com/spf13/cobra v1.0.0
+	github.com/stretchr/testify v1.4.0
 	golang.org/x/lint v0.0.0-20190313153728-d0100b6bd8b3
 	golang.org/x/sys v0.0.0-20210112080510-489259a85091 // indirect
 	golang.org/x/tools v0.0.0-20201224043029-2b0845dc783e

@@ -2,15 +2,11 @@ package scanner
 
 import (
 	"fmt"
-	"sort"
 	"strings"
 
 	"github.com/coreeng/production-readiness/production-readiness/pkg/k8s"
 
-	execCmd "github.com/coreeng/production-readiness/production-readiness/pkg/cmd"
-	"github.com/coreeng/production-readiness/production-readiness/pkg/utils"
 	"github.com/gammazero/workerpool"
-	"github.com/mitchellh/mapstructure"
 	logr "github.com/sirupsen/logrus"
 )
 
@@ -18,6 +14,8 @@ import (
 type Scanner struct {
 	config           *Config
 	kubernetesClient k8s.KubernetesClient
+	dockerClient     DockerClient
+	trivyClient      TrivyClient
 }
 
 // ScannedImage define the information of an image
@@ -71,6 +69,8 @@ func New(kubernetesClient k8s.KubernetesClient, config *Config) *Scanner {
 	return &Scanner{
 		config:           config,
 		kubernetesClient: kubernetesClient,
+		dockerClient:     NewDockerClient(),
+		trivyClient:      NewTrivyClient(config.Severity),
 	}
 }
 
@@ -95,16 +95,6 @@ func (s *Scanner) ScanImages() (*VulnerabilityReport, error) {
 	return reportGenerator.GenerateVulnerabilityReport(scannedImages)
 }
 
-func computeTotalVulnerabilityBySeverity(trivyOutput []TrivyOutput) map[string]int {
-	severityMap := make(map[string]int)
-	for _, target := range trivyOutput {
-		for _, vulnerability := range target.Vulnerabilities {
-			severityMap[vulnerability.Severity] = severityMap[vulnerability.Severity] + 1
-		}
-	}
-	return severityMap
-}
-
 func (s *Scanner) groupContainersByImageName(containers []k8s.ContainerSummary) map[string][]k8s.ContainerSummary {
 	images := make(map[string][]k8s.ContainerSummary)
 	for _, container := range containers {
@@ -114,6 +104,64 @@ func (s *Scanner) groupContainersByImageName(containers []k8s.ContainerSummary) 
 		images[container.Image] = append(images[container.Image], container)
 	}
 	return images
+}
+
+func (s *Scanner) scanImages(imageList map[string][]k8s.ContainerSummary) ([]ScannedImage, error) {
+	var scannedImages []ScannedImage
+	wp := workerpool.New(s.config.Workers)
+	err := s.trivyClient.DownloadDatabase()
+	if err != nil {
+		logr.Errorf("Failed to download trivy db: %s", err)
+	}
+
+	logr.Infof("Scanning %d images with %d workers", len(imageList), s.config.Workers)
+	for imageName, containers := range imageList {
+		// allocate var to allow access inside the worker submission
+		resolvedContainers := containers
+		resolvedImageName, err := s.stringReplacement(imageName, s.config.ImageNameReplacement)
+		if err != nil {
+			logr.Errorf("Error string replacement failed, image_name : %s, image_replacement_string: %s, error: %s", imageName, s.config.ImageNameReplacement, err)
+		}
+
+		wp.Submit(func() {
+			logr.Infof("Worker processing image: %s", resolvedImageName)
+
+			// trivy fail to download from quay.io so we need to pull the image first
+			err := s.dockerClient.PullImage(resolvedImageName)
+			if err != nil {
+				logr.Errorf("Error executing docker pull for image %s: %v", resolvedImageName, err)
+			}
+
+			trivyOutput, err := s.trivyClient.ScanImage(resolvedImageName)
+			if err != nil {
+				logr.Errorf("Error executing trivy for image %s: %s", resolvedImageName, err)
+			}
+			scannedImages = append(scannedImages, ScannedImage{
+				ImageName:                    resolvedImageName,
+				Containers:                   resolvedContainers,
+				TrivyOutput:                  sortTrivyVulnerabilities(trivyOutput),
+				TotalVulnerabilityBySeverity: computeTotalVulnerabilityBySeverity(trivyOutput),
+			})
+
+			err = s.dockerClient.RmiImage(resolvedImageName)
+			if err != nil {
+				logr.Errorf("Error executing docker rmi for image %s: %v", resolvedImageName, err)
+			}
+		})
+	}
+
+	wp.StopWait()
+	return scannedImages, nil
+}
+
+func computeTotalVulnerabilityBySeverity(trivyOutput []TrivyOutput) map[string]int {
+	severityMap := make(map[string]int)
+	for _, target := range trivyOutput {
+		for _, vulnerability := range target.Vulnerabilities {
+			severityMap[vulnerability.Severity] = severityMap[vulnerability.Severity] + 1
+		}
+	}
+	return severityMap
 }
 
 func (s *Scanner) stringReplacement(imageName string, stringReplacement string) (string, error) {
@@ -132,127 +180,4 @@ func (s *Scanner) stringReplacement(imageName string, stringReplacement string) 
 		}
 	}
 	return imageName, nil
-}
-
-func (s *Scanner) scanImages(imageList map[string][]k8s.ContainerSummary) ([]ScannedImage, error) {
-	var scannedImages []ScannedImage
-	wp := workerpool.New(s.config.Workers)
-	err := s.execTrivyDB()
-	if err != nil {
-		logr.Errorf("Failed to download trivy db: %s", err)
-	}
-
-	logr.Infof("Scanning %d images with %d workers", len(imageList), s.config.Workers)
-	for imageName, containers := range imageList {
-		// allocate var to allow access inside the worker submission
-		resolvedContainers := containers
-		resolvedImageName, err := s.stringReplacement(imageName, s.config.ImageNameReplacement)
-		if err != nil {
-			logr.Errorf("Error string replacement failed, image_name : %s, image_replacement_string: %s, error: %s", imageName, s.config.ImageNameReplacement, err)
-		}
-
-		wp.Submit(func() {
-			logr.Infof("Worker processing image: %s", resolvedImageName)
-
-			// trivy fail to download from quay.io so we need to pull the image first
-			err := s.execDockerPull(resolvedImageName)
-			if err != nil {
-				logr.Errorf("Error executing docker pull for image %s: %v", resolvedImageName, err)
-			}
-
-			trivyOutput, err := s.execTrivy(resolvedImageName)
-			if err != nil {
-				logr.Errorf("Error executing trivy for image %s: %s", resolvedImageName, err)
-			}
-			scannedImages = append(scannedImages, ScannedImage{
-				ImageName:                    resolvedImageName,
-				Containers:                   resolvedContainers,
-				TrivyOutput:                  sortTrivyVulnerabilities(trivyOutput),
-				TotalVulnerabilityBySeverity: computeTotalVulnerabilityBySeverity(trivyOutput),
-			})
-
-			err = s.execDockerRmi(imageName)
-			if err != nil {
-				logr.Errorf("Error executing docker rmi for image %s: %v", resolvedImageName, err)
-			}
-		})
-	}
-
-	wp.StopWait()
-	return scannedImages, nil
-}
-
-func sortTrivyVulnerabilities(trivyOuput []TrivyOutput) []TrivyOutput {
-	severityScores := map[string]int{
-		"CRITICAL": 100000000, "HIGH": 1000000, "MEDIUM": 10000, "LOW": 100, "UNKNOWN": 1,
-	}
-
-	for z := 0; z < len(trivyOuput); z++ {
-		sort.Slice(trivyOuput[z].Vulnerabilities, func(i, j int) bool {
-			firstItemScore := 0
-			secondItemScore := 0
-
-			severityScore := severityScores[trivyOuput[z].Vulnerabilities[i].Severity]
-			firstItemScore = firstItemScore + severityScore
-
-			severityScore = severityScores[trivyOuput[z].Vulnerabilities[j].Severity]
-			secondItemScore = secondItemScore + severityScore
-			return firstItemScore > secondItemScore
-		})
-	}
-	return trivyOuput
-}
-
-func (s *Scanner) execTrivyDB() error {
-	logr.Infof("trivy download db")
-	cmd := "trivy"
-	args := []string{"-q", "image", "--download-db-only"}
-
-	_, _, err := execCmd.Execute(cmd, args)
-
-	return err
-}
-
-func (s *Scanner) execTrivy(imageName string) ([]TrivyOutput, error) {
-	cmd := "trivy"
-	args := []string{"-q", "image", "-f", "json", "--skip-update", "--no-progress", "--severity", s.config.Severity, imageName}
-	output, errOutput, err := execCmd.Execute(cmd, args)
-	outputAsStruct := utils.ConvertByteToStruct(output)
-	errOutputAsString := utils.ConvertByteToString(errOutput)
-	if err != nil {
-		return nil, fmt.Errorf("error while executing trivy for image %s. Output: %s, Error output: %s, Error: %v", imageName, outputAsStruct, errOutputAsString, err)
-	}
-
-	var trivyOutput []TrivyOutput
-	err = mapstructure.Decode(outputAsStruct, &trivyOutput)
-	if err != nil {
-		return nil, fmt.Errorf("error while decoding trivy output for image %s: %v", imageName, err)
-	}
-	return sortTrivyVulnerabilities(trivyOutput), nil
-}
-
-func (s *Scanner) execDockerPull(imageName string) error {
-	cmd := "docker"
-	args := []string{"pull", imageName}
-
-	output, errOutput, err := execCmd.Execute(cmd, args)
-	outputAsString := utils.ConvertByteToString(output)
-	errOutputAsString := utils.ConvertByteToString(errOutput)
-	if err != nil {
-		return fmt.Errorf("error while executing docker pull for image %s. Output: %s, Error output: %s, Error: %v", imageName, outputAsString, errOutputAsString, err)
-	}
-	return nil
-}
-
-func (s *Scanner) execDockerRmi(imageName string) error {
-	cmd := "docker"
-	args := []string{"rmi", imageName}
-
-	output, errOutput, err := execCmd.Execute(cmd, args)
-	outputAsString := utils.ConvertByteToString(output)
-	errOutputAsString := utils.ConvertByteToString(errOutput)
-	if err != nil {
-		return fmt.Errorf("error while executing docker rmi for image %s. Output: %s, Error output: %s, Error: %v", imageName, outputAsString, errOutputAsString, err)
-	}
-	return nil
 }
