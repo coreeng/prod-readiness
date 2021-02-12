@@ -4,8 +4,8 @@ import (
 	"github.com/coreeng/production-readiness/production-readiness/pkg/k8s"
 	"github.com/coreeng/production-readiness/production-readiness/pkg/kubebench"
 	"github.com/coreeng/production-readiness/production-readiness/pkg/linuxbench"
-	r "github.com/coreeng/production-readiness/production-readiness/pkg/report"
 	"github.com/coreeng/production-readiness/production-readiness/pkg/scanner"
+	r "github.com/coreeng/production-readiness/production-readiness/pkg/template"
 	logr "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -39,7 +39,7 @@ func init() {
 
 // FullReport - FullReport
 type FullReport struct {
-	ImageScan *scanner.Report
+	ImageScan *scanner.VulnerabilityReport
 	KubeCIS   *kubebench.KubeReport
 	LinuxCIS  *linuxbench.LinuxReport
 }

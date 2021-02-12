@@ -3,7 +3,7 @@ package main
 import (
 	"github.com/coreeng/production-readiness/production-readiness/pkg/k8s"
 	"github.com/coreeng/production-readiness/production-readiness/pkg/kubebench"
-	r "github.com/coreeng/production-readiness/production-readiness/pkg/report"
+	r "github.com/coreeng/production-readiness/production-readiness/pkg/template"
 	logr "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )

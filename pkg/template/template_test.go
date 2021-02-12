@@ -1,4 +1,4 @@
-package report
+package template
 
 import (
 	"encoding/json"
@@ -25,7 +25,7 @@ func TestManager(t *testing.T) {
 }
 
 type TestReport struct {
-	ImageScan *scanner.Report
+	ImageScan *scanner.VulnerabilityReport
 }
 
 var _ = Describe("Generating vulnerability report", func() {
@@ -66,7 +66,7 @@ func aReport() *TestReport {
 	ubuntuImageScan := anUbuntuImageScan(map[string]int{"CRITICAL": 0, "HIGH": 2, "MEDIUM": 1, "LOW": 10, "UNKNOWN": 0})
 	alpineImageScan := anAlpineImageScan(map[string]int{})
 	return &TestReport{
-		ImageScan: &scanner.Report{
+		ImageScan: &scanner.VulnerabilityReport{
 			ScannedImages: []scanner.ScannedImage{debianImageScan, alpineImageScan, ubuntuImageScan},
 			ImageByArea: map[string]*scanner.ImagePerArea{
 				"area-1": {
@@ -164,7 +164,7 @@ var _ = Describe("Saving json report", func() {
 
 	It("should save the report json representation to the given file", func() {
 		testReport := TestReport{
-			ImageScan: &scanner.Report{
+			ImageScan: &scanner.VulnerabilityReport{
 				ImageByArea: map[string]*scanner.ImagePerArea{
 					"area-1": {
 						AreaName: "area-1",

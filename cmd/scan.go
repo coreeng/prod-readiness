@@ -2,8 +2,8 @@ package main
 
 import (
 	"github.com/coreeng/production-readiness/production-readiness/pkg/k8s"
-	r "github.com/coreeng/production-readiness/production-readiness/pkg/report"
 	"github.com/coreeng/production-readiness/production-readiness/pkg/scanner"
+	r "github.com/coreeng/production-readiness/production-readiness/pkg/template"
 	logr "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
