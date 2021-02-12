@@ -69,7 +69,7 @@ func (k *kubernetesClient) getAllPodContainersInNamespaces(namespaceList *v1.Nam
 			// TODO continue to the next namespace?
 		}
 		if len(podList.Items) == 0 {
-			logr.Warnf("no pods found in namespace: %s %v", namespace.Namespace, err)
+			logr.Warnf("no pods found in namespace: %s %v", namespace.Name, err)
 			// continue as some namespaces may have scaled down deployments
 		}
 
