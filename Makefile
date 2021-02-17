@@ -107,3 +107,6 @@ endif
 ifeq (, $(shell which trivy))
 	$(error "trivy not found in PATH")
 endif
+ifeq (, $(shell which kubectl))
+	$(error "kubectl not found in PATH")
+endif
