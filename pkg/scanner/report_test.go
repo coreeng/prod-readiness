@@ -165,6 +165,16 @@ var _ = Describe("Vulnerability report", func() {
 
 			scannedImages := []ScannedImage{
 				{
+					ImageName:  "leastCriticalTeam1",
+					Containers: []k8s.ContainerSummary{team1Pod},
+					TotalVulnerabilityBySeverity: map[string]int{
+						"CRITICAL": 3,
+						"HIGH":     5,
+						"MEDIUM":   11,
+						"LOW":      28,
+					},
+				},
+				{
 					ImageName:  "mostCriticalTeam2",
 					Containers: []k8s.ContainerSummary{team2Pod},
 					TotalVulnerabilityBySeverity: map[string]int{
@@ -185,16 +195,6 @@ var _ = Describe("Vulnerability report", func() {
 					},
 				},
 				{
-					ImageName:  "mostCritical",
-					Containers: []k8s.ContainerSummary{team1Pod},
-					TotalVulnerabilityBySeverity: map[string]int{
-						"CRITICAL": 4,
-						"HIGH":     5,
-						"MEDIUM":   10,
-						"LOW":      25,
-					},
-				},
-				{
 					ImageName:  "mostHighAfterSameCritical",
 					Containers: []k8s.ContainerSummary{team1Pod},
 					TotalVulnerabilityBySeverity: map[string]int{
@@ -205,6 +205,16 @@ var _ = Describe("Vulnerability report", func() {
 					},
 				},
 				{
+					ImageName:  "mostCritical",
+					Containers: []k8s.ContainerSummary{team1Pod},
+					TotalVulnerabilityBySeverity: map[string]int{
+						"CRITICAL": 4,
+						"HIGH":     5,
+						"MEDIUM":   10,
+						"LOW":      25,
+					},
+				},
+				{
 					ImageName:  "mostMediumAfterSameCriticalAndHigh",
 					Containers: []k8s.ContainerSummary{team1Pod},
 					TotalVulnerabilityBySeverity: map[string]int{
@@ -212,16 +222,6 @@ var _ = Describe("Vulnerability report", func() {
 						"HIGH":     5,
 						"MEDIUM":   12,
 						"LOW":      27,
-					},
-				},
-				{
-					ImageName:  "leastCriticalTeam1",
-					Containers: []k8s.ContainerSummary{team1Pod},
-					TotalVulnerabilityBySeverity: map[string]int{
-						"CRITICAL": 3,
-						"HIGH":     5,
-						"MEDIUM":   11,
-						"LOW":      28,
 					},
 				},
 			}

@@ -79,7 +79,7 @@ func (r *AreaReport) generateAreaGrouping(scannedImages []ScannedImage) (map[str
 
 		teamSummary := TeamSummary{
 			Name:                      teamId.team,
-			Images:                    teamImages,
+			Images:                    sortBySeverity(teamImages),
 			ImageCount:                len(teamImages),
 			Containers:                teamContainers,
 			ContainerCount:            len(teamContainers),
