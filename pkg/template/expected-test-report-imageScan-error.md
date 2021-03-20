@@ -10,7 +10,7 @@
 
 #### Errors
 
-The following errors have occurred during while scanning images:
+The following errors have occurred while scanning images:
 - error 1 during while scanning image1
 - error 2 during while scanning image2
 

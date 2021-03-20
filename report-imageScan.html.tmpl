@@ -77,7 +77,7 @@
 
         {{- if $scanErrors }}
         <h4>Errors</h4>
-        The following errors have occurred during while scanning images:
+        The following errors have occurred while scanning images:
         <ul>
         {{- range $key, $teamImage := $team.Images -}}
           {{- if $teamImage.ScanError }}
