@@ -65,7 +65,7 @@ func (k *kubernetesClient) getAllPodContainersInNamespaces(namespaceList *v1.Nam
 		logr.Infof("Getting pods from namespace %s", namespace.Name)
 		podList, err := k.clientset.CoreV1().Pods(namespace.Name).List(metaV1.ListOptions{})
 		if err != nil {
-			return nil,  fmt.Errorf("unable to find pods in namespace %s %v", namespace.Namespace, err)
+			return nil, fmt.Errorf("unable to find pods in namespace %s %v", namespace.Namespace, err)
 		}
 
 		if len(podList.Items) == 0 {

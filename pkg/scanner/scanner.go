@@ -139,7 +139,7 @@ func (s *Scanner) scanImages(imageList map[string][]k8s.ContainerSummary) ([]Sca
 				scannedImages = append(scannedImages, ScannedImage{
 					ImageName:  resolvedImageName,
 					Containers: resolvedContainers,
-					ScanError:      scanError,
+					ScanError:  scanError,
 				})
 				logr.Error(scanError)
 			} else {
