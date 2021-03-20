@@ -23,7 +23,7 @@ func (d *dockerClient) PullImage(image string) error {
 	command := exec.Command("docker", "pull", image)
 	output, err := command.CombinedOutput()
 	if err != nil {
-		return dockerError("error while pulling for image %s", output, err)
+		return dockerError(fmt.Sprintf("error while pulling for image %s", image), output, err)
 	}
 	return nil
 }
@@ -32,7 +32,7 @@ func (d *dockerClient) RmiImage(image string) error {
 	command := exec.Command("docker", "rmi", image)
 	output, err := command.CombinedOutput()
 	if err != nil {
-		return dockerError("error while deleting image %s", output, err)
+		return dockerError(fmt.Sprintf("error while deleting image %s", image), output, err)
 	}
 	return nil
 }
