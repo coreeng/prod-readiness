@@ -61,14 +61,8 @@ func sortTrivyVulnerabilities(trivyOuput []TrivyOutput) []TrivyOutput {
 
 	for z := 0; z < len(trivyOuput); z++ {
 		sort.Slice(trivyOuput[z].Vulnerabilities, func(i, j int) bool {
-			firstItemScore := 0
-			secondItemScore := 0
-
-			severityScore := severityScores[trivyOuput[z].Vulnerabilities[i].Severity]
-			firstItemScore = firstItemScore + severityScore
-
-			severityScore = severityScores[trivyOuput[z].Vulnerabilities[j].Severity]
-			secondItemScore = secondItemScore + severityScore
+			firstItemScore := severityScores[trivyOuput[z].Vulnerabilities[i].Severity]
+			secondItemScore := severityScores[trivyOuput[z].Vulnerabilities[j].Severity]
 			return firstItemScore > secondItemScore
 		})
 	}
