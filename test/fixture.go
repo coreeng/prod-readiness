@@ -63,6 +63,24 @@ func (f *Fixture) PodIsReady(podName types.NamespacedName) func() (bool, error) 
 	}
 }
 
+func (f *Fixture) DeletePods(namespaces ...string) {
+	for _, namespace := range namespaces {
+		err := f.env.KubeClientset.CoreV1().Pods(namespace).DeleteCollection(metav1.NewDeleteOptions(0), metav1.ListOptions{})
+		Expect(err).NotTo(HaveOccurred())
+		Eventually(f.PodIsAbsent(namespace), 10*time.Second, time.Second).Should(BeTrue())
+	}
+}
+
+func (f *Fixture) PodIsAbsent(namespace string) func() (bool, error) {
+	return func() (bool, error) {
+		pods, err := f.env.KubeClientset.CoreV1().Pods(namespace).List(metav1.ListOptions{})
+		if err != nil {
+			return false, err
+		}
+		return len(pods.Items) == 0, nil
+	}
+}
+
 func podReadyCondition(pod *v1.Pod) bool {
 	for _, condition := range pod.Status.Conditions {
 		if condition.Type == v1.PodReady {

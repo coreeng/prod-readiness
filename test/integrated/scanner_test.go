@@ -47,11 +47,12 @@ var _ = Describe("Scan Images", func() {
 		}
 		scan = scanner.New(k8s.NewKubernetesClientWith(env.KubeClientset), config)
 		f.DeleteNamespaces("namespace1", "namespace2")
+		f.CreateNamespace("namespace1", map[string]string{areaLabel: "area1", teamLabel: "team1"})
+		f.CreateNamespace("namespace2", map[string]string{areaLabel: "area1", teamLabel: "team2"})
 	})
 
 	BeforeEach(func() {
-		f.CreateNamespace("namespace1", map[string]string{areaLabel: "area1", teamLabel: "team1"})
-		f.CreateNamespace("namespace2", map[string]string{areaLabel: "area1", teamLabel: "team2"})
+		f.DeletePods("namespace1", "namespace2")
 	})
 
 	It("should produce a vulnerability report for the scanned images", func() {
@@ -132,6 +133,31 @@ var _ = Describe("Scan Images", func() {
 		Expect(team2.ContainerCount).To(Equal(2))
 		Expect(team2.ImageVulnerabilitySummary["nginx:1.15-alpine"].ContainerCount).To(Equal(2))
 		Expect(vulnerabilityCountOf(team2.ImageVulnerabilitySummary["nginx:1.15-alpine"].TotalVulnerabilityBySeverity)).To(BeNumerically(">", 0))
+	})
+
+	It("should not report pods in empty namespaces", func() {
+		// given
+		teamPod, err := env.KubeClientset.CoreV1().Pods("namespace2").Create(&v1.Pod{
+			ObjectMeta: metav1.ObjectMeta{Name: "nginx-pod1"},
+			Spec: v1.PodSpec{
+				Containers:                    []v1.Container{{Name: "container", Image: "nginx:1.15-alpine"}},
+				TerminationGracePeriodSeconds: &terminateImmediately,
+			},
+		})
+		Expect(err).NotTo(HaveOccurred())
+		Eventually(f.PodIsReady(types.NamespacedName{Namespace: teamPod.Namespace, Name: teamPod.Name}))
+
+		// when
+		report, err := scan.ScanImages()
+		Expect(err).NotTo(HaveOccurred())
+
+		// then
+		Expect(report.ScannedImages).To(HaveLen(1))
+		Expect(report.AreaSummary["area1"].ImageCount).To(Equal(1))
+		Expect(report.AreaSummary["area1"].ContainerCount).To(Equal(1))
+		Expect(report.AreaSummary["area1"].Teams).To(And(HaveLen(1), HaveKey("team2")))
+		Expect(report.AreaSummary["area1"].Teams["team2"].ImageCount).To(Equal(1))
+		Expect(report.AreaSummary["area1"].Teams["team2"].ContainerCount).To(Equal(1))
 	})
 })
 
