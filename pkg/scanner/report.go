@@ -16,8 +16,8 @@ type VulnerabilityReport struct {
 type AreaSummary struct {
 	Name                         string
 	Teams                        map[string]*TeamSummary
-	ImageCount                   int `json:"number_images_scanned"`
-	ContainerCount               int `json:"number_pods_scanned"`
+	ImageCount                   int
+	ContainerCount               int
 	TotalVulnerabilityBySeverity map[string]int
 }
 
