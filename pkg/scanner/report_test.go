@@ -382,7 +382,7 @@ var _ = Describe("Vulnerability report", func() {
 
 func sortImageByNames(scannedImages []ScannedImage) []ScannedImage {
 	sort.Slice(scannedImages, func(i, j int) bool {
-			return scannedImages[i].ImageName < scannedImages[j].ImageName
+		return scannedImages[i].ImageName < scannedImages[j].ImageName
 	})
 	return scannedImages
 }
