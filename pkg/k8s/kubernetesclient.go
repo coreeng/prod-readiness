@@ -40,7 +40,7 @@ func NewKubernetesClient(kubeContext, kubeconfigPath string) KubernetesClient {
 	}
 }
 
-// NewKubernetesClientWith creates a new KubernetesClient using the provides clientset
+// NewKubernetesClientWith creates a new KubernetesClient using the provided clientset
 func NewKubernetesClientWith(clientset *kubernetes.Clientset) KubernetesClient {
 	return &kubernetesClient{
 		clientset: clientset,
