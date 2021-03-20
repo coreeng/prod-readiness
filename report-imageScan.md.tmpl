@@ -1,22 +1,22 @@
 # Image Scanning
 
-{{- range $keyArea, $area := .ImageScan.ImageByArea }}
+{{- range $keyArea, $area := .ImageScan.AreaSummary }}
 
-## Vulnerabilities for {{ $area.AreaName }}
+## Vulnerabilities for {{ $area.Name }}
 
 | Total Image Count | Total Container Count | Total Critical| Total High | Total Medium | Total Low | Total Unknown |
 |--------|----------|---------|------|--------|-----|-----|
-| {{ $area.Summary.ImageCount }} | {{ $area.Summary.ContainerCount }} | {{ index $area.Summary.TotalVulnerabilityBySeverity "CRITICAL" }} | {{ index $area.Summary.TotalVulnerabilityBySeverity "HIGH" }} | {{ index $area.Summary.TotalVulnerabilityBySeverity "MEDIUM" }} | {{ index $area.Summary.TotalVulnerabilityBySeverity "LOW" }} | {{ index $area.Summary.TotalVulnerabilityBySeverity "UNKNOWN" }}|
+| {{ $area.ImageCount }} | {{ $area.ContainerCount }} | {{ index $area.TotalVulnerabilityBySeverity "CRITICAL" }} | {{ index $area.TotalVulnerabilityBySeverity "HIGH" }} | {{ index $area.TotalVulnerabilityBySeverity "MEDIUM" }} | {{ index $area.TotalVulnerabilityBySeverity "LOW" }} | {{ index $area.TotalVulnerabilityBySeverity "UNKNOWN" }}|
 
 {{- range $keyTeam, $team := $area.Teams }}
 
-### Vulnerabilities for {{ $area.AreaName }} - {{ $team.TeamName }}
+### Vulnerabilities for {{ $area.Name }} - {{ $team.Name }}
 
 #### Summary
 
 | Images | Containers | Critical| High | Medium | Low | Unknown |
 |--------|----------|---------|------|--------|-----|-----|
-{{- range $key, $specs := $team.Summary.ImageVulnerabilitySummary }}
+{{- range $key, $specs := $team.ImageVulnerabilitySummary }}
 | {{ $key }} | {{ $specs.ContainerCount }} | {{ index $specs.TotalVulnerabilityBySeverity "CRITICAL" }} | {{ index $specs.TotalVulnerabilityBySeverity "HIGH" }} | {{ index $specs.TotalVulnerabilityBySeverity "MEDIUM" }} | {{ index $specs.TotalVulnerabilityBySeverity "LOW" }} | {{ index $specs.TotalVulnerabilityBySeverity "UNKNOWN" }}|
 {{- end }}
 

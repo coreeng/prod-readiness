@@ -9,11 +9,13 @@ import (
 // VulnerabilityReport is top level structure holding the results of the image scan
 type VulnerabilityReport struct {
 	ScannedImages []ScannedImage
-	ImageByArea   map[string]*ImagePerArea
+	AreaSummary   map[string]*AreaSummary
 }
 
-// AreaSummary defines the summary for an area
+// AreaSummary holds the summary of the vulnerabilities of the teams
 type AreaSummary struct {
+	Name                         string
+	Teams                        map[string]*TeamSummary
 	ImageCount                   int `json:"number_images_scanned"`
 	ContainerCount               int `json:"number_pods_scanned"`
 	TotalVulnerabilityBySeverity map[string]int
@@ -21,6 +23,11 @@ type AreaSummary struct {
 
 // TeamSummary defines the summary for an team
 type TeamSummary struct {
+	Name                      string
+	Images                    []ScannedImage
+	Containers                []k8s.ContainerSummary
+	ImageCount                int
+	ContainerCount            int
 	ImageVulnerabilitySummary map[string]VulnerabilitySummary
 }
 
@@ -28,23 +35,6 @@ type TeamSummary struct {
 type VulnerabilitySummary struct {
 	ContainerCount               int
 	TotalVulnerabilityBySeverity map[string]int
-}
-
-// ImagePerArea regroups image vulnerabilities for an area/department
-type ImagePerArea struct {
-	AreaName string
-	Summary  *AreaSummary
-	Teams    map[string]*ImagePerTeam
-}
-
-// ImagePerTeam regroups image vulnerabilities for a team
-type ImagePerTeam struct {
-	TeamName       string
-	Summary        *TeamSummary
-	ContainerCount int
-	ImageCount     int
-	Containers     []k8s.ContainerSummary
-	Images         []ScannedImage
 }
 
 // AreaReport generates a report grouped by area and team
@@ -61,7 +51,7 @@ func (r *AreaReport) GenerateVulnerabilityReport(scannedImages []ScannedImage) (
 	}
 	return &VulnerabilityReport{
 		ScannedImages: scannedImages,
-		ImageByArea:   imagesByArea,
+		AreaSummary:   imagesByArea,
 	}, nil
 }
 
@@ -69,44 +59,56 @@ type teamKey struct {
 	area, team string
 }
 
-func (r *AreaReport) generateAreaGrouping(scannedImages []ScannedImage) (map[string]*ImagePerArea, error) {
-	scannedImagesByTeam, containersByTeam := groupImagesAndContainersByAreaAndTeam(scannedImages, r.AreaLabelName, r.TeamLabelName)
-	imagesByArea := make(map[string]*ImagePerArea)
-	for key := range containersByTeam {
-		if _, ok := imagesByArea[key.area]; !ok {
-			imagesByArea[key.area] = &ImagePerArea{AreaName: key.area, Teams: map[string]*ImagePerTeam{}}
-		}
-		if _, ok := imagesByArea[key.area].Teams[key.team]; !ok {
-			imagesByArea[key.area].Teams[key.team] = &ImagePerTeam{TeamName: key.team}
+func (r *AreaReport) generateAreaGrouping(scannedImages []ScannedImage) (map[string]*AreaSummary, error) {
+	imageByTeam := groupImagesByTeam(scannedImages, r.AreaLabelName, r.TeamLabelName)
+	var summaryByArea = make(map[string]*AreaSummary)
+	for teamId, teamImageMap := range imageByTeam {
+		if _, ok := summaryByArea[teamId.area]; !ok {
+			summaryByArea[teamId.area] = &AreaSummary{
+				Name: teamId.area,
+				Teams: make(map[string]*TeamSummary),
+			}
 		}
 
+		var teamContainers []k8s.ContainerSummary
 		var teamImages []ScannedImage
-		for _, scannedImage := range scannedImagesByTeam[key] {
-			teamImages = append(teamImages, scannedImage)
+		for _, scannedImage := range teamImageMap {
+			teamImages = append(teamImages, *scannedImage)
+			teamContainers = append(teamContainers, scannedImage.Containers...)
 		}
 
-		imagesByArea[key.area].Teams[key.team].ContainerCount = len(containersByTeam[key])
-		imagesByArea[key.area].Teams[key.team].Containers = containersByTeam[key]
-		imagesByArea[key.area].Teams[key.team].Images = sortBySeverity(teamImages)
-		imagesByArea[key.area].Teams[key.team].ImageCount = len(teamImages)
-		imagesByArea[key.area].Teams[key.team].Summary = buildTeamSummary(teamImages)
+		teamSummary := TeamSummary{
+			Name:                      teamId.team,
+			Images:                    teamImages,
+			ImageCount:                len(teamImages),
+			Containers:                teamContainers,
+			ContainerCount:            len(teamContainers),
+			ImageVulnerabilitySummary: buildVulnerabilitySummary(teamImages),
+		}
+
+		summaryByArea[teamId.area].Teams[teamId.team] = &teamSummary
+		summaryByArea[teamId.area].ImageCount += teamSummary.ImageCount
+		summaryByArea[teamId.area].ContainerCount += teamSummary.ContainerCount
+		for _, vulnerabilitySummary := range teamSummary.ImageVulnerabilitySummary {
+			if summaryByArea[teamId.area].TotalVulnerabilityBySeverity == nil {
+				summaryByArea[teamId.area].TotalVulnerabilityBySeverity = make(map[string]int)
+			}
+			for severity, count := range vulnerabilitySummary.TotalVulnerabilityBySeverity {
+				summaryByArea[teamId.area].TotalVulnerabilityBySeverity[severity] += count
+			}
+		}
 	}
 
-	for area, areaImages := range imagesByArea {
-		imagesByArea[area].Summary = buildAreaSummary(areaImages)
-	}
-
-	return imagesByArea, nil
+	return summaryByArea, nil
 }
 
-func groupImagesAndContainersByAreaAndTeam(scannedImages []ScannedImage, areaLabelName, teamLabelName string) (map[teamKey]map[string]ScannedImage, map[teamKey][]k8s.ContainerSummary) {
-	scannedImagesByTeam := make(map[teamKey]map[string]ScannedImage)
-	containersByTeam := make(map[teamKey][]k8s.ContainerSummary)
+func groupImagesByTeam(allImages []ScannedImage, areaLabelName, teamLabelName string) map[teamKey]map[string]*ScannedImage {
+	imageByTeam := make(map[teamKey]map[string]*ScannedImage)
 	var areaLabel, teamsLabel string
-	for _, scannedImage := range scannedImages {
-		for _, containerSummary := range scannedImage.Containers {
-			areaLabel = containerSummary.NamespaceLabels[areaLabelName]
-			teamsLabel = containerSummary.NamespaceLabels[teamLabelName]
+	for _, i := range allImages {
+		for _, c := range i.Containers {
+			areaLabel = c.NamespaceLabels[areaLabelName]
+			teamsLabel = c.NamespaceLabels[teamLabelName]
 
 			if areaLabel == "" {
 				areaLabel = "all"
@@ -115,47 +117,33 @@ func groupImagesAndContainersByAreaAndTeam(scannedImages []ScannedImage, areaLab
 				teamsLabel = "all"
 			}
 
-			key := teamKey{area: areaLabel, team: teamsLabel}
-			containersByTeam[key] = append(containersByTeam[key], containerSummary)
-
-			if _, ok := scannedImagesByTeam[key]; !ok {
-				scannedImagesByTeam[key] = make(map[string]ScannedImage)
+			teamId := teamKey{area: areaLabel, team: teamsLabel}
+			if _, ok := imageByTeam[teamId]; !ok {
+				imageByTeam[teamId] = make(map[string]*ScannedImage)
 			}
-			scannedImagesByTeam[key][scannedImage.ImageName] = scannedImage
+			if _, ok := imageByTeam[teamId][i.ImageName]; !ok {
+				imageByTeam[teamId][i.ImageName] = &ScannedImage{
+					ImageName:                    i.ImageName,
+					TrivyOutput:                  i.TrivyOutput,
+					TotalVulnerabilityBySeverity: i.TotalVulnerabilityBySeverity,
+					Containers:                   nil,
+				}
+			}
+			imageByTeam[teamId][i.ImageName].Containers = append(imageByTeam[teamId][i.ImageName].Containers, c)
 		}
 	}
-	return scannedImagesByTeam, containersByTeam
+	return imageByTeam
 }
 
-func buildAreaSummary(areaImages *ImagePerArea) *AreaSummary {
-	summary := AreaSummary{}
-	for _, teamImages := range areaImages.Teams {
-		summary.ImageCount += teamImages.ImageCount
-		summary.ContainerCount += teamImages.ContainerCount
-		for _, vulnerabilitySummary := range teamImages.Summary.ImageVulnerabilitySummary {
-			if summary.TotalVulnerabilityBySeverity == nil {
-				summary.TotalVulnerabilityBySeverity = make(map[string]int)
-			}
-			for severity, count := range vulnerabilitySummary.TotalVulnerabilityBySeverity {
-				summary.TotalVulnerabilityBySeverity[severity] += count
-			}
-		}
-	}
-	return &summary
-}
-
-func buildTeamSummary(teamImages []ScannedImage) *TeamSummary {
-	summary := TeamSummary{}
+func buildVulnerabilitySummary(teamImages []ScannedImage) map[string]VulnerabilitySummary {
+	vulnerabilitySummary := make(map[string]VulnerabilitySummary)
 	for _, image := range teamImages {
-		if summary.ImageVulnerabilitySummary == nil {
-			summary.ImageVulnerabilitySummary = make(map[string]VulnerabilitySummary)
-		}
-		summary.ImageVulnerabilitySummary[image.ImageName] = VulnerabilitySummary{
+		vulnerabilitySummary[image.ImageName] = VulnerabilitySummary{
 			ContainerCount:               len(image.Containers),
 			TotalVulnerabilityBySeverity: image.TotalVulnerabilityBySeverity,
 		}
 	}
-	return &summary
+	return vulnerabilitySummary
 }
 
 func sortBySeverity(scannedImages []ScannedImage) []ScannedImage {

@@ -22,14 +22,14 @@
 
     <h2>Sections index</h2>
     <ul>
-      {{- range $keyArea, $area := .ImageScan.ImageByArea }}
+      {{- range $keyArea, $area := .ImageScan.AreaSummary }}
         <li>
-          <a href="#area-{{ $keyArea }}">Vulnerabilities for {{ $area.AreaName }}</a>
+          <a href="#area-{{ $keyArea }}">Vulnerabilities for {{ $area.Name }}</a>
         </li>
         {{- range $keyTeam, $team := $area.Teams }}
         <ul>
           <li>
-            <a href="#area-{{ $keyArea }}-team-{{ $keyTeam }}">Vulnerabilities for {{ $area.AreaName }} - {{ $team.TeamName }}</a>
+            <a href="#area-{{ $keyArea }}-team-{{ $keyTeam }}">Vulnerabilities for {{ $area.Name }} - {{ $team.Name }}</a>
           </li>
         </ul>
         {{- end}} {{/* end of team range */}}
@@ -37,8 +37,8 @@
     </ul>
 
 
-    {{- range $keyArea, $area := .ImageScan.ImageByArea }}
-      <h2 id="area-{{ $keyArea }}">Vulnerabilities for {{ $area.AreaName }}</h2>
+    {{- range $keyArea, $area := .ImageScan.AreaSummary }}
+      <h2 id="area-{{ $keyArea }}">Vulnerabilities for {{ $area.Name }}</h2>
 
       <table>
         <thead>
@@ -54,20 +54,20 @@
         </thead>
         <tbody>
           <tr>
-            <td>{{ $area.Summary.ImageCount }}</td>
-            <td>{{ $area.Summary.ContainerCount }}</td>
-            <td>{{ index $area.Summary.TotalVulnerabilityBySeverity "CRITICAL" }}</td>
-            <td>{{ index $area.Summary.TotalVulnerabilityBySeverity "HIGH" }}</td>
-            <td>{{ index $area.Summary.TotalVulnerabilityBySeverity "MEDIUM" }}</td>
-            <td>{{ index $area.Summary.TotalVulnerabilityBySeverity "LOW" }}</td>
-            <td>{{ index $area.Summary.TotalVulnerabilityBySeverity "UNKNOWN" }}</td>
+            <td>{{ $area.ImageCount }}</td>
+            <td>{{ $area.ContainerCount }}</td>
+            <td>{{ index $area.TotalVulnerabilityBySeverity "CRITICAL" }}</td>
+            <td>{{ index $area.TotalVulnerabilityBySeverity "HIGH" }}</td>
+            <td>{{ index $area.TotalVulnerabilityBySeverity "MEDIUM" }}</td>
+            <td>{{ index $area.TotalVulnerabilityBySeverity "LOW" }}</td>
+            <td>{{ index $area.TotalVulnerabilityBySeverity "UNKNOWN" }}</td>
           </tr>
         </tbody>
       </table>
 
       {{- range $keyTeam, $team := $area.Teams }}
 
-        <h3 id="area-{{ $keyArea }}-team-{{ $keyTeam }}">Vulnerabilities for {{ $area.AreaName }} - {{ $team.TeamName }}</h3>
+        <h3 id="area-{{ $keyArea }}-team-{{ $keyTeam }}">Vulnerabilities for {{ $area.Name }} - {{ $team.Name }}</h3>
         <h4>Summary</h4>
 
         <table>
@@ -83,7 +83,7 @@
             </tr>
           </thead>
           <tbody>
-            {{- range $key, $specs := $team.Summary.ImageVulnerabilitySummary }}
+            {{- range $key, $specs := $team.ImageVulnerabilitySummary }}
             <tr>
               <td>{{ $key }} </td>
               <td>{{ $specs.ContainerCount }}</td>

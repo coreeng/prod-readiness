@@ -68,31 +68,27 @@ func aReport() *TestReport {
 	return &TestReport{
 		ImageScan: &scanner.VulnerabilityReport{
 			ScannedImages: []scanner.ScannedImage{debianImageScan, alpineImageScan, ubuntuImageScan},
-			ImageByArea: map[string]*scanner.ImagePerArea{
+			AreaSummary: map[string]*scanner.AreaSummary{
 				"area-1": {
-					AreaName: "area-1",
-					Summary: &scanner.AreaSummary{
-						ImageCount:                   7,
-						ContainerCount:               10,
-						TotalVulnerabilityBySeverity: map[string]int{"CRITICAL": 4, "HIGH": 12, "MEDIUM": 5, "LOW": 26, "UNKNOWN": 1},
-					},
-					Teams: map[string]*scanner.ImagePerTeam{
+					Name:                         "area-1",
+					ImageCount:                   7,
+					ContainerCount:               10,
+					TotalVulnerabilityBySeverity: map[string]int{"CRITICAL": 4, "HIGH": 12, "MEDIUM": 5, "LOW": 26, "UNKNOWN": 1},
+					Teams: map[string]*scanner.TeamSummary{
 						"team-1": {
-							TeamName: "team-1",
-							Summary: &scanner.TeamSummary{
-								ImageVulnerabilitySummary: map[string]scanner.VulnerabilitySummary{
-									"debian:latest": {
-										ContainerCount:               2,
-										TotalVulnerabilityBySeverity: map[string]int{"CRITICAL": 0, "HIGH": 10, "MEDIUM": 5, "LOW": 20, "UNKNOWN": 0},
-									},
-									"alpine:latest": {
-										ContainerCount:               1,
-										TotalVulnerabilityBySeverity: map[string]int{"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 2, "UNKNOWN": 0},
-									},
-									"ubuntu:18.04": {
-										ContainerCount:               3,
-										TotalVulnerabilityBySeverity: map[string]int{"CRITICAL": 2, "HIGH": 1, "MEDIUM": 0, "LOW": 2, "UNKNOWN": 1},
-									},
+							Name: "team-1",
+							ImageVulnerabilitySummary: map[string]scanner.VulnerabilitySummary{
+								"debian:latest": {
+									ContainerCount:               2,
+									TotalVulnerabilityBySeverity: map[string]int{"CRITICAL": 0, "HIGH": 10, "MEDIUM": 5, "LOW": 20, "UNKNOWN": 0},
+								},
+								"alpine:latest": {
+									ContainerCount:               1,
+									TotalVulnerabilityBySeverity: map[string]int{"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 2, "UNKNOWN": 0},
+								},
+								"ubuntu:18.04": {
+									ContainerCount:               3,
+									TotalVulnerabilityBySeverity: map[string]int{"CRITICAL": 2, "HIGH": 1, "MEDIUM": 0, "LOW": 2, "UNKNOWN": 1},
 								},
 							},
 							Images: []scanner.ScannedImage{
@@ -102,13 +98,11 @@ func aReport() *TestReport {
 							},
 						},
 						"team-2": {
-							TeamName: "team-2",
-							Summary: &scanner.TeamSummary{
-								ImageVulnerabilitySummary: map[string]scanner.VulnerabilitySummary{
-									"ubuntu:18.04": {
-										ContainerCount:               3,
-										TotalVulnerabilityBySeverity: map[string]int{"CRITICAL": 2, "HIGH": 1, "MEDIUM": 0, "LOW": 2, "UNKNOWN": 1},
-									},
+							Name: "team-2",
+							ImageVulnerabilitySummary: map[string]scanner.VulnerabilitySummary{
+								"ubuntu:18.04": {
+									ContainerCount:               3,
+									TotalVulnerabilityBySeverity: map[string]int{"CRITICAL": 2, "HIGH": 1, "MEDIUM": 0, "LOW": 2, "UNKNOWN": 1},
 								},
 							},
 							Images: []scanner.ScannedImage{
@@ -118,21 +112,17 @@ func aReport() *TestReport {
 					},
 				},
 				"area-2": {
-					AreaName: "area-2",
-					Summary: &scanner.AreaSummary{
-						ImageCount:                   10,
-						ContainerCount:               10,
-						TotalVulnerabilityBySeverity: map[string]int{"CRITICAL": 4, "HIGH": 12, "MEDIUM": 5, "LOW": 26, "UNKNOWN": 1},
-					},
-					Teams: map[string]*scanner.ImagePerTeam{
+					Name:                         "area-2",
+					ImageCount:                   10,
+					ContainerCount:               10,
+					TotalVulnerabilityBySeverity: map[string]int{"CRITICAL": 4, "HIGH": 12, "MEDIUM": 5, "LOW": 26, "UNKNOWN": 1},
+					Teams: map[string]*scanner.TeamSummary{
 						"team-3": {
-							TeamName: "team-3",
-							Summary: &scanner.TeamSummary{
-								ImageVulnerabilitySummary: map[string]scanner.VulnerabilitySummary{
-									"debian:latest": {
-										ContainerCount:               2,
-										TotalVulnerabilityBySeverity: map[string]int{"CRITICAL": 10, "HIGH": 10, "MEDIUM": 5, "LOW": 20, "UNKNOWN": 0},
-									},
+							Name: "team-3",
+							ImageVulnerabilitySummary: map[string]scanner.VulnerabilitySummary{
+								"debian:latest": {
+									ContainerCount:               2,
+									TotalVulnerabilityBySeverity: map[string]int{"CRITICAL": 10, "HIGH": 10, "MEDIUM": 5, "LOW": 20, "UNKNOWN": 0},
 								},
 							},
 							Images: []scanner.ScannedImage{
@@ -165,14 +155,12 @@ var _ = Describe("Saving json report", func() {
 	It("should save the report json representation to the given file", func() {
 		testReport := TestReport{
 			ImageScan: &scanner.VulnerabilityReport{
-				ImageByArea: map[string]*scanner.ImagePerArea{
+				AreaSummary: map[string]*scanner.AreaSummary{
 					"area-1": {
-						AreaName: "area-1",
-						Summary: &scanner.AreaSummary{
-							ImageCount:                   7,
-							ContainerCount:               10,
-							TotalVulnerabilityBySeverity: map[string]int{"CRITICAL": 4, "HIGH": 12, "MEDIUM": 5, "LOW": 26, "UNKNOWN": 1},
-						},
+						Name:                         "area-1",
+						ImageCount:                   7,
+						ContainerCount:               10,
+						TotalVulnerabilityBySeverity: map[string]int{"CRITICAL": 4, "HIGH": 12, "MEDIUM": 5, "LOW": 26, "UNKNOWN": 1},
 					},
 				},
 			},
@@ -188,20 +176,6 @@ var _ = Describe("Saving json report", func() {
 		Expect(actualReportSaved).Should(Equal(&testReport))
 	})
 })
-
-func runDiff(filename1, filename2 string, diffOptions ...string) string {
-	var args []string
-	if diffOptions != nil {
-		args = append(args, diffOptions...)
-	}
-	args = append(args, filename1, filename2)
-	command := exec.Command("diff", args...)
-	output, _ := command.CombinedOutput()
-	if output != nil {
-		return string(output)
-	}
-	return ""
-}
 
 func fileContentEqual(filename1, filename2 string, diffOptions ...string) (bool, error) {
 	var args []string
