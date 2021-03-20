@@ -15,6 +15,8 @@ The following must be installed on your development machine:
 - `go` (>=1.15)
 - `docker`
 - `kind`
+- `trivy`
+- `kubectl`
 
 This project uses [Go Modules](https://github.com/golang/go/wiki/Modules).
 
