@@ -343,7 +343,7 @@ var _ = Describe("Vulnerability report", func() {
 			))
 		})
 
-		It("report errors that occurred during the scan", func() {
+		FIt("report errors that occurred during the scan", func() {
 			scannedImages := []ScannedImage{
 				{
 					ImageName: "image1",
@@ -372,12 +372,20 @@ var _ = Describe("Vulnerability report", func() {
 
 			// then
 			Expect(err).NotTo(HaveOccurred())
-			Expect(imageByArea["area1"].Teams["team1"].Images).Should(HaveLen(2))
-			Expect(imageByArea["area1"].Teams["team1"].Images[0].ScanError).Should(Equal(fmt.Errorf("error occurred during scan")))
-			Expect(imageByArea["area1"].Teams["team1"].Images[1].ScanError).Should(BeNil())
+			images := sortImageByNames(imageByArea["area1"].Teams["team1"].Images)
+			Expect(images).Should(HaveLen(2))
+			Expect(images[0].ScanError).Should(Equal(fmt.Errorf("error occurred during scan")))
+			Expect(images[1].ScanError).Should(BeNil())
 		})
 	})
 })
+
+func sortImageByNames(scannedImages []ScannedImage) []ScannedImage {
+	sort.Slice(scannedImages, func(i, j int) bool {
+			return scannedImages[i].ImageName < scannedImages[j].ImageName
+	})
+	return scannedImages
+}
 
 func HaveImages(images ...string) types.GomegaMatcher {
 	return &haveImages{expectedImages: images}
