@@ -105,10 +105,10 @@ var _ = Describe("Scan Images", func() {
 		// then
 		Expect(report.ScannedImages).To(HaveLen(3))
 		Expect(report.AreaSummary).To(HaveLen(1))
-		Expect(report.AreaSummary["area1"].Summary.ImageCount).To(Equal(3))
-		Expect(report.AreaSummary["area1"].Summary.ContainerCount).To(Equal(4))
-		Expect(vulnerabilityCountOf(report.AreaSummary["area1"].Summary.TotalVulnerabilityBySeverity)).To(BeNumerically(">", 0))
-		Expect(report.AreaSummary["area1"].Summary.TotalVulnerabilityBySeverity).To(And(
+		Expect(report.AreaSummary["area1"].ImageCount).To(Equal(3))
+		Expect(report.AreaSummary["area1"].ContainerCount).To(Equal(4))
+		Expect(vulnerabilityCountOf(report.AreaSummary["area1"].TotalVulnerabilityBySeverity)).To(BeNumerically(">", 0))
+		Expect(report.AreaSummary["area1"].TotalVulnerabilityBySeverity).To(And(
 			HaveKey("CRITICAL"),
 			HaveKey("HIGH"),
 			HaveKey("MEDIUM"),
@@ -119,10 +119,10 @@ var _ = Describe("Scan Images", func() {
 		team1 := report.AreaSummary["area1"].Teams["team1"]
 		Expect(team1.ImageCount).To(Equal(2))
 		Expect(team1.ContainerCount).To(Equal(2))
-		Expect(team1.Summary.ImageVulnerabilitySummary["alpine:3.11.0"].ContainerCount).To(Equal(1))
-		Expect(vulnerabilityCountOf(team1.Summary.ImageVulnerabilitySummary["alpine:3.11.0"].TotalVulnerabilityBySeverity)).To(BeNumerically(">", 0))
-		Expect(team1.Summary.ImageVulnerabilitySummary["alpine:3.12.0"].ContainerCount).To(Equal(1))
-		Expect(vulnerabilityCountOf(team1.Summary.ImageVulnerabilitySummary["alpine:3.12.0"].TotalVulnerabilityBySeverity)).To(BeNumerically(">", 0))
+		Expect(team1.ImageVulnerabilitySummary["alpine:3.11.0"].ContainerCount).To(Equal(1))
+		Expect(vulnerabilityCountOf(team1.ImageVulnerabilitySummary["alpine:3.11.0"].TotalVulnerabilityBySeverity)).To(BeNumerically(">", 0))
+		Expect(team1.ImageVulnerabilitySummary["alpine:3.12.0"].ContainerCount).To(Equal(1))
+		Expect(vulnerabilityCountOf(team1.ImageVulnerabilitySummary["alpine:3.12.0"].TotalVulnerabilityBySeverity)).To(BeNumerically(">", 0))
 
 		team2 := report.AreaSummary["area1"].Teams["team2"]
 		Expect(team2.ImageCount).To(Equal(1))
@@ -130,8 +130,8 @@ var _ = Describe("Scan Images", func() {
 		Expect(len(team2.Images[0].TrivyOutput[0].Vulnerabilities)).To(BeNumerically(">", 0))
 		Expect(team2.Images[0].TrivyOutput[0].Vulnerabilities).To(BeOrderedByHighestSeverity())
 		Expect(team2.ContainerCount).To(Equal(2))
-		Expect(team2.Summary.ImageVulnerabilitySummary["nginx:1.15-alpine"].ContainerCount).To(Equal(2))
-		Expect(vulnerabilityCountOf(team2.Summary.ImageVulnerabilitySummary["nginx:1.15-alpine"].TotalVulnerabilityBySeverity)).To(BeNumerically(">", 0))
+		Expect(team2.ImageVulnerabilitySummary["nginx:1.15-alpine"].ContainerCount).To(Equal(2))
+		Expect(vulnerabilityCountOf(team2.ImageVulnerabilitySummary["nginx:1.15-alpine"].TotalVulnerabilityBySeverity)).To(BeNumerically(">", 0))
 	})
 })
 
