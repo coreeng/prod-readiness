@@ -343,7 +343,7 @@ var _ = Describe("Vulnerability report", func() {
 			))
 		})
 
-		FIt("report errors that occurred during the scan", func() {
+		It("report errors that occurred during the scan", func() {
 			scannedImages := []ScannedImage{
 				{
 					ImageName: "image1",
