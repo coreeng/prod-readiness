@@ -170,33 +170,91 @@ var _ = Describe("Scanner", func() {
 			Expect(err).NotTo(HaveOccurred())
 		})
 
-		It("should carry on processing the next image when error occurs processing the previous image", func() {
-			// given
-			containers := []k8s.ContainerSummary{
-				{
-					Image:   "alpine:3.11.0",
-					PodName: "pod1",
-				},
-				{
-					Image:   "replace-this-registry/image:0.1",
-					PodName: "pod1",
-				},
-			}
-			mockKubernetesClient.On("GetContainersInNamespaces", areaLabel).Return(containers, nil)
-			mockTrivyClient.On("DownloadDatabase").Return(nil)
-			mockDockerClient.
-				On("PullImage", "alpine:3.11.0").Return(fmt.Errorf("some docker error")).
-				On("PullImage", "registry/image:0.1").Return(nil)
-			mockTrivyClient.
-				On("ScanImage", "alpine:3.11.0").Return([]TrivyOutput{}, fmt.Errorf("some trivy error")).
-				On("ScanImage", "registry/image:0.1").Return([]TrivyOutput{}, nil)
-			mockDockerClient.
-				On("RmiImage", "alpine:3.11.0").Return(fmt.Errorf("some docker error")).
-				On("RmiImage", "registry/image:0.1").Return(nil)
+		Context("an error occurs when communicating with the Kubernetes cluster", func() {
+			It("should stop processing and return the error", func() {
+				// given
+				k8Error := fmt.Errorf("a K8 error")
+				mockKubernetesClient.On("GetContainersInNamespaces", areaLabel).Return([]k8s.ContainerSummary{}, k8Error)
 
-			// when
-			_, err := scan.ScanImages()
-			Expect(err).NotTo(HaveOccurred())
+				// when
+				_, err := scan.ScanImages()
+				Expect(err).To(HaveOccurred())
+				Expect(err).To(MatchError(k8Error))
+			})
+		})
+
+		Context("an error occurs when downloading the trivy database", func() {
+			It("should stop processing and return the error", func() {
+				// given
+				containers := []k8s.ContainerSummary{
+					{
+						Image:   "alpine:3.11.0",
+						PodName: "pod1",
+					},
+				}
+				mockKubernetesClient.On("GetContainersInNamespaces", areaLabel).Return(containers, nil)
+				trivyError := fmt.Errorf("a trivy error")
+				mockTrivyClient.On("DownloadDatabase").Return(trivyError)
+
+				// when
+				_, err := scan.ScanImages()
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("failed to download trivy db: a trivy error"))
+			})
+		})
+
+		Context("an error occurs during image processing", func() {
+			It("should carry on processing the next image", func() {
+				// given
+				containers := []k8s.ContainerSummary{
+					{
+						Image:   "alpine:3.11.0",
+						PodName: "pod1",
+					},
+					{
+						Image:   "replace-this-registry/image:0.1",
+						PodName: "pod1",
+					},
+				}
+				mockKubernetesClient.On("GetContainersInNamespaces", areaLabel).Return(containers, nil)
+				mockTrivyClient.On("DownloadDatabase").Return(nil)
+				mockDockerClient.
+					On("PullImage", "alpine:3.11.0").Return(fmt.Errorf("some docker error")).
+					On("PullImage", "registry/image:0.1").Return(nil)
+				mockTrivyClient.
+					On("ScanImage", "alpine:3.11.0").Return([]TrivyOutput{}, fmt.Errorf("some trivy error")).
+					On("ScanImage", "registry/image:0.1").Return([]TrivyOutput{}, nil)
+				mockDockerClient.
+					On("RmiImage", "alpine:3.11.0").Return(fmt.Errorf("some docker error")).
+					On("RmiImage", "registry/image:0.1").Return(nil)
+
+				// when
+				_, err := scan.ScanImages()
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("should report the error details", func() {
+				// given
+				containers := []k8s.ContainerSummary{
+					{
+						Image:   "alpine:3.11.0",
+						PodName: "pod1",
+					},
+				}
+				mockKubernetesClient.On("GetContainersInNamespaces", areaLabel).Return(containers, nil)
+				mockTrivyClient.On("DownloadDatabase").Return(nil)
+				mockDockerClient.
+					On("PullImage", "alpine:3.11.0").Return(nil)
+				mockTrivyClient.
+					On("ScanImage", "alpine:3.11.0").Return([]TrivyOutput{}, fmt.Errorf("some trivy error"))
+				mockDockerClient.
+					On("RmiImage", "alpine:3.11.0").Return(fmt.Errorf("some docker error"))
+
+				// when
+				report, err := scan.ScanImages()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(report.ScannedImages[0].ScanError.Error()).To(ContainSubstring("error executing trivy for image alpine:3.11.0: some trivy error"))
+			})
 		})
 	})
 

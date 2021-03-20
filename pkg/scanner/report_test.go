@@ -342,6 +342,40 @@ var _ = Describe("Vulnerability report", func() {
 				map[string]int{"CRITICAL": 1, "HIGH": 5, "MEDIUM": 0, "LOW": 0, "UNKNOWN": 0},
 			))
 		})
+
+		It("report errors that occurred during the scan", func() {
+			scannedImages := []ScannedImage{
+				{
+					ImageName: "image1",
+					Containers: []k8s.ContainerSummary{
+						{
+							Namespace:       "namespace1",
+							NamespaceLabels: map[string]string{areaLabel: "area1", teamLabel: "team1"},
+							PodName:         "pod1",
+						},
+					},
+					ScanError: fmt.Errorf("error occurred during scan"),
+				},
+				{
+					ImageName: "image2",
+					Containers: []k8s.ContainerSummary{
+						{
+							Namespace:       "namespace1",
+							NamespaceLabels: map[string]string{areaLabel: "area1", teamLabel: "team1"},
+							PodName:         "pod1",
+						},
+					},
+				},
+			}
+			// when
+			imageByArea, err := reportGenerator.generateAreaGrouping(scannedImages)
+
+			// then
+			Expect(err).NotTo(HaveOccurred())
+			Expect(imageByArea["area1"].Teams["team1"].Images).Should(HaveLen(2))
+			Expect(imageByArea["area1"].Teams["team1"].Images[0].ScanError).Should(Equal(fmt.Errorf("error occurred during scan")))
+			Expect(imageByArea["area1"].Teams["team1"].Images[1].ScanError).Should(BeNil())
+		})
 	})
 })
 

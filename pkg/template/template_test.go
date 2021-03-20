@@ -57,7 +57,25 @@ var _ = Describe("Generating vulnerability report", func() {
 		reportTemplate := filepath.Join(findProjectDir(), "report-imageScan.html.tmpl")
 		err := GenerateReportFromTemplate(aReport(), reportTemplate, actualReportFile)
 		Expect(err).NotTo(HaveOccurred())
-		Expect(fileContentEqual("expected-test-report-imageScan.html", actualReportFile, "-w")).To(BeTrue())
+		Expect(fileContentEqual("expected-test-report-imageScan.html", actualReportFile, "-B", "-w")).To(BeTrue())
+	})
+
+	Context("error occurred during image scanning", func() {
+		It("should report the errors according to the md template file", func() {
+			actualReportFile := filepath.Join(tmpDir, "actual-report.md")
+			reportTemplate := filepath.Join(findProjectDir(), "report-imageScan.md.tmpl")
+			err := GenerateReportFromTemplate(aReportWithErrors(), reportTemplate, actualReportFile)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(fileContentEqual("expected-test-report-imageScan-error.md", actualReportFile)).To(BeTrue())
+		})
+
+		It("should report the errors according to the html template file", func() {
+			actualReportFile := filepath.Join(tmpDir, "actual-report.html")
+			reportTemplate := filepath.Join(findProjectDir(), "report-imageScan.html.tmpl")
+			err := GenerateReportFromTemplate(aReportWithErrors(), reportTemplate, actualReportFile)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(fileContentEqual("expected-test-report-imageScan-error.html", actualReportFile, "-B", "-w")).To(BeTrue())
+		})
 	})
 })
 
@@ -127,6 +145,39 @@ func aReport() *TestReport {
 							},
 							Images: []scanner.ScannedImage{
 								debianImageScan,
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
+func aReportWithErrors() *TestReport {
+	ubuntuImageScan := anUbuntuImageScan(map[string]int{"CRITICAL": 0, "HIGH": 2, "MEDIUM": 1, "LOW": 10, "UNKNOWN": 0})
+	scanError1 := anImageScanWithError("error 1 during while scanning image1")
+	scanError2 := anImageScanWithError("error 2 during while scanning image2")
+	return &TestReport{
+		ImageScan: &scanner.VulnerabilityReport{
+			ScannedImages: []scanner.ScannedImage{ubuntuImageScan, scanError1, scanError2},
+			AreaSummary: map[string]*scanner.AreaSummary{
+				"area-1": {
+					Name:                         "area-1",
+					ImageCount:                   7,
+					ContainerCount:               10,
+					TotalVulnerabilityBySeverity: map[string]int{"CRITICAL": 4, "HIGH": 12, "MEDIUM": 5, "LOW": 26, "UNKNOWN": 1},
+					Teams: map[string]*scanner.TeamSummary{
+						"team-1": {
+							Name: "team-1",
+							ImageVulnerabilitySummary: map[string]scanner.VulnerabilitySummary{
+								"debian:latest": {
+									ContainerCount:               2,
+									TotalVulnerabilityBySeverity: map[string]int{"CRITICAL": 0, "HIGH": 10, "MEDIUM": 5, "LOW": 20, "UNKNOWN": 0},
+								},
+							},
+							Images: []scanner.ScannedImage{
+								ubuntuImageScan, scanError1, scanError2,
 							},
 						},
 					},
@@ -239,6 +290,16 @@ func anUbuntuImageScan(vulnerabilitiesDefinition map[string]int) scanner.Scanned
 				Vulnerabilities: buildVulnerabilities(vulnerabilitiesDefinition),
 			},
 		},
+	}
+}
+
+func anImageScanWithError(message string) scanner.ScannedImage {
+	return scanner.ScannedImage{
+		ImageName: "alpine:latest",
+		Containers: []k8s.ContainerSummary{
+			{},
+		},
+		ScanError: fmt.Errorf(message),
 	}
 }
 

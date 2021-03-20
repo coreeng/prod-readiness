@@ -11,6 +11,23 @@
 {{- range $keyTeam, $team := $area.Teams }}
 
 ### Vulnerabilities for {{ $area.Name }} - {{ $team.Name }}
+{{- $scanErrors := false -}}
+{{- range $key, $teamImage := $team.Images -}}
+{{- if $teamImage.ScanError }}
+{{- $scanErrors = true }}
+{{- end -}}
+{{- end -}}
+{{- if $scanErrors }}
+
+#### Errors
+
+The following errors have occurred during while scanning images:
+{{- range $key, $teamImage := $team.Images -}}
+{{- if $teamImage.ScanError }}
+- {{ $teamImage.ScanError }}
+{{- end }}
+{{- end }}
+{{- end }}
 
 #### Summary
 

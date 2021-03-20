@@ -65,7 +65,7 @@ func (r *AreaReport) generateAreaGrouping(scannedImages []ScannedImage) (map[str
 	for teamId, teamImageMap := range imageByTeam {
 		if _, ok := summaryByArea[teamId.area]; !ok {
 			summaryByArea[teamId.area] = &AreaSummary{
-				Name: teamId.area,
+				Name:  teamId.area,
 				Teams: make(map[string]*TeamSummary),
 			}
 		}
@@ -127,6 +127,7 @@ func groupImagesByTeam(allImages []ScannedImage, areaLabelName, teamLabelName st
 					TrivyOutput:                  i.TrivyOutput,
 					TotalVulnerabilityBySeverity: i.TotalVulnerabilityBySeverity,
 					Containers:                   nil,
+					ScanError:                    i.ScanError,
 				}
 			}
 			imageByTeam[teamId][i.ImageName].Containers = append(imageByTeam[teamId][i.ImageName].Containers, c)

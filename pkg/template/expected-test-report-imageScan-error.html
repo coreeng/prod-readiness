@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+  <html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Vulnerability Report</title>
+
+    <style>
+      table, th, td {
+        padding: 5px;
+        border: 1px solid black;
+        border-collapse: collapse;
+      }
+
+      li {
+          padding-top: 3px;
+      }
+    </style>
+
+  </head>
+  <body>
+    <h1>Vulnerability Report</h1>
+
+    <h2>Sections index</h2>
+    <ul>
+        <li>
+          <a href="#area-area-1">Vulnerabilities for area-1</a>
+        </li>
+        <ul>
+          <li>
+            <a href="#area-area-1-team-team-1">Vulnerabilities for area-1 - team-1</a>
+          </li>
+        </ul>  
+    </ul>
+      <h2 id="area-area-1">Vulnerabilities for area-1</h2>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Total Image Count</th>
+            <th>Total Container Count</th>
+            <th>Total Critical</th>
+            <th>Total High</th>
+            <th>Total Medium</th>
+            <th>Total Low</th>
+            <th>Total Unknown</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>7</td>
+            <td>10</td>
+            <td>4</td>
+            <td>12</td>
+            <td>5</td>
+            <td>26</td>
+            <td>1</td>
+          </tr>
+        </tbody>
+      </table>
+
+        <h3 id="area-area-1-team-team-1">Vulnerabilities for area-1 - team-1</h3>
+        <h4>Errors</h4>
+        The following errors have occurred during while scanning images:
+        <ul>
+           <li>error 1 during while scanning image1</li>
+           <li>error 2 during while scanning image2</li>
+        </ul>
+
+        <h4>Summary</h4>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Images</th>
+              <th>Containers</th>
+              <th>Critical</th>
+              <th>High</th>
+              <th>Medium</th>
+              <th>Low</th>
+              <th>Unknown</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>debian:latest </td>
+              <td>2</td>
+              <td>0</td>
+              <td>10</td>
+              <td>5</td>
+              <td>20</td>
+              <td>0</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h4>Vulnerabilities details</h4>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Image</th>
+              <th>CVE</th>
+              <th>Severity</th>
+              <th>PkgName</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+                      <td>ubuntu:18.04</td>
+                      <td><a href="https://nvd.nist.gov/vuln/detail/CVE-2021-3326">CVE-2021-3326</a></td>
+                      <td>HIGH</td>
+                      <td>libc-bin</td>
+                      <td>glibc: Assertion failure in ISO-2022-JP-3 gconv module related to combining characters</td>
+                    </tr>
+                  <tr>
+                      <td>ubuntu:18.04</td>
+                      <td><a href="https://nvd.nist.gov/vuln/detail/CVE-2021-3326">CVE-2021-3326</a></td>
+                      <td>HIGH</td>
+                      <td>libc-bin</td>
+                      <td>glibc: Assertion failure in ISO-2022-JP-3 gconv module related to combining characters</td>
+                    </tr>
+                  <tr>
+                      <td>ubuntu:18.04</td>
+                      <td><a href="https://nvd.nist.gov/vuln/detail/CVE-2020-13844">CVE-2020-13844</a></td>
+                      <td>MEDIUM</td>
+                      <td>libstdc&#43;&#43;6</td>
+                      <td>kernel: ARM straight-line speculation vulnerability</td>
+                    </tr>
+                  <tr>
+                      <td>ubuntu:18.04</td>
+                      <td><a href="https://nvd.nist.gov/vuln/detail/CVE-2011-3374">CVE-2011-3374</a></td>
+                      <td>LOW</td>
+                      <td>apt</td>
+                      <td>It was found that apt-key in apt, all versions, do not correctly validate gpg keys with the master keyrin...</td>
+                    </tr>
+                  <tr>
+                      <td>ubuntu:18.04</td>
+                      <td><a href="https://nvd.nist.gov/vuln/detail/CVE-2011-3374">CVE-2011-3374</a></td>
+                      <td>LOW</td>
+                      <td>apt</td>
+                      <td>It was found that apt-key in apt, all versions, do not correctly validate gpg keys with the master keyrin...</td>
+                    </tr>
+                  <tr>
+                      <td>ubuntu:18.04</td>
+                      <td><a href="https://nvd.nist.gov/vuln/detail/CVE-2011-3374">CVE-2011-3374</a></td>
+                      <td>LOW</td>
+                      <td>apt</td>
+                      <td>It was found that apt-key in apt, all versions, do not correctly validate gpg keys with the master keyrin...</td>
+                    </tr>
+                  <tr>
+                      <td>ubuntu:18.04</td>
+                      <td><a href="https://nvd.nist.gov/vuln/detail/CVE-2011-3374">CVE-2011-3374</a></td>
+                      <td>LOW</td>
+                      <td>apt</td>
+                      <td>It was found that apt-key in apt, all versions, do not correctly validate gpg keys with the master keyrin...</td>
+                    </tr>
+                  <tr>
+                      <td>ubuntu:18.04</td>
+                      <td><a href="https://nvd.nist.gov/vuln/detail/CVE-2011-3374">CVE-2011-3374</a></td>
+                      <td>LOW</td>
+                      <td>apt</td>
+                      <td>It was found that apt-key in apt, all versions, do not correctly validate gpg keys with the master keyrin...</td>
+                    </tr>
+                  <tr>
+                      <td>ubuntu:18.04</td>
+                      <td><a href="https://nvd.nist.gov/vuln/detail/CVE-2011-3374">CVE-2011-3374</a></td>
+                      <td>LOW</td>
+                      <td>apt</td>
+                      <td>It was found that apt-key in apt, all versions, do not correctly validate gpg keys with the master keyrin...</td>
+                    </tr>
+                  <tr>
+                      <td>ubuntu:18.04</td>
+                      <td><a href="https://nvd.nist.gov/vuln/detail/CVE-2011-3374">CVE-2011-3374</a></td>
+                      <td>LOW</td>
+                      <td>apt</td>
+                      <td>It was found that apt-key in apt, all versions, do not correctly validate gpg keys with the master keyrin...</td>
+                    </tr>
+                  <tr>
+                      <td>ubuntu:18.04</td>
+                      <td><a href="https://nvd.nist.gov/vuln/detail/CVE-2011-3374">CVE-2011-3374</a></td>
+                      <td>LOW</td>
+                      <td>apt</td>
+                      <td>It was found that apt-key in apt, all versions, do not correctly validate gpg keys with the master keyrin...</td>
+                    </tr>
+                  <tr>
+                      <td>ubuntu:18.04</td>
+                      <td><a href="https://nvd.nist.gov/vuln/detail/CVE-2011-3374">CVE-2011-3374</a></td>
+                      <td>LOW</td>
+                      <td>apt</td>
+                      <td>It was found that apt-key in apt, all versions, do not correctly validate gpg keys with the master keyrin...</td>
+                    </tr>
+                  <tr>
+                      <td>ubuntu:18.04</td>
+                      <td><a href="https://nvd.nist.gov/vuln/detail/CVE-2011-3374">CVE-2011-3374</a></td>
+                      <td>LOW</td>
+                      <td>apt</td>
+                      <td>It was found that apt-key in apt, all versions, do not correctly validate gpg keys with the master keyrin...</td>
+                    </tr>
+                        
+          </tbody>
+        </table>  
+  </body>
+</html>

@@ -24,6 +24,7 @@ type ScannedImage struct {
 	Containers                   []k8s.ContainerSummary `json:"pods"`
 	TotalVulnerabilityBySeverity map[string]int
 	ImageName                    string
+	ScanError                    error
 }
 
 // Vulnerabilities is the object representation of the trivy vulnerability table for an image
@@ -111,7 +112,7 @@ func (s *Scanner) scanImages(imageList map[string][]k8s.ContainerSummary) ([]Sca
 	wp := workerpool.New(s.config.Workers)
 	err := s.trivyClient.DownloadDatabase()
 	if err != nil {
-		logr.Errorf("Failed to download trivy db: %s", err)
+		return nil, fmt.Errorf("failed to download trivy db: %v", err)
 	}
 
 	logr.Infof("Scanning %d images with %d workers", len(imageList), s.config.Workers)
@@ -134,14 +135,21 @@ func (s *Scanner) scanImages(imageList map[string][]k8s.ContainerSummary) ([]Sca
 
 			trivyOutput, err := s.trivyClient.ScanImage(resolvedImageName)
 			if err != nil {
-				logr.Errorf("Error executing trivy for image %s: %s", resolvedImageName, err)
+				scanError := fmt.Errorf("error executing trivy for image %s: %s", resolvedImageName, err)
+				scannedImages = append(scannedImages, ScannedImage{
+					ImageName:  resolvedImageName,
+					Containers: resolvedContainers,
+					ScanError:      scanError,
+				})
+				logr.Error(scanError)
+			} else {
+				scannedImages = append(scannedImages, ScannedImage{
+					ImageName:                    resolvedImageName,
+					Containers:                   resolvedContainers,
+					TrivyOutput:                  sortTrivyVulnerabilities(trivyOutput),
+					TotalVulnerabilityBySeverity: computeTotalVulnerabilityBySeverity(trivyOutput),
+				})
 			}
-			scannedImages = append(scannedImages, ScannedImage{
-				ImageName:                    resolvedImageName,
-				Containers:                   resolvedContainers,
-				TrivyOutput:                  sortTrivyVulnerabilities(trivyOutput),
-				TotalVulnerabilityBySeverity: computeTotalVulnerabilityBySeverity(trivyOutput),
-			})
 
 			err = s.dockerClient.RmiImage(resolvedImageName)
 			if err != nil {
