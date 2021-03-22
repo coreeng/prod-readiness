@@ -75,6 +75,10 @@ func New(kubernetesClient k8s.KubernetesClient, config *Config) *Scanner {
 	}
 }
 
+func (i *ScannedImage) SeverityScore() int {
+	return 0
+}
+
 // ScanImages get all the images available in a cluster and scan them
 func (s *Scanner) ScanImages() (*VulnerabilityReport, error) {
 	logr.Infof("Running scanner")

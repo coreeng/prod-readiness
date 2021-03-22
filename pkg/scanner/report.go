@@ -18,7 +18,18 @@ type AreaSummary struct {
 	Teams                        map[string]*TeamSummary
 	ImageCount                   int
 	ContainerCount               int
-	TotalVulnerabilityBySeverity map[string]int
+	TotalVulnerabilityBySeverity VulnerabilityBySeverity
+}
+
+func (a *AreaSummary) Aggregate(teamSummary *TeamSummary) {
+	a.ImageCount += teamSummary.ImageCount
+	a.ContainerCount += teamSummary.ContainerCount
+	if a.TotalVulnerabilityBySeverity == nil {
+		a.TotalVulnerabilityBySeverity = make(map[string]int)
+	}
+	for _, vulnerabilitySummary := range teamSummary.ImageVulnerabilitySummary {
+		a.TotalVulnerabilityBySeverity.Add(vulnerabilitySummary)
+	}
 }
 
 // TeamSummary defines the summary for an team
@@ -31,10 +42,18 @@ type TeamSummary struct {
 	ImageVulnerabilitySummary map[string]VulnerabilitySummary
 }
 
+type VulnerabilityBySeverity map[string]int
+
 // VulnerabilitySummary defines
 type VulnerabilitySummary struct {
 	ContainerCount               int
-	TotalVulnerabilityBySeverity map[string]int
+	TotalVulnerabilityBySeverity VulnerabilityBySeverity
+}
+
+func (v *VulnerabilityBySeverity) Add(o VulnerabilitySummary) {
+	for severity, count := range o.TotalVulnerabilityBySeverity {
+		(*v)[severity] += count
+	}
 }
 
 // AreaReport generates a report grouped by area and team
@@ -77,7 +96,7 @@ func (r *AreaReport) generateAreaGrouping(scannedImages []ScannedImage) (map[str
 			teamContainers = append(teamContainers, scannedImage.Containers...)
 		}
 
-		teamSummary := TeamSummary{
+		teamSummary := &TeamSummary{
 			Name:                      teamID.team,
 			Images:                    sortBySeverity(teamImages),
 			ImageCount:                len(teamImages),
@@ -85,18 +104,8 @@ func (r *AreaReport) generateAreaGrouping(scannedImages []ScannedImage) (map[str
 			ContainerCount:            len(teamContainers),
 			ImageVulnerabilitySummary: buildVulnerabilitySummary(teamImages),
 		}
-
-		summaryByArea[teamID.area].Teams[teamID.team] = &teamSummary
-		summaryByArea[teamID.area].ImageCount += teamSummary.ImageCount
-		summaryByArea[teamID.area].ContainerCount += teamSummary.ContainerCount
-		for _, vulnerabilitySummary := range teamSummary.ImageVulnerabilitySummary {
-			if summaryByArea[teamID.area].TotalVulnerabilityBySeverity == nil {
-				summaryByArea[teamID.area].TotalVulnerabilityBySeverity = make(map[string]int)
-			}
-			for severity, count := range vulnerabilitySummary.TotalVulnerabilityBySeverity {
-				summaryByArea[teamID.area].TotalVulnerabilityBySeverity[severity] += count
-			}
-		}
+		summaryByArea[teamID.area].Teams[teamID.team] = teamSummary
+		summaryByArea[teamID.area].Aggregate(teamSummary)
 	}
 
 	return summaryByArea, nil
