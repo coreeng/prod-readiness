@@ -324,21 +324,21 @@ var _ = Describe("Vulnerability report", func() {
 			Expect(imageByArea).To(HaveLen(2))
 			Expect(imageByArea["area1"].ImageCount).To(Equal(3))
 			Expect(imageByArea["area1"].ContainerCount).To(Equal(3))
-			Expect(imageByArea["area1"].TotalVulnerabilityBySeverity).Should(BeEquivalentTo(
+			Expect(imageByArea["area1"].TotalVulnerabilityBySeverity).Should(Equal(
 				map[string]int{"CRITICAL": 4, "HIGH": 19, "MEDIUM": 8, "LOW": 4, "UNKNOWN": 1}),
 			)
 			Expect(imageByArea["area1"].Teams["team1"].ImageVulnerabilitySummary["area1-team1-image1"].ContainerCount).To(Equal(1))
-			Expect(imageByArea["area1"].Teams["team1"].ImageVulnerabilitySummary["area1-team1-image1"].TotalVulnerabilityBySeverity).To(BeEquivalentTo(
+			Expect(imageByArea["area1"].Teams["team1"].ImageVulnerabilitySummary["area1-team1-image1"].TotalVulnerabilityBySeverity).To(Equal(
 				map[string]int{"CRITICAL": 1, "HIGH": 5, "MEDIUM": 0, "LOW": 2, "UNKNOWN": 1},
 			))
 
 			Expect(imageByArea["area2"].ImageCount).To(Equal(1))
 			Expect(imageByArea["area2"].ContainerCount).To(Equal(3))
-			Expect(imageByArea["area2"].TotalVulnerabilityBySeverity).To(BeEquivalentTo(
+			Expect(imageByArea["area2"].TotalVulnerabilityBySeverity).To(Equal(
 				map[string]int{"CRITICAL": 1, "HIGH": 5, "MEDIUM": 0, "LOW": 0, "UNKNOWN": 0}),
 			)
 			Expect(imageByArea["area2"].Teams["team3"].ImageVulnerabilitySummary["area2-team3-image1"].ContainerCount).To(Equal(3))
-			Expect(imageByArea["area2"].Teams["team3"].ImageVulnerabilitySummary["area2-team3-image1"].TotalVulnerabilityBySeverity).To(BeEquivalentTo(
+			Expect(imageByArea["area2"].Teams["team3"].ImageVulnerabilitySummary["area2-team3-image1"].TotalVulnerabilityBySeverity).To(Equal(
 				map[string]int{"CRITICAL": 1, "HIGH": 5, "MEDIUM": 0, "LOW": 0, "UNKNOWN": 0},
 			))
 		})
