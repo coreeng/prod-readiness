@@ -21,19 +21,6 @@ type AreaSummary struct {
 	TotalVulnerabilityBySeverity map[string]int
 }
 
-func (a *AreaSummary) Aggregate(teamSummary *TeamSummary) {
-	a.ImageCount += teamSummary.ImageCount
-	a.ContainerCount += teamSummary.ContainerCount
-	if a.TotalVulnerabilityBySeverity == nil {
-		a.TotalVulnerabilityBySeverity = make(map[string]int)
-	}
-	for _, vulnerabilitySummary := range teamSummary.ImageVulnerabilitySummary {
-		for severity, count := range vulnerabilitySummary.TotalVulnerabilityBySeverity {
-			a.TotalVulnerabilityBySeverity[severity] += count
-		}
-	}
-}
-
 // TeamSummary defines the summary for an team
 type TeamSummary struct {
 	Name                      string
@@ -99,10 +86,23 @@ func (r *AreaReport) generateAreaGrouping(scannedImages []ScannedImage) (map[str
 			ImageVulnerabilitySummary: buildVulnerabilitySummary(teamImages),
 		}
 		summaryByArea[teamID.area].Teams[teamID.team] = teamSummary
-		summaryByArea[teamID.area].Aggregate(teamSummary)
+		summaryByArea[teamID.area].aggregate(teamSummary)
 	}
 
 	return summaryByArea, nil
+}
+
+func (a *AreaSummary) aggregate(teamSummary *TeamSummary) {
+	a.ImageCount += teamSummary.ImageCount
+	a.ContainerCount += teamSummary.ContainerCount
+	if a.TotalVulnerabilityBySeverity == nil {
+		a.TotalVulnerabilityBySeverity = make(map[string]int)
+	}
+	for _, vulnerabilitySummary := range teamSummary.ImageVulnerabilitySummary {
+		for severity, count := range vulnerabilitySummary.TotalVulnerabilityBySeverity {
+			a.TotalVulnerabilityBySeverity[severity] += count
+		}
+	}
 }
 
 func groupImagesByTeam(allImages []ScannedImage, areaLabelName, teamLabelName string) map[teamKey]map[string]*ScannedImage {
