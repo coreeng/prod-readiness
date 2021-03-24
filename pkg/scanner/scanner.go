@@ -175,6 +175,7 @@ var severityScores = map[string]int{
 	"CRITICAL": critical, "HIGH": high, "MEDIUM": medium, "LOW": low, "UNKNOWN": unknown,
 }
 
+// VulnerabilitySummary computes a summary a the vulnerability for that image
 func (i *ScannedImage) VulnerabilitySummary() VulnerabilitySummary {
 	severityMap := make(map[string]int)
 	for severity := range severityScores {

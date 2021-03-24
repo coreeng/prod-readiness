@@ -23,11 +23,11 @@ type AreaSummary struct {
 
 // TeamSummary defines the summary for an team
 type TeamSummary struct {
-	Name                      string
-	Images                    []ScannedImage
-	Containers                []k8s.ContainerSummary
-	ImageCount                int
-	ContainerCount            int
+	Name           string
+	Images         []ScannedImage
+	Containers     []k8s.ContainerSummary
+	ImageCount     int
+	ContainerCount int
 }
 
 // AreaReport generates a report grouped by area and team
