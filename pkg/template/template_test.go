@@ -95,7 +95,7 @@ func aReport() *TestReport {
 					Teams: map[string]*scanner.TeamSummary{
 						"team-1": {
 							Name: "team-1",
-							ImageVulnerabilitySummary: map[string]scanner.VulnerabilitySummary{
+							ImageVulnerabilitySummary: map[string]*scanner.VulnerabilitySummary{
 								"debian:latest": {
 									ContainerCount:               2,
 									TotalVulnerabilityBySeverity: map[string]int{"CRITICAL": 0, "HIGH": 10, "MEDIUM": 5, "LOW": 20, "UNKNOWN": 0},
@@ -117,7 +117,7 @@ func aReport() *TestReport {
 						},
 						"team-2": {
 							Name: "team-2",
-							ImageVulnerabilitySummary: map[string]scanner.VulnerabilitySummary{
+							ImageVulnerabilitySummary: map[string]*scanner.VulnerabilitySummary{
 								"ubuntu:18.04": {
 									ContainerCount:               3,
 									TotalVulnerabilityBySeverity: map[string]int{"CRITICAL": 2, "HIGH": 1, "MEDIUM": 0, "LOW": 2, "UNKNOWN": 1},
@@ -137,7 +137,7 @@ func aReport() *TestReport {
 					Teams: map[string]*scanner.TeamSummary{
 						"team-3": {
 							Name: "team-3",
-							ImageVulnerabilitySummary: map[string]scanner.VulnerabilitySummary{
+							ImageVulnerabilitySummary: map[string]*scanner.VulnerabilitySummary{
 								"debian:latest": {
 									ContainerCount:               2,
 									TotalVulnerabilityBySeverity: map[string]int{"CRITICAL": 10, "HIGH": 10, "MEDIUM": 5, "LOW": 20, "UNKNOWN": 0},
@@ -170,7 +170,7 @@ func aReportWithErrors() *TestReport {
 					Teams: map[string]*scanner.TeamSummary{
 						"team-1": {
 							Name: "team-1",
-							ImageVulnerabilitySummary: map[string]scanner.VulnerabilitySummary{
+							ImageVulnerabilitySummary: map[string]*scanner.VulnerabilitySummary{
 								"debian:latest": {
 									ContainerCount:               2,
 									TotalVulnerabilityBySeverity: map[string]int{"CRITICAL": 0, "HIGH": 10, "MEDIUM": 5, "LOW": 20, "UNKNOWN": 0},
@@ -248,7 +248,9 @@ func anAlpineImageScan(vulnerabilitiesDefinition map[string]int) scanner.Scanned
 		Containers: []k8s.ContainerSummary{
 			{},
 		},
-		TotalVulnerabilityBySeverity: map[string]int{"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0, "UNKNOWN": 0},
+		VulnerabilitySummary: &scanner.VulnerabilitySummary{
+			TotalVulnerabilityBySeverity: map[string]int{"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0, "UNKNOWN": 0},
+		},
 		TrivyOutput: []scanner.TrivyOutput{
 			{
 				Target:          "alpine (alpine 3.13.1)",
@@ -265,7 +267,9 @@ func aDebianImageScan(vulnerabilitiesDefinition map[string]int) scanner.ScannedI
 		Containers: []k8s.ContainerSummary{
 			{},
 		},
-		TotalVulnerabilityBySeverity: vulnerabilitiesDefinition,
+		VulnerabilitySummary: &scanner.VulnerabilitySummary{
+			TotalVulnerabilityBySeverity: vulnerabilitiesDefinition,
+		},
 		TrivyOutput: []scanner.TrivyOutput{
 			{
 				Target:          "debian (debian 10.7)",
@@ -282,7 +286,9 @@ func anUbuntuImageScan(vulnerabilitiesDefinition map[string]int) scanner.Scanned
 		Containers: []k8s.ContainerSummary{
 			{},
 		},
-		TotalVulnerabilityBySeverity: vulnerabilitiesDefinition,
+		VulnerabilitySummary: &scanner.VulnerabilitySummary{
+			TotalVulnerabilityBySeverity: vulnerabilitiesDefinition,
+		},
 		TrivyOutput: []scanner.TrivyOutput{
 			{
 				Target:          "ubuntu (ubuntu 18.04)",

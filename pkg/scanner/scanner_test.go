@@ -105,8 +105,9 @@ var _ = Describe("Scanner", func() {
 					},
 				},
 			}
-			severityMap := computeTotalVulnerabilityBySeverity(trivyOutput)
-			Expect(severityMap).To(Equal(
+			vulnerabilitySummary := buildVulnerabilitySummary(trivyOutput, 3)
+			Expect(vulnerabilitySummary.ContainerCount).To(Equal(3))
+			Expect(vulnerabilitySummary.TotalVulnerabilityBySeverity).To(Equal(
 				map[string]int{"CRITICAL": 3, "HIGH": 2, "MEDIUM": 3, "LOW": 3, "UNKNOWN": 3}),
 			)
 		})
