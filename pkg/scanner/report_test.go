@@ -167,72 +167,84 @@ var _ = Describe("Vulnerability report", func() {
 				{
 					ImageName:  "leastCriticalTeam1",
 					Containers: []k8s.ContainerSummary{team1Pod},
-					VulnerabilitySummary: &VulnerabilitySummary{
-						TotalVulnerabilityBySeverity: map[string]int{
-							"CRITICAL": 3,
-							"HIGH":     5,
-							"MEDIUM":   11,
-							"LOW":      28,
+					TrivyOutput: []TrivyOutput{
+						{
+							Vulnerabilities: buildVulnerabilities(map[string]int{
+								"CRITICAL": 3,
+								"HIGH":     5,
+								"MEDIUM":   11,
+								"LOW":      28,
+							}),
 						},
 					},
 				},
 				{
 					ImageName:  "mostCriticalTeam2",
 					Containers: []k8s.ContainerSummary{team2Pod},
-					VulnerabilitySummary: &VulnerabilitySummary{
-						TotalVulnerabilityBySeverity: map[string]int{
-							"CRITICAL": 1,
-							"HIGH":     5,
-							"MEDIUM":   0,
-							"LOW":      0,
+					TrivyOutput: []TrivyOutput{
+						{
+							Vulnerabilities: buildVulnerabilities(map[string]int{
+								"CRITICAL": 1,
+								"HIGH":     5,
+								"MEDIUM":   0,
+								"LOW":      0,
+							}),
 						},
 					},
 				},
 				{
 					ImageName:  "leastCriticalTeam2",
 					Containers: []k8s.ContainerSummary{team2Pod},
-					VulnerabilitySummary: &VulnerabilitySummary{
-						TotalVulnerabilityBySeverity: map[string]int{
-							"CRITICAL": 0,
-							"HIGH":     6,
-							"MEDIUM":   10,
-							"LOW":      25,
+					TrivyOutput: []TrivyOutput{
+						{
+							Vulnerabilities: buildVulnerabilities(map[string]int{
+								"CRITICAL": 0,
+								"HIGH":     6,
+								"MEDIUM":   10,
+								"LOW":      25,
+							}),
 						},
 					},
 				},
 				{
 					ImageName:  "mostHighAfterSameCritical",
 					Containers: []k8s.ContainerSummary{team1Pod},
-					VulnerabilitySummary: &VulnerabilitySummary{
-						TotalVulnerabilityBySeverity: map[string]int{
-							"CRITICAL": 3,
-							"HIGH":     6,
-							"MEDIUM":   11,
-							"LOW":      26,
+					TrivyOutput: []TrivyOutput{
+						{
+							Vulnerabilities: buildVulnerabilities(map[string]int{
+								"CRITICAL": 3,
+								"HIGH":     6,
+								"MEDIUM":   11,
+								"LOW":      26,
+							}),
 						},
 					},
 				},
 				{
 					ImageName:  "mostCritical",
 					Containers: []k8s.ContainerSummary{team1Pod},
-					VulnerabilitySummary: &VulnerabilitySummary{
-						TotalVulnerabilityBySeverity: map[string]int{
-							"CRITICAL": 4,
-							"HIGH":     5,
-							"MEDIUM":   10,
-							"LOW":      25,
+					TrivyOutput: []TrivyOutput{
+						{
+							Vulnerabilities: buildVulnerabilities(map[string]int{
+								"CRITICAL": 4,
+								"HIGH":     5,
+								"MEDIUM":   10,
+								"LOW":      25,
+							}),
 						},
 					},
 				},
 				{
 					ImageName:  "mostMediumAfterSameCriticalAndHigh",
 					Containers: []k8s.ContainerSummary{team1Pod},
-					VulnerabilitySummary: &VulnerabilitySummary{
-						TotalVulnerabilityBySeverity: map[string]int{
-							"CRITICAL": 3,
-							"HIGH":     5,
-							"MEDIUM":   12,
-							"LOW":      27,
+					TrivyOutput: []TrivyOutput{
+						{
+							Vulnerabilities: buildVulnerabilities(map[string]int{
+								"CRITICAL": 3,
+								"HIGH":     5,
+								"MEDIUM":   12,
+								"LOW":      27,
+							}),
 						},
 					},
 				},
@@ -285,56 +297,60 @@ var _ = Describe("Vulnerability report", func() {
 				{
 					ImageName:  "area1-team1-image1",
 					Containers: []k8s.ContainerSummary{team1Pod},
-					VulnerabilitySummary: &VulnerabilitySummary{
-						ContainerCount: 1,
-						TotalVulnerabilityBySeverity: map[string]int{
-							"CRITICAL": 1,
-							"HIGH":     5,
-							"MEDIUM":   0,
-							"LOW":      2,
-							"UNKNOWN":  1,
+					TrivyOutput: []TrivyOutput{
+						{
+							Vulnerabilities: buildVulnerabilities(map[string]int{
+								"CRITICAL": 1,
+								"HIGH":     5,
+								"MEDIUM":   0,
+								"LOW":      2,
+								"UNKNOWN":  1,
+							}),
 						},
 					},
 				},
 				{
 					ImageName:  "area1-team1-image2",
 					Containers: []k8s.ContainerSummary{team1Pod},
-					VulnerabilitySummary: &VulnerabilitySummary{
-						ContainerCount: 1,
-						TotalVulnerabilityBySeverity: map[string]int{
-							"CRITICAL": 2,
-							"HIGH":     12,
-							"MEDIUM":   4,
-							"LOW":      1,
-							"UNKNOWN":  0,
+					TrivyOutput: []TrivyOutput{
+						{
+							Vulnerabilities: buildVulnerabilities(map[string]int{
+								"CRITICAL": 2,
+								"HIGH":     12,
+								"MEDIUM":   4,
+								"LOW":      1,
+								"UNKNOWN":  0,
+							}),
 						},
 					},
 				},
 				{
 					ImageName:  "area1-team1-image2",
 					Containers: []k8s.ContainerSummary{team2Pod},
-					VulnerabilitySummary: &VulnerabilitySummary{
-						ContainerCount: 1,
-						TotalVulnerabilityBySeverity: map[string]int{
-							"CRITICAL": 1,
-							"HIGH":     2,
-							"MEDIUM":   4,
-							"LOW":      1,
-							"UNKNOWN":  0,
+					TrivyOutput: []TrivyOutput{
+						{
+							Vulnerabilities: buildVulnerabilities(map[string]int{
+								"CRITICAL": 1,
+								"HIGH":     2,
+								"MEDIUM":   4,
+								"LOW":      1,
+								"UNKNOWN":  0,
+							}),
 						},
 					},
 				},
 				{
 					ImageName:  "area2-team3-image1",
 					Containers: []k8s.ContainerSummary{team3Pod1, team3Pod2, team3Pod3},
-					VulnerabilitySummary: &VulnerabilitySummary{
-						ContainerCount: 3,
-						TotalVulnerabilityBySeverity: map[string]int{
-							"CRITICAL": 1,
-							"HIGH":     5,
-							"MEDIUM":   0,
-							"LOW":      0,
-							"UNKNOWN":  0,
+					TrivyOutput: []TrivyOutput{
+						{
+							Vulnerabilities: buildVulnerabilities(map[string]int{
+								"CRITICAL": 1,
+								"HIGH":     5,
+								"MEDIUM":   0,
+								"LOW":      0,
+								"UNKNOWN":  0,
+							}),
 						},
 					},
 				},
@@ -351,8 +367,8 @@ var _ = Describe("Vulnerability report", func() {
 			Expect(imageByArea["area1"].TotalVulnerabilityBySeverity).Should(Equal(
 				map[string]int{"CRITICAL": 4, "HIGH": 19, "MEDIUM": 8, "LOW": 4, "UNKNOWN": 1}),
 			)
-			Expect(imageByArea["area1"].Teams["team1"].ImageVulnerabilitySummary["area1-team1-image1"].ContainerCount).To(Equal(1))
-			Expect(imageByArea["area1"].Teams["team1"].ImageVulnerabilitySummary["area1-team1-image1"].TotalVulnerabilityBySeverity).To(Equal(
+			Expect(vulnerabilityFor(imageByArea["area1"].Teams["team1"], "area1-team1-image1").ContainerCount).To(Equal(1))
+			Expect(vulnerabilityFor(imageByArea["area1"].Teams["team1"], "area1-team1-image1").TotalVulnerabilityBySeverity).To(Equal(
 				map[string]int{"CRITICAL": 1, "HIGH": 5, "MEDIUM": 0, "LOW": 2, "UNKNOWN": 1},
 			))
 
@@ -361,8 +377,8 @@ var _ = Describe("Vulnerability report", func() {
 			Expect(imageByArea["area2"].TotalVulnerabilityBySeverity).To(Equal(
 				map[string]int{"CRITICAL": 1, "HIGH": 5, "MEDIUM": 0, "LOW": 0, "UNKNOWN": 0}),
 			)
-			Expect(imageByArea["area2"].Teams["team3"].ImageVulnerabilitySummary["area2-team3-image1"].ContainerCount).To(Equal(3))
-			Expect(imageByArea["area2"].Teams["team3"].ImageVulnerabilitySummary["area2-team3-image1"].TotalVulnerabilityBySeverity).To(Equal(
+			Expect(vulnerabilityFor(imageByArea["area2"].Teams["team3"], "area2-team3-image1").ContainerCount).To(Equal(3))
+			Expect(vulnerabilityFor(imageByArea["area2"].Teams["team3"], "area2-team3-image1").TotalVulnerabilityBySeverity).To(Equal(
 				map[string]int{"CRITICAL": 1, "HIGH": 5, "MEDIUM": 0, "LOW": 0, "UNKNOWN": 0},
 			))
 		})
@@ -404,11 +420,30 @@ var _ = Describe("Vulnerability report", func() {
 	})
 })
 
+func buildVulnerabilities(countBySeverity map[string]int) []Vulnerabilities {
+	var vuln []Vulnerabilities
+	for severity, count := range countBySeverity {
+		for i := 0; i < count; i++ {
+			vuln = append(vuln, Vulnerabilities{Severity: severity})
+		}
+	}
+	return vuln
+}
+
 func sortImageByNames(scannedImages []ScannedImage) []ScannedImage {
 	sort.Slice(scannedImages, func(i, j int) bool {
 		return scannedImages[i].ImageName < scannedImages[j].ImageName
 	})
 	return scannedImages
+}
+
+func vulnerabilityFor(summary *TeamSummary, image string) VulnerabilitySummary {
+	for _, i := range summary.Images {
+		if i.ImageName == image {
+			return i.VulnerabilitySummary()
+		}
+	}
+	return VulnerabilitySummary{}
 }
 
 func HaveImages(images ...string) types.GomegaMatcher {

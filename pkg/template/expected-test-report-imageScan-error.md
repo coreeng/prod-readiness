@@ -18,7 +18,7 @@ The following errors have occurred while scanning images:
 
 | Images | Containers | Critical| High | Medium | Low | Unknown |
 |--------|----------|---------|------|--------|-----|-----|
-| debian:latest | 2 | 0 | 10 | 5 | 20 | 0|
+| ubuntu:18.04 | 3 | 0 | 2 | 1 | 10 | 0|
 
 #### Vulnerabilities details
 

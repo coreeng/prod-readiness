@@ -33,8 +33,11 @@ The following errors have occurred while scanning images:
 
 | Images | Containers | Critical| High | Medium | Low | Unknown |
 |--------|----------|---------|------|--------|-----|-----|
-{{- range $key, $specs := $team.ImageVulnerabilitySummary }}
-| {{ $key }} | {{ $specs.ContainerCount }} | {{ index $specs.TotalVulnerabilityBySeverity "CRITICAL" }} | {{ index $specs.TotalVulnerabilityBySeverity "HIGH" }} | {{ index $specs.TotalVulnerabilityBySeverity "MEDIUM" }} | {{ index $specs.TotalVulnerabilityBySeverity "LOW" }} | {{ index $specs.TotalVulnerabilityBySeverity "UNKNOWN" }}|
+{{- range $unused, $image := $team.Images }}
+{{- $vuln := $image.VulnerabilitySummary }}
+{{- if not $image.ScanError }}
+| {{ $image.ImageName }} | {{ $vuln.ContainerCount }} | {{ index $vuln.TotalVulnerabilityBySeverity "CRITICAL" }} | {{ index $vuln.TotalVulnerabilityBySeverity "HIGH" }} | {{ index $vuln.TotalVulnerabilityBySeverity "MEDIUM" }} | {{ index $vuln.TotalVulnerabilityBySeverity "LOW" }} | {{ index $vuln.TotalVulnerabilityBySeverity "UNKNOWN" }}|
+{{- end }}
 {{- end }}
 
 #### Vulnerabilities details

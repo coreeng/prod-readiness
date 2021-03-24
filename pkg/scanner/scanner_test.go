@@ -105,8 +105,14 @@ var _ = Describe("Scanner", func() {
 					},
 				},
 			}
-			vulnerabilitySummary := buildVulnerabilitySummary(trivyOutput, 3)
-			Expect(vulnerabilitySummary.ContainerCount).To(Equal(3))
+
+			image := ScannedImage{
+				TrivyOutput: trivyOutput,
+				Containers:  []k8s.ContainerSummary{{Image: "image1"}, {Image: "image2"}},
+			}
+			vulnerabilitySummary := image.VulnerabilitySummary()
+			Expect(vulnerabilitySummary.ContainerCount).To(Equal(2))
+			Expect(vulnerabilitySummary.SeverityScore).To(Equal(3*critical + 2*high + 3*medium + 3*low + 3*unknown))
 			Expect(vulnerabilitySummary.TotalVulnerabilityBySeverity).To(Equal(
 				map[string]int{"CRITICAL": 3, "HIGH": 2, "MEDIUM": 3, "LOW": 3, "UNKNOWN": 3}),
 			)

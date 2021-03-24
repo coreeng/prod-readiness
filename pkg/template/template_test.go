@@ -95,34 +95,15 @@ func aReport() *TestReport {
 					Teams: map[string]*scanner.TeamSummary{
 						"team-1": {
 							Name: "team-1",
-							ImageVulnerabilitySummary: map[string]*scanner.VulnerabilitySummary{
-								"debian:latest": {
-									ContainerCount:               2,
-									TotalVulnerabilityBySeverity: map[string]int{"CRITICAL": 0, "HIGH": 10, "MEDIUM": 5, "LOW": 20, "UNKNOWN": 0},
-								},
-								"alpine:latest": {
-									ContainerCount:               1,
-									TotalVulnerabilityBySeverity: map[string]int{"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 2, "UNKNOWN": 0},
-								},
-								"ubuntu:18.04": {
-									ContainerCount:               3,
-									TotalVulnerabilityBySeverity: map[string]int{"CRITICAL": 2, "HIGH": 1, "MEDIUM": 0, "LOW": 2, "UNKNOWN": 1},
-								},
-							},
+							// ordered by severity score
 							Images: []scanner.ScannedImage{
 								debianImageScan,
-								alpineImageScan,
 								ubuntuImageScan,
+								alpineImageScan,
 							},
 						},
 						"team-2": {
 							Name: "team-2",
-							ImageVulnerabilitySummary: map[string]*scanner.VulnerabilitySummary{
-								"ubuntu:18.04": {
-									ContainerCount:               3,
-									TotalVulnerabilityBySeverity: map[string]int{"CRITICAL": 2, "HIGH": 1, "MEDIUM": 0, "LOW": 2, "UNKNOWN": 1},
-								},
-							},
 							Images: []scanner.ScannedImage{
 								ubuntuImageScan,
 							},
@@ -137,12 +118,6 @@ func aReport() *TestReport {
 					Teams: map[string]*scanner.TeamSummary{
 						"team-3": {
 							Name: "team-3",
-							ImageVulnerabilitySummary: map[string]*scanner.VulnerabilitySummary{
-								"debian:latest": {
-									ContainerCount:               2,
-									TotalVulnerabilityBySeverity: map[string]int{"CRITICAL": 10, "HIGH": 10, "MEDIUM": 5, "LOW": 20, "UNKNOWN": 0},
-								},
-							},
 							Images: []scanner.ScannedImage{
 								debianImageScan,
 							},
@@ -170,12 +145,6 @@ func aReportWithErrors() *TestReport {
 					Teams: map[string]*scanner.TeamSummary{
 						"team-1": {
 							Name: "team-1",
-							ImageVulnerabilitySummary: map[string]*scanner.VulnerabilitySummary{
-								"debian:latest": {
-									ContainerCount:               2,
-									TotalVulnerabilityBySeverity: map[string]int{"CRITICAL": 0, "HIGH": 10, "MEDIUM": 5, "LOW": 20, "UNKNOWN": 0},
-								},
-							},
 							Images: []scanner.ScannedImage{
 								ubuntuImageScan, scanError1, scanError2,
 							},
@@ -248,9 +217,6 @@ func anAlpineImageScan(vulnerabilitiesDefinition map[string]int) scanner.Scanned
 		Containers: []k8s.ContainerSummary{
 			{},
 		},
-		VulnerabilitySummary: &scanner.VulnerabilitySummary{
-			TotalVulnerabilityBySeverity: map[string]int{"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0, "UNKNOWN": 0},
-		},
 		TrivyOutput: []scanner.TrivyOutput{
 			{
 				Target:          "alpine (alpine 3.13.1)",
@@ -265,10 +231,8 @@ func aDebianImageScan(vulnerabilitiesDefinition map[string]int) scanner.ScannedI
 	return scanner.ScannedImage{
 		ImageName: "debian:latest",
 		Containers: []k8s.ContainerSummary{
-			{},
-		},
-		VulnerabilitySummary: &scanner.VulnerabilitySummary{
-			TotalVulnerabilityBySeverity: vulnerabilitiesDefinition,
+			{ContainerName: "c1"},
+			{ContainerName: "c2"},
 		},
 		TrivyOutput: []scanner.TrivyOutput{
 			{
@@ -284,10 +248,9 @@ func anUbuntuImageScan(vulnerabilitiesDefinition map[string]int) scanner.Scanned
 	return scanner.ScannedImage{
 		ImageName: "ubuntu:18.04",
 		Containers: []k8s.ContainerSummary{
-			{},
-		},
-		VulnerabilitySummary: &scanner.VulnerabilitySummary{
-			TotalVulnerabilityBySeverity: vulnerabilitiesDefinition,
+			{ContainerName: "c1"},
+			{ContainerName: "c2"},
+			{ContainerName: "c3"},
 		},
 		TrivyOutput: []scanner.TrivyOutput{
 			{

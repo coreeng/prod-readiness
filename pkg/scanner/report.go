@@ -28,7 +28,6 @@ type TeamSummary struct {
 	Containers                []k8s.ContainerSummary
 	ImageCount                int
 	ContainerCount            int
-	ImageVulnerabilitySummary map[string]*VulnerabilitySummary
 }
 
 // AreaReport generates a report grouped by area and team
@@ -78,11 +77,10 @@ func (a *AreaSummary) aggregate(teamSummary *TeamSummary) {
 	if a.TotalVulnerabilityBySeverity == nil {
 		a.TotalVulnerabilityBySeverity = make(map[string]int)
 	}
-	for _, vulnerabilitySummary := range teamSummary.ImageVulnerabilitySummary {
-		if vulnerabilitySummary != nil {
-			for severity, count := range vulnerabilitySummary.TotalVulnerabilityBySeverity {
-				a.TotalVulnerabilityBySeverity[severity] += count
-			}
+	for _, i := range teamSummary.Images {
+		vulnerabilitySummary := i.VulnerabilitySummary()
+		for severity, count := range vulnerabilitySummary.TotalVulnerabilityBySeverity {
+			a.TotalVulnerabilityBySeverity[severity] += count
 		}
 	}
 }
@@ -108,11 +106,10 @@ func groupImagesByTeam(allImages []ScannedImage, areaLabelName, teamLabelName st
 			}
 			if _, ok := imageByTeam[teamID][i.ImageName]; !ok {
 				imageByTeam[teamID][i.ImageName] = &ScannedImage{
-					ImageName:            i.ImageName,
-					TrivyOutput:          i.TrivyOutput,
-					VulnerabilitySummary: i.VulnerabilitySummary,
-					Containers:           nil,
-					ScanError:            i.ScanError,
+					ImageName:   i.ImageName,
+					TrivyOutput: i.TrivyOutput,
+					Containers:  nil,
+					ScanError:   i.ScanError,
 				}
 			}
 			imageByTeam[teamID][i.ImageName].Containers = append(imageByTeam[teamID][i.ImageName].Containers, c)
@@ -124,35 +121,23 @@ func groupImagesByTeam(allImages []ScannedImage, areaLabelName, teamLabelName st
 func buildTeamSummary(teamImageMap map[string]*ScannedImage, teamID teamKey) *TeamSummary {
 	var teamContainers []k8s.ContainerSummary
 	var teamImages []ScannedImage
-	imagesVulnerabilities := make(map[string]*VulnerabilitySummary)
 	for _, scannedImage := range teamImageMap {
 		teamImages = append(teamImages, *scannedImage)
 		teamContainers = append(teamContainers, scannedImage.Containers...)
-		imagesVulnerabilities[scannedImage.ImageName] = scannedImage.VulnerabilitySummary
 	}
 
 	return &TeamSummary{
-		Name:                      teamID.team,
-		Images:                    sortBySeverity(teamImages),
-		ImageCount:                len(teamImages),
-		Containers:                teamContainers,
-		ContainerCount:            len(teamContainers),
-		ImageVulnerabilitySummary: imagesVulnerabilities,
+		Name:           teamID.team,
+		Images:         sortBySeverity(teamImages),
+		ImageCount:     len(teamImages),
+		Containers:     teamContainers,
+		ContainerCount: len(teamContainers),
 	}
 }
 
 func sortBySeverity(scannedImages []ScannedImage) []ScannedImage {
 	sort.Slice(scannedImages, func(i, j int) bool {
-		firstItemScore := 0
-		secondItemScore := 0
-
-		if scannedImages[i].VulnerabilitySummary != nil {
-			firstItemScore = scannedImages[i].VulnerabilitySummary.SeverityScore()
-		}
-		if scannedImages[j].VulnerabilitySummary != nil {
-			secondItemScore = scannedImages[j].VulnerabilitySummary.SeverityScore()
-		}
-		return firstItemScore > secondItemScore
+		return scannedImages[i].VulnerabilitySummary().SeverityScore > scannedImages[j].VulnerabilitySummary().SeverityScore
 	})
 	return scannedImages
 }
