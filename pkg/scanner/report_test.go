@@ -107,7 +107,7 @@ var _ = Describe("Vulnerability report", func() {
 			))
 		})
 
-		It("list the same image found in multiple pods only once", func() {
+		It("list the same image found in multiple pods only once per team", func() {
 			scannedImages := []ScannedImage{
 				{
 					ImageName: "image1",
