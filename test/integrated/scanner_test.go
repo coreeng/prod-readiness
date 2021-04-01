@@ -172,7 +172,7 @@ var _ = Describe("Scan Images", func() {
 func vulnerabilityFor(summary *scanner.TeamSummary, image string) scanner.VulnerabilitySummary {
 	for _, i := range summary.Images {
 		if i.ImageName == image {
-			return i.VulnerabilitySummary()
+			return i.VulnerabilitySummary
 		}
 	}
 	return scanner.VulnerabilitySummary{}

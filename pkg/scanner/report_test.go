@@ -164,10 +164,10 @@ var _ = Describe("Vulnerability report", func() {
 			}
 
 			scannedImages := []ScannedImage{
-				{
-					ImageName:  "leastCriticalTeam1",
-					Containers: []k8s.ContainerSummary{team1Pod},
-					TrivyOutput: []TrivyOutput{
+				NewScannedImage(
+					"leastCriticalTeam1",
+					[]k8s.ContainerSummary{team1Pod},
+					[]TrivyOutput{
 						{
 							Vulnerabilities: buildVulnerabilities(map[string]int{
 								"CRITICAL": 3,
@@ -177,11 +177,12 @@ var _ = Describe("Vulnerability report", func() {
 							}),
 						},
 					},
-				},
-				{
-					ImageName:  "mostCriticalTeam2",
-					Containers: []k8s.ContainerSummary{team2Pod},
-					TrivyOutput: []TrivyOutput{
+					nil,
+				),
+				NewScannedImage(
+					"mostCriticalTeam2",
+					[]k8s.ContainerSummary{team2Pod},
+					[]TrivyOutput{
 						{
 							Vulnerabilities: buildVulnerabilities(map[string]int{
 								"CRITICAL": 1,
@@ -191,11 +192,12 @@ var _ = Describe("Vulnerability report", func() {
 							}),
 						},
 					},
-				},
-				{
-					ImageName:  "leastCriticalTeam2",
-					Containers: []k8s.ContainerSummary{team2Pod},
-					TrivyOutput: []TrivyOutput{
+					nil,
+				),
+				NewScannedImage(
+					"leastCriticalTeam2",
+					[]k8s.ContainerSummary{team2Pod},
+					[]TrivyOutput{
 						{
 							Vulnerabilities: buildVulnerabilities(map[string]int{
 								"CRITICAL": 0,
@@ -205,11 +207,12 @@ var _ = Describe("Vulnerability report", func() {
 							}),
 						},
 					},
-				},
-				{
-					ImageName:  "mostHighAfterSameCritical",
-					Containers: []k8s.ContainerSummary{team1Pod},
-					TrivyOutput: []TrivyOutput{
+					nil,
+				),
+				NewScannedImage(
+					"mostHighAfterSameCritical",
+					[]k8s.ContainerSummary{team1Pod},
+					[]TrivyOutput{
 						{
 							Vulnerabilities: buildVulnerabilities(map[string]int{
 								"CRITICAL": 3,
@@ -219,11 +222,12 @@ var _ = Describe("Vulnerability report", func() {
 							}),
 						},
 					},
-				},
-				{
-					ImageName:  "mostCritical",
-					Containers: []k8s.ContainerSummary{team1Pod},
-					TrivyOutput: []TrivyOutput{
+					nil,
+				),
+				NewScannedImage(
+					"mostCritical",
+					[]k8s.ContainerSummary{team1Pod},
+					[]TrivyOutput{
 						{
 							Vulnerabilities: buildVulnerabilities(map[string]int{
 								"CRITICAL": 4,
@@ -233,11 +237,12 @@ var _ = Describe("Vulnerability report", func() {
 							}),
 						},
 					},
-				},
-				{
-					ImageName:  "mostMediumAfterSameCriticalAndHigh",
-					Containers: []k8s.ContainerSummary{team1Pod},
-					TrivyOutput: []TrivyOutput{
+					nil,
+				),
+				NewScannedImage(
+					"mostMediumAfterSameCriticalAndHigh",
+					[]k8s.ContainerSummary{team1Pod},
+					[]TrivyOutput{
 						{
 							Vulnerabilities: buildVulnerabilities(map[string]int{
 								"CRITICAL": 3,
@@ -247,7 +252,8 @@ var _ = Describe("Vulnerability report", func() {
 							}),
 						},
 					},
-				},
+					nil,
+				),
 			}
 
 			// when
@@ -294,10 +300,10 @@ var _ = Describe("Vulnerability report", func() {
 			}
 
 			scannedImages := []ScannedImage{
-				{
-					ImageName:  "area1-team1-image1",
-					Containers: []k8s.ContainerSummary{team1Pod},
-					TrivyOutput: []TrivyOutput{
+				NewScannedImage(
+					"area1-team1-image1",
+					[]k8s.ContainerSummary{team1Pod},
+					[]TrivyOutput{
 						{
 							Vulnerabilities: buildVulnerabilities(map[string]int{
 								"CRITICAL": 1,
@@ -308,11 +314,12 @@ var _ = Describe("Vulnerability report", func() {
 							}),
 						},
 					},
-				},
-				{
-					ImageName:  "area1-team1-image2",
-					Containers: []k8s.ContainerSummary{team1Pod},
-					TrivyOutput: []TrivyOutput{
+					nil,
+				),
+				NewScannedImage(
+					"area1-team1-image2",
+					[]k8s.ContainerSummary{team1Pod},
+					[]TrivyOutput{
 						{
 							Vulnerabilities: buildVulnerabilities(map[string]int{
 								"CRITICAL": 2,
@@ -323,11 +330,12 @@ var _ = Describe("Vulnerability report", func() {
 							}),
 						},
 					},
-				},
-				{
-					ImageName:  "area1-team1-image2",
-					Containers: []k8s.ContainerSummary{team2Pod},
-					TrivyOutput: []TrivyOutput{
+					nil,
+				),
+				NewScannedImage(
+					"area1-team1-image2",
+					[]k8s.ContainerSummary{team2Pod},
+					[]TrivyOutput{
 						{
 							Vulnerabilities: buildVulnerabilities(map[string]int{
 								"CRITICAL": 1,
@@ -338,11 +346,12 @@ var _ = Describe("Vulnerability report", func() {
 							}),
 						},
 					},
-				},
-				{
-					ImageName:  "area2-team3-image1",
-					Containers: []k8s.ContainerSummary{team3Pod1, team3Pod2, team3Pod3},
-					TrivyOutput: []TrivyOutput{
+					nil,
+				),
+				NewScannedImage(
+					"area2-team3-image1",
+					[]k8s.ContainerSummary{team3Pod1, team3Pod2, team3Pod3},
+					[]TrivyOutput{
 						{
 							Vulnerabilities: buildVulnerabilities(map[string]int{
 								"CRITICAL": 1,
@@ -353,7 +362,8 @@ var _ = Describe("Vulnerability report", func() {
 							}),
 						},
 					},
-				},
+					nil,
+				),
 			}
 
 			// when
@@ -440,7 +450,7 @@ func sortImageByNames(scannedImages []ScannedImage) []ScannedImage {
 func vulnerabilityFor(summary *TeamSummary, image string) VulnerabilitySummary {
 	for _, i := range summary.Images {
 		if i.ImageName == image {
-			return i.VulnerabilitySummary()
+			return i.VulnerabilitySummary
 		}
 	}
 	return VulnerabilitySummary{}

@@ -20,10 +20,11 @@ type Scanner struct {
 
 // ScannedImage define the information of an image
 type ScannedImage struct {
-	TrivyOutput []TrivyOutput
-	Containers  []k8s.ContainerSummary
-	ImageName   string
-	ScanError   error
+	TrivyOutput          []TrivyOutput
+	Containers           []k8s.ContainerSummary
+	ImageName            string
+	ScanError            error
+	VulnerabilitySummary VulnerabilitySummary
 }
 
 // VulnerabilitySummary provides a summary of the vulnerabilities found for an image
@@ -145,12 +146,12 @@ func (s *Scanner) scanImages(imageList map[string][]k8s.ContainerSummary) ([]Sca
 				scanError = fmt.Errorf("error executing trivy for image %s: %s", resolvedImageName, err)
 				logr.Error(scanError)
 			}
-			scannedImages = append(scannedImages, ScannedImage{
-				ImageName:   resolvedImageName,
-				Containers:  resolvedContainers,
-				TrivyOutput: trivyOutput,
-				ScanError:   scanError,
-			})
+			scannedImages = append(scannedImages, NewScannedImage(
+				resolvedImageName,
+				resolvedContainers,
+				trivyOutput,
+				scanError,
+			))
 
 			err = s.dockerClient.RmiImage(resolvedImageName)
 			if err != nil {
@@ -175,8 +176,18 @@ var severityScores = map[string]int{
 	"CRITICAL": critical, "HIGH": high, "MEDIUM": medium, "LOW": low, "UNKNOWN": unknown,
 }
 
-// VulnerabilitySummary computes a summary a the vulnerability for that image
-func (i *ScannedImage) VulnerabilitySummary() VulnerabilitySummary {
+func NewScannedImage(imageName string, containers []k8s.ContainerSummary, trivyOutput []TrivyOutput, scanError error) ScannedImage {
+	i := ScannedImage{
+		ImageName:   imageName,
+		Containers:  containers,
+		TrivyOutput: trivyOutput,
+		ScanError:   scanError,
+	}
+	i.VulnerabilitySummary = i.buildVulnerabilitySummary()
+	return i
+}
+
+func (i *ScannedImage) buildVulnerabilitySummary() VulnerabilitySummary {
 	severityMap := make(map[string]int)
 	for severity := range severityScores {
 		severityMap[severity] = 0
@@ -198,6 +209,31 @@ func (i *ScannedImage) VulnerabilitySummary() VulnerabilitySummary {
 		TotalVulnerabilityBySeverity: severityMap,
 	}
 }
+
+//
+//// VulnerabilitySummary computes a summary a the vulnerability for that image
+//func (i *ScannedImage) VulnerabilitySummary() VulnerabilitySummary {
+//	severityMap := make(map[string]int)
+//	for severity := range severityScores {
+//		severityMap[severity] = 0
+//	}
+//	for _, target := range i.TrivyOutput {
+//		for _, vulnerability := range target.Vulnerabilities {
+//			severityMap[vulnerability.Severity] = severityMap[vulnerability.Severity] + 1
+//		}
+//	}
+//
+//	severityScore := 0
+//	for severity, count := range severityMap {
+//		score := severityScores[severity]
+//		severityScore = severityScore + count*score
+//	}
+//	return VulnerabilitySummary{
+//		ContainerCount:               len(i.Containers),
+//		SeverityScore:                severityScore,
+//		TotalVulnerabilityBySeverity: severityMap,
+//	}
+//}
 
 func (s *Scanner) stringReplacement(imageName string, stringReplacement string) (string, error) {
 	if stringReplacement != "" {

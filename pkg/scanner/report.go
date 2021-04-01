@@ -78,8 +78,7 @@ func (a *AreaSummary) aggregate(teamSummary *TeamSummary) {
 		a.TotalVulnerabilityBySeverity = make(map[string]int)
 	}
 	for _, i := range teamSummary.Images {
-		vulnerabilitySummary := i.VulnerabilitySummary()
-		for severity, count := range vulnerabilitySummary.TotalVulnerabilityBySeverity {
+		for severity, count := range i.VulnerabilitySummary.TotalVulnerabilityBySeverity {
 			a.TotalVulnerabilityBySeverity[severity] += count
 		}
 	}
@@ -106,10 +105,11 @@ func groupImagesByTeam(allImages []ScannedImage, areaLabelName, teamLabelName st
 			}
 			if _, ok := imageByTeam[teamID][i.ImageName]; !ok {
 				imageByTeam[teamID][i.ImageName] = &ScannedImage{
-					ImageName:   i.ImageName,
-					TrivyOutput: i.TrivyOutput,
-					Containers:  nil,
-					ScanError:   i.ScanError,
+					ImageName:            i.ImageName,
+					TrivyOutput:          i.TrivyOutput,
+					VulnerabilitySummary: i.VulnerabilitySummary,
+					Containers:           nil,
+					ScanError:            i.ScanError,
 				}
 			}
 			imageByTeam[teamID][i.ImageName].Containers = append(imageByTeam[teamID][i.ImageName].Containers, c)
@@ -137,7 +137,7 @@ func buildTeamSummary(teamImageMap map[string]*ScannedImage, teamID teamKey) *Te
 
 func sortBySeverity(scannedImages []ScannedImage) []ScannedImage {
 	sort.Slice(scannedImages, func(i, j int) bool {
-		return scannedImages[i].VulnerabilitySummary().SeverityScore > scannedImages[j].VulnerabilitySummary().SeverityScore
+		return scannedImages[i].VulnerabilitySummary.SeverityScore > scannedImages[j].VulnerabilitySummary.SeverityScore
 	})
 	return scannedImages
 }

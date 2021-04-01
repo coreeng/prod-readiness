@@ -212,54 +212,57 @@ func fileContentEqual(filename1, filename2 string, diffOptions ...string) (bool,
 }
 
 func anAlpineImageScan(vulnerabilitiesDefinition map[string]int) scanner.ScannedImage {
-	return scanner.ScannedImage{
-		ImageName: "alpine:latest",
-		Containers: []k8s.ContainerSummary{
+	return scanner.NewScannedImage(
+		"alpine:latest",
+		[]k8s.ContainerSummary{
 			{},
 		},
-		TrivyOutput: []scanner.TrivyOutput{
+		[]scanner.TrivyOutput{
 			{
 				Target:          "alpine (alpine 3.13.1)",
 				Type:            "alpine",
 				Vulnerabilities: buildVulnerabilities(vulnerabilitiesDefinition),
 			},
 		},
-	}
+		nil,
+	)
 }
 
 func aDebianImageScan(vulnerabilitiesDefinition map[string]int) scanner.ScannedImage {
-	return scanner.ScannedImage{
-		ImageName: "debian:latest",
-		Containers: []k8s.ContainerSummary{
+	return scanner.NewScannedImage(
+		"debian:latest",
+		[]k8s.ContainerSummary{
 			{ContainerName: "c1"},
 			{ContainerName: "c2"},
 		},
-		TrivyOutput: []scanner.TrivyOutput{
+		[]scanner.TrivyOutput{
 			{
 				Target:          "debian (debian 10.7)",
 				Type:            "debian",
 				Vulnerabilities: buildVulnerabilities(vulnerabilitiesDefinition),
 			},
 		},
-	}
+		nil,
+	)
 }
 
 func anUbuntuImageScan(vulnerabilitiesDefinition map[string]int) scanner.ScannedImage {
-	return scanner.ScannedImage{
-		ImageName: "ubuntu:18.04",
-		Containers: []k8s.ContainerSummary{
+	return scanner.NewScannedImage(
+		"ubuntu:18.04",
+		[]k8s.ContainerSummary{
 			{ContainerName: "c1"},
 			{ContainerName: "c2"},
 			{ContainerName: "c3"},
 		},
-		TrivyOutput: []scanner.TrivyOutput{
+		[]scanner.TrivyOutput{
 			{
 				Target:          "ubuntu (ubuntu 18.04)",
 				Type:            "ubuntu",
 				Vulnerabilities: buildVulnerabilities(vulnerabilitiesDefinition),
 			},
 		},
-	}
+		nil,
+	)
 }
 
 func anImageScanWithError(message string) scanner.ScannedImage {

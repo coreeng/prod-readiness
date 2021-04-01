@@ -86,7 +86,7 @@ var _ = Describe("Scanner", func() {
 		})
 	})
 
-	Describe("Compute vulnerability breakdown", func() {
+	Describe("NewScannedImage", func() {
 		It("count the number of vulnerability per severity", func() {
 			trivyOutput := []TrivyOutput{
 				{
@@ -106,17 +106,38 @@ var _ = Describe("Scanner", func() {
 				},
 			}
 
-			image := ScannedImage{
-				TrivyOutput: trivyOutput,
-				Containers:  []k8s.ContainerSummary{{Image: "image1"}, {Image: "image2"}},
-			}
-			vulnerabilitySummary := image.VulnerabilitySummary()
-			Expect(vulnerabilitySummary.ContainerCount).To(Equal(2))
-			Expect(vulnerabilitySummary.SeverityScore).To(Equal(3*critical + 2*high + 3*medium + 3*low + 3*unknown))
-			Expect(vulnerabilitySummary.TotalVulnerabilityBySeverity).To(Equal(
+			containers := []k8s.ContainerSummary{{Image: "image1"}, {Image: "image2"}}
+			image := NewScannedImage("image", containers, trivyOutput, nil)
+			Expect(image.VulnerabilitySummary.ContainerCount).To(Equal(2))
+			Expect(image.VulnerabilitySummary.SeverityScore).To(Equal(3*critical + 2*high + 3*medium + 3*low + 3*unknown))
+			Expect(image.VulnerabilitySummary.TotalVulnerabilityBySeverity).To(Equal(
 				map[string]int{"CRITICAL": 3, "HIGH": 2, "MEDIUM": 3, "LOW": 3, "UNKNOWN": 3}),
 			)
+			Expect(image.ScanError).To(BeNil())
+			Expect(image.TrivyOutput).To(Equal(trivyOutput))
+			Expect(image.Containers).To(Equal(containers))
 		})
+
+		Context("when an scan error occurs", func() {
+			It("captures the error and the container details", func() {
+				containers := []k8s.ContainerSummary{{Image: "image1"}}
+				scanError := fmt.Errorf("some error")
+				image := NewScannedImage("image", containers, []TrivyOutput{}, scanError)
+				Expect(image.Containers).To(Equal(containers))
+				Expect(image.ScanError).To(Equal(scanError))
+				Expect(image.TrivyOutput).To(BeEmpty())
+			})
+
+			It("shows a vulnerability summary with 0 vulnerability for each severity", func() {
+				image := NewScannedImage("image", []k8s.ContainerSummary{{Image: "image1"}}, []TrivyOutput{}, fmt.Errorf("some error"))
+				Expect(image.VulnerabilitySummary.ContainerCount).To(Equal(1))
+				Expect(image.VulnerabilitySummary.SeverityScore).To(Equal(0))
+				Expect(image.VulnerabilitySummary.TotalVulnerabilityBySeverity).To(Equal(
+					map[string]int{"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0, "UNKNOWN": 0}),
+				)
+			})
+		})
+
 	})
 
 	Describe("scan processing", func() {
