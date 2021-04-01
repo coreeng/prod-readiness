@@ -84,6 +84,25 @@ func (a *AreaSummary) aggregate(teamSummary *TeamSummary) {
 	}
 }
 
+func (t *TeamSummary) HasScanErrors() bool {
+	for  _, i := range t.Images {
+		if i.ScanError != nil{
+			return true
+		}
+	}
+	return false
+}
+
+func (t *TeamSummary) ScanErrors() []error {
+	var errors []error
+	for  _, i := range t.Images {
+		if i.ScanError != nil {
+			errors = append(errors, i.ScanError)
+		}
+	}
+	return errors
+}
+
 func groupImagesByTeam(allImages []ScannedImage, areaLabelName, teamLabelName string) map[teamKey]map[string]*ScannedImage {
 	imageByTeam := make(map[teamKey]map[string]*ScannedImage)
 	var areaLabel, teamsLabel string

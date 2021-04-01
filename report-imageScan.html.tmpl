@@ -68,21 +68,12 @@
       {{- range $keyTeam, $team := $area.Teams }}
 
         <h3 id="area-{{ $keyArea }}-team-{{ $keyTeam }}">Vulnerabilities for {{ $area.Name }} - {{ $team.Name }}</h3>
-        {{- $scanErrors := false -}}
-        {{- range $key, $image := $team.Images -}}
-          {{- if $image.ScanError }}
-            {{- $scanErrors = true }}
-          {{- end -}}
-        {{- end -}}
-
-        {{- if $scanErrors }}
+        {{- if $team.HasScanErrors }}
         <h4>Errors</h4>
         The following errors have occurred while scanning images:
         <ul>
-        {{- range $key, $image := $team.Images -}}
-          {{- if $image.ScanError }}
-           <li>{{ $image.ScanError }}</li>
-          {{- end }}
+        {{- range $key, $scanError := $team.ScanErrors }}
+           <li>{{ $scanError }}</li>
         {{- end }}
         </ul>
         {{- end }}

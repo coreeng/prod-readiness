@@ -428,6 +428,52 @@ var _ = Describe("Vulnerability report", func() {
 			Expect(images[1].ScanError).Should(BeNil())
 		})
 	})
+
+	Describe("Team summary", func() {
+
+		Describe("ScanErrors", func() {
+			It("should return an empty slice when no images has scan error", func() {
+				summary := TeamSummary{
+					Images: []ScannedImage{
+						{},{},
+					},
+				}
+				Expect(summary.ScanErrors()).To(BeEmpty())
+			})
+
+			It("should return all images scan errors preserving the image order", func() {
+				summary := TeamSummary{
+					Images: []ScannedImage{
+						{ScanError: fmt.Errorf("some error")}, {},{ScanError: fmt.Errorf("some other error")},
+					},
+				}
+				errors := summary.ScanErrors()
+				Expect(errors).To(HaveLen(2))
+				Expect(errors[0]).To(Equal(fmt.Errorf("some error")))
+				Expect(errors[1]).To(Equal(fmt.Errorf("some other error")))
+			})
+		})
+
+		Describe("HasScanErrors", func() {
+			It("should return false when images have no scan errors", func() {
+				summary := TeamSummary{
+					Images: []ScannedImage{
+						{},
+					},
+				}
+				Expect(summary.HasScanErrors()).To(BeFalse())
+			})
+
+			It("should return true when one or more images contain scan errors", func() {
+				summary := TeamSummary{
+					Images: []ScannedImage{
+						{ScanError: fmt.Errorf("some error")}, {},
+					},
+				}
+				Expect(summary.HasScanErrors()).To(BeTrue())
+			})
+		})
+	})
 })
 
 func buildVulnerabilities(countBySeverity map[string]int) []Vulnerabilities {
