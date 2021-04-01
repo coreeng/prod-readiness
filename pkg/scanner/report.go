@@ -84,18 +84,20 @@ func (a *AreaSummary) aggregate(teamSummary *TeamSummary) {
 	}
 }
 
+// HasScanErrors returns true when one or more team images has scan errors
 func (t *TeamSummary) HasScanErrors() bool {
-	for  _, i := range t.Images {
-		if i.ScanError != nil{
+	for _, i := range t.Images {
+		if i.ScanError != nil {
 			return true
 		}
 	}
 	return false
 }
 
+// ScanErrors returns scan errors for all team images
 func (t *TeamSummary) ScanErrors() []error {
 	var errors []error
-	for  _, i := range t.Images {
+	for _, i := range t.Images {
 		if i.ScanError != nil {
 			errors = append(errors, i.ScanError)
 		}

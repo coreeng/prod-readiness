@@ -176,6 +176,7 @@ var severityScores = map[string]int{
 	"CRITICAL": critical, "HIGH": high, "MEDIUM": medium, "LOW": low, "UNKNOWN": unknown,
 }
 
+// NewScannedImage created a new ScannedImage with all fields initialised
 func NewScannedImage(imageName string, containers []k8s.ContainerSummary, trivyOutput []TrivyOutput, scanError error) ScannedImage {
 	i := ScannedImage{
 		ImageName:   imageName,

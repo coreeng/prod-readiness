@@ -435,7 +435,7 @@ var _ = Describe("Vulnerability report", func() {
 			It("should return an empty slice when no images has scan error", func() {
 				summary := TeamSummary{
 					Images: []ScannedImage{
-						{},{},
+						{}, {},
 					},
 				}
 				Expect(summary.ScanErrors()).To(BeEmpty())
@@ -444,7 +444,7 @@ var _ = Describe("Vulnerability report", func() {
 			It("should return all images scan errors preserving the image order", func() {
 				summary := TeamSummary{
 					Images: []ScannedImage{
-						{ScanError: fmt.Errorf("some error")}, {},{ScanError: fmt.Errorf("some other error")},
+						{ScanError: fmt.Errorf("some error")}, {}, {ScanError: fmt.Errorf("some other error")},
 					},
 				}
 				errors := summary.ScanErrors()
