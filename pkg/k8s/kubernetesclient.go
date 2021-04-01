@@ -12,7 +12,7 @@ import (
 
 // KubernetesClient is a thin client to access the Kubernetes cluster
 type KubernetesClient interface {
-	// GetContainersInNamespaces returns the containers for all the pods in the namespaces that matche the labelSelector
+	// GetContainersInNamespaces returns the containers for all the pods in the namespaces that match the labelSelector
 	GetContainersInNamespaces(labelSelector string) ([]ContainerSummary, error)
 }
 
