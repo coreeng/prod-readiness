@@ -42,8 +42,8 @@ func GetOrDefaultKubeConfigPath(path string) string {
 	return kubeconfigPath
 }
 
-// KubernetesClient returns kubernetes clientset
-func KubernetesClient(config *rest.Config) *kubernetes.Clientset {
+// KubernetesClientset returns kubernetes clientset
+func KubernetesClientset(config *rest.Config) *kubernetes.Clientset {
 	clientset, err := kubernetes.NewForConfig(config)
 	if err != nil {
 		logr.Fatalf("Unable to obtain clientset: %v", err)

@@ -2,24 +2,22 @@ package scanner
 
 import (
 	"fmt"
-	"reflect"
-	"sort"
 	"testing"
 
-	"github.com/onsi/gomega/types"
+	"github.com/stretchr/testify/mock"
+
+	"github.com/coreeng/production-readiness/production-readiness/pkg/k8s"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	v1 "k8s.io/api/core/v1"
-	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func TestManager(t *testing.T) {
+func TestScanner(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Scanner Suite")
 }
 
-var _ = Describe("Scan Images", func() {
+var _ = Describe("Scanner", func() {
 
 	Describe("string replacement", func() {
 		var (
@@ -68,506 +66,269 @@ var _ = Describe("Scan Images", func() {
 		})
 
 		It("GroupContainersByImageName should return an unique map", func() {
-			podList1 := podDetail{
-				Pod: v1.Pod{
-					ObjectMeta: metaV1.ObjectMeta{
-						Name: "podName1",
-						Labels: map[string]string{
-							"app.kubernetes.io/component": "test-app",
-						},
-					},
-					Spec: v1.PodSpec{
-						Containers: []v1.Container{
-							{
-								Name:  "containerName1",
-								Image: "ubuntu:latest",
-							},
-							{
-								Name:  "containerName2",
-								Image: "ubuntu:trusty",
-							},
-						},
-					},
-				},
-				Namespace: v1.Namespace{
-					ObjectMeta: metaV1.ObjectMeta{
-						Name: "test-namespace1",
-						Labels: map[string]string{
-							"teams-name": "team1",
-						},
-					},
-				},
-			}
-
-			podList2 := podDetail{
-				Pod: v1.Pod{
-					ObjectMeta: metaV1.ObjectMeta{
-						Name: "podName2",
-						Labels: map[string]string{
-							"app.kubernetes.io/component": "test-app",
-						},
-					},
-					Spec: v1.PodSpec{
-						Containers: []v1.Container{
-							{
-								Name:  "containerName3",
-								Image: "ubuntu:latest",
-							},
-							{
-								Name:  "containerName4",
-								Image: "gcr.io:name",
-							},
-						},
-					},
-				},
-				Namespace: v1.Namespace{
-					ObjectMeta: metaV1.ObjectMeta{
-						Name: "test-namespace2",
-						Labels: map[string]string{
-							"teams-name": "team2",
-						},
-					},
-				},
-			}
+			container1 := k8s.ContainerSummary{Image: "ubuntu:latest", PodName: "podName1", ContainerName: "containerName1"}
+			container2 := k8s.ContainerSummary{Image: "ubuntu:trusty", PodName: "podName1", ContainerName: "containerName2"}
+			container3 := k8s.ContainerSummary{Image: "ubuntu:latest", PodName: "podName2", ContainerName: "containerName3"}
+			container4 := k8s.ContainerSummary{Image: "gcr.io:name", PodName: "podName2", ContainerName: "containerName4"}
 
 			// when
-			actualMap, err := scan.groupContainersByImageName([]podDetail{podList1, podList2})
+			actualMap := scan.groupContainersByImageName([]k8s.ContainerSummary{
+				container1, container2, container3, container4,
+			})
 
 			// then
-			expectedMap := map[string]*ImageSpec{
-				"ubuntu:latest": {
-					Containers: []ContainerSummary{
-						{PodName: "podName1", ContainerName: "containerName1", Namespace: "test-namespace1", NamespaceLabels: map[string]string{"teams-name": "team1"}},
-						{PodName: "podName2", ContainerName: "containerName3", Namespace: "test-namespace2", NamespaceLabels: map[string]string{"teams-name": "team2"}},
-					},
-				},
-				"ubuntu:trusty": {
-					Containers: []ContainerSummary{
-						{PodName: "podName1", ContainerName: "containerName2", Namespace: "test-namespace1", NamespaceLabels: map[string]string{"teams-name": "team1"}},
-					},
-				},
-				"gcr.io:name": {
-					Containers: []ContainerSummary{
-						{PodName: "podName2", ContainerName: "containerName4", Namespace: "test-namespace2", NamespaceLabels: map[string]string{"teams-name": "team2"}},
-					},
-				},
+			expectedMap := map[string][]k8s.ContainerSummary{
+				"ubuntu:latest": {container1, container3},
+				"ubuntu:trusty": {container2},
+				"gcr.io:name":   {container4},
 			}
-
-			Expect(err).NotTo(HaveOccurred())
 			Expect(actualMap).To(Equal(expectedMap))
 		})
 	})
 
-	Describe("Compute vulnerability breakdown", func() {
+	Describe("NewScannedImage", func() {
 		It("count the number of vulnerability per severity", func() {
-			imageSpec := ImageSpec{
-				TrivyOutput: []TrivyOutput{
-					{
-						Vulnerabilities: []Vulnerabilities{
-							{
-								Severity: "CRITICAL",
-							},
-							{
-								Severity: "MEDIUM",
-							},
-						},
+			trivyOutput := []TrivyOutput{
+				{
+					Vulnerabilities: []Vulnerabilities{
+						{Severity: "CRITICAL"},
+						{Severity: "MEDIUM"},
 					},
-					{
-						Vulnerabilities: []Vulnerabilities{
-							{
-								Severity: "CRITICAL",
-							},
-							{
-								Severity: "CRITICAL",
-							},
-							{
-								Severity: "HIGH",
-							},
-							{
-								Severity: "HIGH",
-							},
-							{
-								Severity: "MEDIUM",
-							},
-							{
-								Severity: "MEDIUM",
-							},
-							{
-								Severity: "LOW",
-							},
-							{
-								Severity: "LOW",
-							},
-							{
-								Severity: "LOW",
-							},
-							{
-								Severity: "UNKNOWN",
-							},
-							{
-								Severity: "UNKNOWN",
-							},
-							{
-								Severity: "UNKNOWN",
-							},
-						},
+				},
+				{
+					Vulnerabilities: []Vulnerabilities{
+						{Severity: "CRITICAL"}, {Severity: "CRITICAL"},
+						{Severity: "HIGH"}, {Severity: "HIGH"},
+						{Severity: "MEDIUM"}, {Severity: "MEDIUM"},
+						{Severity: "LOW"}, {Severity: "LOW"}, {Severity: "LOW"},
+						{Severity: "UNKNOWN"}, {Severity: "UNKNOWN"}, {Severity: "UNKNOWN"},
 					},
 				},
 			}
-			severityMap := computeTotalVulnerabilityBySeverity(&imageSpec)
-			Expect(severityMap).To(Equal(
+
+			containers := []k8s.ContainerSummary{{Image: "image1"}, {Image: "image2"}}
+			image := NewScannedImage("image", containers, trivyOutput, nil)
+			Expect(image.VulnerabilitySummary.ContainerCount).To(Equal(2))
+			Expect(image.VulnerabilitySummary.SeverityScore).To(Equal(3*critical + 2*high + 3*medium + 3*low + 3*unknown))
+			Expect(image.VulnerabilitySummary.TotalVulnerabilityBySeverity).To(Equal(
 				map[string]int{"CRITICAL": 3, "HIGH": 2, "MEDIUM": 3, "LOW": 3, "UNKNOWN": 3}),
 			)
+			Expect(image.ScanError).To(BeNil())
+			Expect(image.TrivyOutput).To(Equal(trivyOutput))
+			Expect(image.Containers).To(Equal(containers))
 		})
+
+		Context("when an scan error occurs", func() {
+			It("captures the error and the container details", func() {
+				containers := []k8s.ContainerSummary{{Image: "image1"}}
+				scanError := fmt.Errorf("some error")
+				image := NewScannedImage("image", containers, []TrivyOutput{}, scanError)
+				Expect(image.Containers).To(Equal(containers))
+				Expect(image.ScanError).To(Equal(scanError))
+				Expect(image.TrivyOutput).To(BeEmpty())
+			})
+
+			It("shows a vulnerability summary with 0 vulnerability for each severity", func() {
+				image := NewScannedImage("image", []k8s.ContainerSummary{{Image: "image1"}}, []TrivyOutput{}, fmt.Errorf("some error"))
+				Expect(image.VulnerabilitySummary.ContainerCount).To(Equal(1))
+				Expect(image.VulnerabilitySummary.SeverityScore).To(Equal(0))
+				Expect(image.VulnerabilitySummary.TotalVulnerabilityBySeverity).To(Equal(
+					map[string]int{"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0, "UNKNOWN": 0}),
+				)
+			})
+		})
+
 	})
 
-	Describe("Area grouping", func() {
+	Describe("scan processing", func() {
+		const (
+			areaLabel = "area-label"
+		)
 
 		var (
-			areaLabel, teamLabel string
 			scan                 *Scanner
+			mockKubernetesClient *mockKubernetes
+			mockTrivyClient      *mockTrivy
+			mockDockerClient     *mockDocker
 		)
 
 		BeforeEach(func() {
-			areaLabel = "areas-label"
-			teamLabel = "teams-label"
-			scan = &Scanner{config: &Config{
-				AreaLabels:  areaLabel,
-				TeamsLabels: teamLabel,
-			}}
+			mockKubernetesClient = &mockKubernetes{}
+			mockTrivyClient = &mockTrivy{}
+			mockDockerClient = &mockDocker{}
+			scan = &Scanner{
+				config: &Config{
+					Workers:              3,
+					FilterLabels:         areaLabel,
+					Severity:             "UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL",
+					ImageNameReplacement: "replace-this-registry|registry",
+				},
+				kubernetesClient: mockKubernetesClient,
+				trivyClient:      mockTrivyClient,
+				dockerClient:     mockDockerClient,
+			}
 		})
 
-		It("groups images per team and area", func() {
-			imageSpecs := map[string]*ImageSpec{
-				"image1": {
-					ImageName: "image1",
-					Containers: []ContainerSummary{
-						{
-							Namespace:       "namespace1",
-							NamespaceLabels: map[string]string{areaLabel: "area1", teamLabel: "team1"},
-							PodName:         "pod1",
-						},
-					},
+		It("should delete the pulled docker images once the scan is complete", func() {
+			// given
+			containers := []k8s.ContainerSummary{
+				{
+					Image:   "alpine:3.11.0",
+					PodName: "pod1",
 				},
-				"image2": {
-					ImageName: "image2",
-					Containers: []ContainerSummary{
-						{
-							Namespace:       "namespace1",
-							NamespaceLabels: map[string]string{areaLabel: "area1", teamLabel: "team1"},
-							PodName:         "pod2",
-						},
-					},
-				},
-				"image3": {
-					ImageName: "image3",
-					Containers: []ContainerSummary{
-						{
-							Namespace:       "namespace2",
-							PodName:         "pod3",
-							NamespaceLabels: map[string]string{areaLabel: "area1", teamLabel: "team2"},
-						},
-					},
-				},
-				"image4": {
-					ImageName: "image4",
-					Containers: []ContainerSummary{
-						{
-							Namespace:       "namespace3",
-							PodName:         "pod4",
-							NamespaceLabels: map[string]string{areaLabel: "area2", teamLabel: "team3"},
-						},
-					},
+				{
+					Image:   "replace-this-registry/image:0.1",
+					PodName: "pod1",
 				},
 			}
+			mockKubernetesClient.On("GetContainersInNamespaces", areaLabel).Return(containers, nil)
+			mockTrivyClient.On("DownloadDatabase").Return(nil)
+			mockDockerClient.
+				On("PullImage", "alpine:3.11.0").Return(nil).
+				On("PullImage", "registry/image:0.1").Return(nil)
+			mockTrivyClient.
+				On("ScanImage", "alpine:3.11.0").Return([]TrivyOutput{}, nil).
+				On("ScanImage", "registry/image:0.1").Return([]TrivyOutput{}, nil)
+			mockDockerClient.
+				On("RmiImage", "alpine:3.11.0").Return(nil).
+				On("RmiImage", "registry/image:0.1").Return(nil)
 
 			// when
-			imageByArea, err := scan.generateAreaGrouping(imageSpecs)
-
-			// then
+			_, err := scan.ScanImages()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(imageByArea["area1"].Teams).Should(HaveLen(2))
-			Expect(imageByArea["area1"].Teams["team1"].Images).Should(HaveImages("image1", "image2"))
-			Expect(imageByArea["area1"].Teams["team1"].Containers[0].NamespaceLabels).Should(And(
-				HaveKeyWithValue(areaLabel, "area1"),
-				HaveKeyWithValue(teamLabel, "team1"),
-			))
-
-			Expect(imageByArea["area1"].Teams["team2"].Images).Should(HaveImages("image3"))
-			Expect(imageByArea["area1"].Teams["team2"].Containers[0].NamespaceLabels).Should(And(
-				HaveKeyWithValue(areaLabel, "area1"),
-				HaveKeyWithValue(teamLabel, "team2"),
-			))
-
-			Expect(imageByArea["area2"].Teams).Should(HaveLen(1))
-			Expect(imageByArea["area2"].Teams["team3"].Images).Should(HaveImages("image4"))
-			Expect(imageByArea["area2"].Teams["team3"].Containers[0].NamespaceLabels).Should(And(
-				HaveKeyWithValue(areaLabel, "area2"),
-				HaveKeyWithValue(teamLabel, "team3"),
-			))
 		})
 
-		It("list the same image found in multiple pods only once", func() {
-			imageSpecs := map[string]*ImageSpec{
-				"image1": {
-					ImageName: "image1",
-					Containers: []ContainerSummary{
-						{
-							Namespace:       "namespace1",
-							NamespaceLabels: map[string]string{areaLabel: "area1", teamLabel: "team1"},
-							PodName:         "pod1",
-						},
-						{
-							Namespace:       "namespace1",
-							NamespaceLabels: map[string]string{areaLabel: "area1", teamLabel: "team1"},
-							PodName:         "pod2",
-						},
-						{
-							Namespace:       "namespace2",
-							NamespaceLabels: map[string]string{areaLabel: "area1", teamLabel: "team2"},
-							PodName:         "pod3",
-						},
-					},
-				},
-			}
-			// when
-			imageByArea, err := scan.generateAreaGrouping(imageSpecs)
+		Context("an error occurs when communicating with the Kubernetes cluster", func() {
+			It("should stop processing and return the error", func() {
+				// given
+				k8Error := fmt.Errorf("a K8 error")
+				mockKubernetesClient.On("GetContainersInNamespaces", areaLabel).Return([]k8s.ContainerSummary{}, k8Error)
 
-			// then
-			Expect(err).NotTo(HaveOccurred())
-			Expect(imageByArea["area1"].Teams).Should(HaveLen(2))
-			Expect(imageByArea["area1"].Teams["team1"].Images).Should(HaveImages("image1"))
-			Expect(imageByArea["area1"].Teams["team1"].ImageCount).Should(Equal(1))
-			Expect(imageByArea["area1"].Teams["team1"].Containers).Should(HaveLen(2))
-			Expect(imageByArea["area1"].Teams["team1"].ContainerCount).Should(Equal(2))
-			Expect(imageByArea["area1"].Teams["team1"].Containers[0].PodName).Should(Equal("pod1"))
-			Expect(imageByArea["area1"].Teams["team1"].Containers[1].PodName).Should(Equal("pod2"))
-
-			Expect(imageByArea["area1"].Teams["team2"].Images).Should(HaveImages("image1"))
-			Expect(imageByArea["area1"].Teams["team2"].ImageCount).Should(Equal(1))
-			Expect(imageByArea["area1"].Teams["team2"].Containers).Should(HaveLen(1))
-			Expect(imageByArea["area1"].Teams["team2"].ContainerCount).Should(Equal(1))
-			Expect(imageByArea["area1"].Teams["team2"].Containers[0].PodName).Should(Equal("pod3"))
+				// when
+				_, err := scan.ScanImages()
+				Expect(err).To(HaveOccurred())
+				Expect(err).To(MatchError(k8Error))
+			})
 		})
 
-		It("sort teams images by criticality", func() {
-			team1Pod := ContainerSummary{
-				Namespace:       "namespace1",
-				NamespaceLabels: map[string]string{areaLabel: "area1", teamLabel: "team1"},
-				PodName:         "pod1",
-			}
+		Context("an error occurs when downloading the trivy database", func() {
+			It("should stop processing and return the error", func() {
+				// given
+				containers := []k8s.ContainerSummary{
+					{
+						Image:   "alpine:3.11.0",
+						PodName: "pod1",
+					},
+				}
+				mockKubernetesClient.On("GetContainersInNamespaces", areaLabel).Return(containers, nil)
+				trivyError := fmt.Errorf("a trivy error")
+				mockTrivyClient.On("DownloadDatabase").Return(trivyError)
 
-			team2Pod := ContainerSummary{
-				Namespace:       "namespace1",
-				NamespaceLabels: map[string]string{areaLabel: "area1", teamLabel: "team2"},
-				PodName:         "pod1",
-			}
-
-			imageSpecs := map[string]*ImageSpec{
-				"mostCriticalTeam2": {
-					ImageName:  "mostCriticalTeam2",
-					Containers: []ContainerSummary{team2Pod},
-					TotalVulnerabilityBySeverity: map[string]int{
-						"CRITICAL": 1,
-						"HIGH":     5,
-						"MEDIUM":   0,
-						"LOW":      0,
-					},
-				},
-				"leastCriticalTeam2": {
-					ImageName:  "leastCriticalTeam2",
-					Containers: []ContainerSummary{team2Pod},
-					TotalVulnerabilityBySeverity: map[string]int{
-						"CRITICAL": 0,
-						"HIGH":     6,
-						"MEDIUM":   10,
-						"LOW":      25,
-					},
-				},
-				"mostCritical": {
-					ImageName:  "mostCritical",
-					Containers: []ContainerSummary{team1Pod},
-					TotalVulnerabilityBySeverity: map[string]int{
-						"CRITICAL": 4,
-						"HIGH":     5,
-						"MEDIUM":   10,
-						"LOW":      25,
-					},
-				},
-				"mostHighAfterSameCritical": {
-					ImageName:  "mostHighAfterSameCritical",
-					Containers: []ContainerSummary{team1Pod},
-					TotalVulnerabilityBySeverity: map[string]int{
-						"CRITICAL": 3,
-						"HIGH":     6,
-						"MEDIUM":   11,
-						"LOW":      26,
-					},
-				},
-				"mostMediumAfterSameCriticalAndHigh": {
-					ImageName:  "mostMediumAfterSameCriticalAndHigh",
-					Containers: []ContainerSummary{team1Pod},
-					TotalVulnerabilityBySeverity: map[string]int{
-						"CRITICAL": 3,
-						"HIGH":     5,
-						"MEDIUM":   12,
-						"LOW":      27,
-					},
-				},
-				"leastCriticalTeam1": {
-					ImageName:  "leastCriticalTeam1",
-					Containers: []ContainerSummary{team1Pod},
-					TotalVulnerabilityBySeverity: map[string]int{
-						"CRITICAL": 3,
-						"HIGH":     5,
-						"MEDIUM":   11,
-						"LOW":      28,
-					},
-				},
-			}
-
-			// when
-			imageByArea, err := scan.generateAreaGrouping(imageSpecs)
-
-			// then
-			Expect(err).NotTo(HaveOccurred())
-			Expect(imageByArea["area1"].Teams["team1"].Images).To(HaveLen(4))
-			Expect(imageByArea["area1"].Teams["team1"].Images[0].ImageName).To(Equal("mostCritical"))
-			Expect(imageByArea["area1"].Teams["team1"].Images[1].ImageName).To(Equal("mostHighAfterSameCritical"))
-			Expect(imageByArea["area1"].Teams["team1"].Images[2].ImageName).To(Equal("mostMediumAfterSameCriticalAndHigh"))
-			Expect(imageByArea["area1"].Teams["team1"].Images[3].ImageName).To(Equal("leastCriticalTeam1"))
-
-			Expect(imageByArea["area1"].Teams["team2"].Images).To(HaveLen(2))
-			Expect(imageByArea["area1"].Teams["team2"].Images[0].ImageName).To(Equal("mostCriticalTeam2"))
-			Expect(imageByArea["area1"].Teams["team2"].Images[1].ImageName).To(Equal("leastCriticalTeam2"))
+				// when
+				_, err := scan.ScanImages()
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("failed to download trivy db: a trivy error"))
+			})
 		})
 
-		It("sum up the vulnerabilities per area and criticality", func() {
-			team1Pod := ContainerSummary{
-				Namespace:       "namespace1",
-				NamespaceLabels: map[string]string{areaLabel: "area1", teamLabel: "team1"},
-				PodName:         "pod1",
-			}
-			team2Pod := ContainerSummary{
-				Namespace:       "namespace1",
-				NamespaceLabels: map[string]string{areaLabel: "area1", teamLabel: "team2"},
-				PodName:         "pod1",
-			}
-			team3Pod1 := ContainerSummary{
-				Namespace:       "namespace1",
-				NamespaceLabels: map[string]string{areaLabel: "area2", teamLabel: "team3"},
-				PodName:         "pod1",
-			}
-			team3Pod2 := ContainerSummary{
-				Namespace:       "namespace1",
-				NamespaceLabels: map[string]string{areaLabel: "area2", teamLabel: "team3"},
-				PodName:         "pod2",
-			}
-			team3Pod3 := ContainerSummary{
-				Namespace:       "namespace2",
-				NamespaceLabels: map[string]string{areaLabel: "area2", teamLabel: "team3"},
-				PodName:         "pod3",
-			}
-
-			imageSpecs := map[string]*ImageSpec{
-				"area1-team1-image1": {
-					ImageName:  "area1-team1-image1",
-					Containers: []ContainerSummary{team1Pod},
-					TotalVulnerabilityBySeverity: map[string]int{
-						"CRITICAL": 1,
-						"HIGH":     5,
-						"MEDIUM":   0,
-						"LOW":      2,
-						"UNKNOWN":  1,
+		Context("an error occurs during image processing", func() {
+			It("should carry on processing the next image", func() {
+				// given
+				containers := []k8s.ContainerSummary{
+					{
+						Image:   "alpine:3.11.0",
+						PodName: "pod1",
 					},
-				},
-				"area1-team1-image2": {
-					ImageName:  "area1-team1-image2",
-					Containers: []ContainerSummary{team1Pod},
-					TotalVulnerabilityBySeverity: map[string]int{
-						"CRITICAL": 2,
-						"HIGH":     12,
-						"MEDIUM":   4,
-						"LOW":      1,
-						"UNKNOWN":  0,
+					{
+						Image:   "replace-this-registry/image:0.1",
+						PodName: "pod1",
 					},
-				},
-				"area1-team2-image2": {
-					ImageName:  "area1-team1-image2",
-					Containers: []ContainerSummary{team2Pod},
-					TotalVulnerabilityBySeverity: map[string]int{
-						"CRITICAL": 1,
-						"HIGH":     2,
-						"MEDIUM":   4,
-						"LOW":      1,
-						"UNKNOWN":  0,
+				}
+				mockKubernetesClient.On("GetContainersInNamespaces", areaLabel).Return(containers, nil)
+				mockTrivyClient.On("DownloadDatabase").Return(nil)
+				mockDockerClient.
+					On("PullImage", "alpine:3.11.0").Return(fmt.Errorf("some docker error")).
+					On("PullImage", "registry/image:0.1").Return(nil)
+				mockTrivyClient.
+					On("ScanImage", "alpine:3.11.0").Return([]TrivyOutput{}, fmt.Errorf("some trivy error")).
+					On("ScanImage", "registry/image:0.1").Return([]TrivyOutput{}, nil)
+				mockDockerClient.
+					On("RmiImage", "alpine:3.11.0").Return(fmt.Errorf("some docker error")).
+					On("RmiImage", "registry/image:0.1").Return(nil)
+
+				// when
+				_, err := scan.ScanImages()
+				Expect(err).NotTo(HaveOccurred())
+			})
+
+			It("should report the error details", func() {
+				// given
+				containers := []k8s.ContainerSummary{
+					{
+						Image:   "alpine:3.11.0",
+						PodName: "pod1",
 					},
-				},
-				"area2-team3-image1": {
-					ImageName:  "area2-team3-image1",
-					Containers: []ContainerSummary{team3Pod1, team3Pod2, team3Pod3},
-					TotalVulnerabilityBySeverity: map[string]int{
-						"CRITICAL": 1,
-						"HIGH":     5,
-						"MEDIUM":   0,
-						"LOW":      0,
-						"UNKNOWN":  0,
-					},
-				},
-			}
+				}
+				mockKubernetesClient.On("GetContainersInNamespaces", areaLabel).Return(containers, nil)
+				mockTrivyClient.On("DownloadDatabase").Return(nil)
+				mockDockerClient.
+					On("PullImage", "alpine:3.11.0").Return(nil)
+				mockTrivyClient.
+					On("ScanImage", "alpine:3.11.0").Return([]TrivyOutput{}, fmt.Errorf("some trivy error"))
+				mockDockerClient.
+					On("RmiImage", "alpine:3.11.0").Return(fmt.Errorf("some docker error"))
 
-			// when
-			imageByArea, err := scan.generateAreaGrouping(imageSpecs)
-
-			// then
-			Expect(err).NotTo(HaveOccurred())
-			Expect(imageByArea).To(HaveLen(2))
-			Expect(imageByArea["area1"].Summary.ImageCount).To(Equal(3))
-			Expect(imageByArea["area1"].Summary.ContainerCount).To(Equal(3))
-			Expect(imageByArea["area1"].Summary.TotalVulnerabilityBySeverity).To(Equal(
-				map[string]int{"CRITICAL": 4, "HIGH": 19, "MEDIUM": 8, "LOW": 4, "UNKNOWN": 1}),
-			)
-			Expect(imageByArea["area1"].Teams["team1"].Summary.ImageVulnerabilitySummary["area1-team1-image1"].ContainerCount).To(Equal(1))
-			Expect(imageByArea["area1"].Teams["team1"].Summary.ImageVulnerabilitySummary["area1-team1-image1"].TotalVulnerabilityBySeverity).To(Equal(
-				map[string]int{"CRITICAL": 1, "HIGH": 5, "MEDIUM": 0, "LOW": 2, "UNKNOWN": 1},
-			))
-
-			Expect(imageByArea["area2"].Summary.ImageCount).To(Equal(1))
-			Expect(imageByArea["area2"].Summary.ContainerCount).To(Equal(3))
-			Expect(imageByArea["area2"].Summary.TotalVulnerabilityBySeverity).To(Equal(
-				map[string]int{"CRITICAL": 1, "HIGH": 5, "MEDIUM": 0, "LOW": 0, "UNKNOWN": 0}),
-			)
-			Expect(imageByArea["area2"].Teams["team3"].Summary.ImageVulnerabilitySummary["area2-team3-image1"].ContainerCount).To(Equal(3))
-			Expect(imageByArea["area2"].Teams["team3"].Summary.ImageVulnerabilitySummary["area2-team3-image1"].TotalVulnerabilityBySeverity).To(Equal(
-				map[string]int{"CRITICAL": 1, "HIGH": 5, "MEDIUM": 0, "LOW": 0, "UNKNOWN": 0},
-			))
+				// when
+				report, err := scan.ScanImages()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(report.ScannedImages[0].ScanError.Error()).To(ContainSubstring("error executing trivy for image alpine:3.11.0: some trivy error"))
+			})
 		})
 	})
+
 })
 
-func HaveImages(images ...string) types.GomegaMatcher {
-	return &haveImages{expectedImages: images}
+type mockKubernetes struct {
+	mock.Mock
 }
 
-type haveImages struct {
-	expectedImages []string
+// force implementation of k8s.KubernetesClient at compilation time
+var _ k8s.KubernetesClient = &mockKubernetes{}
+
+func (k *mockKubernetes) GetContainersInNamespaces(labelSelector string) ([]k8s.ContainerSummary, error) {
+	args := k.Called(labelSelector)
+	return args.Get(0).([]k8s.ContainerSummary), args.Error(1)
 }
 
-func (m *haveImages) Match(actual interface{}) (success bool, err error) {
-	var actualImages []string
-	imagesSpecs := actual.([]ImageSpec)
-	for _, imageSpec := range imagesSpecs {
-		actualImages = append(actualImages, imageSpec.ImageName)
-	}
-	sort.Strings(m.expectedImages)
-	sort.Strings(actualImages)
-	return reflect.DeepEqual(actualImages, m.expectedImages), nil
+type mockTrivy struct {
+	mock.Mock
 }
 
-func (m *haveImages) FailureMessage(actual interface{}) (message string) {
-	return fmt.Sprintf("Expected: %v. \nActual response body: %s", m.expectedImages, actual)
+// force implementation of TrivyClient at compilation time
+var _ TrivyClient = &mockTrivy{}
+
+func (t *mockTrivy) DownloadDatabase() error {
+	args := t.Called()
+	return args.Error(0)
+
+}
+func (t *mockTrivy) ScanImage(image string) ([]TrivyOutput, error) {
+	args := t.Called(image)
+	return args.Get(0).([]TrivyOutput), args.Error(1)
 }
 
-func (m *haveImages) NegatedFailureMessage(actual interface{}) (message string) {
-	return fmt.Sprintf("Expected: %v. \nActual response body: %s", m.expectedImages, actual)
+type mockDocker struct {
+	mock.Mock
+}
+
+var _ DockerClient = &mockDocker{}
+
+func (d *mockDocker) PullImage(image string) error {
+	args := d.Called(image)
+	return args.Error(0)
+}
+
+func (d *mockDocker) RmiImage(image string) error {
+	args := d.Called(image)
+	return args.Error(0)
 }

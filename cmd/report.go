@@ -4,8 +4,8 @@ import (
 	"github.com/coreeng/production-readiness/production-readiness/pkg/k8s"
 	"github.com/coreeng/production-readiness/production-readiness/pkg/kubebench"
 	"github.com/coreeng/production-readiness/production-readiness/pkg/linuxbench"
-	r "github.com/coreeng/production-readiness/production-readiness/pkg/report"
 	"github.com/coreeng/production-readiness/production-readiness/pkg/scanner"
+	r "github.com/coreeng/production-readiness/production-readiness/pkg/template"
 	logr "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -39,14 +39,14 @@ func init() {
 
 // FullReport - FullReport
 type FullReport struct {
-	ImageScan *scanner.Report
+	ImageScan *scanner.VulnerabilityReport
 	KubeCIS   *kubebench.KubeReport
 	LinuxCIS  *linuxbench.LinuxReport
 }
 
 func report(_ *cobra.Command, _ []string) {
 	kubeconfig := k8s.KubernetesConfig(kubeContext, kubeconfigPath)
-	clientset := k8s.KubernetesClient(kubeconfig)
+	clientset := k8s.KubernetesClientset(kubeconfig)
 
 	config := &scanner.Config{
 		LogLevel:             logLevel,
@@ -58,7 +58,7 @@ func report(_ *cobra.Command, _ []string) {
 		Severity:             severity,
 	}
 
-	t := scanner.New(clientset, config)
+	t := scanner.New(k8s.NewKubernetesClientWith(clientset), config)
 	imageScanReport, err := t.ScanImages()
 	if err != nil {
 		logr.Errorf("Error scanning images with config %v: %v", config, err)
@@ -97,7 +97,7 @@ func report(_ *cobra.Command, _ []string) {
 		LinuxCIS:  linuxReport,
 	}
 
-	err = r.GenerateMarkdown(fullReport, reportTemplate, reportFile)
+	err = r.GenerateReportFromTemplate(fullReport, reportTemplate, reportFile)
 	if err != nil {
 		logr.Error(err)
 	}

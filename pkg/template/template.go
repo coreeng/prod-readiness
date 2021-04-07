@@ -1,4 +1,4 @@
-package report
+package template
 
 import (
 	"encoding/json"
@@ -10,9 +10,9 @@ import (
 	logr "github.com/sirupsen/logrus"
 )
 
-// GenerateMarkdown - GenerateMarkdown
-func GenerateMarkdown(report interface{}, templateFilename string, filename string) error {
-	logr.Infof("Generating mark-down based on template %s", templateFilename)
+// GenerateReportFromTemplate - Generate the report based on the given template file
+func GenerateReportFromTemplate(report interface{}, templateFilename string, reportOutputFilename string) error {
+	logr.Infof("Generating report based on template %s", templateFilename)
 	tmp := template.New(filepath.Base(templateFilename))
 	tmp.Funcs(template.FuncMap{
 		"safe": func(s string) template.HTML { return template.HTML(s) },
@@ -55,16 +55,16 @@ func GenerateMarkdown(report interface{}, templateFilename string, filename stri
 		return err
 	}
 
-	reportMarkdownFile, err := os.Create(filename)
+	reportFile, err := os.Create(reportOutputFilename)
 	if err != nil {
-		return fmt.Errorf("could not create mark-down file %s: %v", filename, err)
+		return fmt.Errorf("could not create report file %s: %v", reportOutputFilename, err)
 	}
 
-	err = tmpl.Execute(reportMarkdownFile, report)
+	err = tmpl.Execute(reportFile, report)
 	if err != nil {
 		return err
 	}
-	logr.Infof("Generated mark-down file: %s", templateFilename)
+	logr.Infof("Generated report file: %s", templateFilename)
 	return nil
 }
 

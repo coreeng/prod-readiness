@@ -2,63 +2,32 @@
 
 This tool will help running diagnostic to have a better understanding of a cluster in term of security and best practises.
 
-## Overview
+## Container Image scanning
 
-## Build, run, test
+The `scan` command can be used to scan your container images for vulnerabilities.
+It will look up running containers in all namespaces that matches an optional label selector (`--filters-labels`)
+and perform a vulnerability scan against using [trivy](https://github.com/aquasecurity/trivy) for each container image.
+It will then generate an `HTML` or `Markdown` report summarising the vulnerabilities found, their severity, CVE reference
+and how many containers are affected.
 
-First, setup your local golang workspace by running `make setup`.
+It can also provide a break down of the vulnerabilities per area (`--area-labels`) / team (`--teams-labels`) when specified.
 
-To see the full list of available flags on the app run `production-readiness --help`
+Here is a sample report:
+![Sample Report](sample-report-extract.png)
 
-### Build
-
-Run `make install`
-
-Note: this will also run unit tests.
-
-### Testing
-
-#### Unit tests
-
-For unit tests only: `make test`. 
-
-However, it is recommended during development to call instead `make install` as this will also run linting, 
-static code analysis and will check formatting.
-
-Run `make format` to fix any formatting errors.
-
-#### Integrated tests
-
-Integrated tests will run an image scan against a local [Kind](https://kind.sigs.k8s.io/) cluster.
-To prepare your environment you must install [trivy](https://github.com/aquasecurity/trivy) and `docker`
-
-To create a [Kind](https://kind.sigs.k8s.io/) Kubernetes cluster:
-```
-make kind
-```
-
-To run the integrated tests:
-```
-make integrated-test
-```
-
-## Releasing
-
-_To be defined_
-
-
-## Cheatsheet
-
-### Run images scan
+### Usage
 
 To prepare your environment you must install [trivy](https://github.com/aquasecurity/trivy) and `docker`
 as the image scan utility require both command line tools.
 
 ```
-production-readiness scan  --context cluster-name  --area-labels=area-name --teams-labels=team --image-name-replacement='mirror.registry:5000|registry.new.url,mirror-2.registry:5000|registry.new.url'
+production-readiness scan --context cluster-name --area-labels=area-name --teams-labels=team --image-name-replacement='mirror.registry:5000|registry.new.url,mirror-2.registry:5000|registry.new.url'
 ```
 
-### Render the presentation 
+Run `production-readiness scan --help` for a complete list of options available.
+
+
+### Rendering the report as HTML, Mark-down or PDF
 
 The vulnerability report can be rendered using the template of your choice.
 There are two available templates for convenience:
@@ -73,10 +42,18 @@ One tool that works for us is [wkhtmltopdf](https://wkhtmltopdf.org/downloads.ht
 wkhtmltopdf <report.html> <report.pdf>
 ```
 
-## TODOs
+### TODOs
 
 - use trivy library rather than the command line
 - use docker library rather than the command line
-- change the scan template to support (again) pagination
-- restructure the code for better encapsulation
 - releasing
+
+## Kubebench
+
+_This is work in progress_
+
+
+## Linuxbench
+
+_This is work in progress_
+

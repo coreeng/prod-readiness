@@ -4,6 +4,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"k8s.io/client-go/rest"
+
 	logr "github.com/sirupsen/logrus"
 	"k8s.io/client-go/kubernetes"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc" // required for connectivity into dev cluster
@@ -12,6 +14,7 @@ import (
 
 type Environment struct {
 	KubeClientset *kubernetes.Clientset
+	config        *rest.Config
 	KubeContext   string
 }
 

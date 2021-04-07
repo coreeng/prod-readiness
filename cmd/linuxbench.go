@@ -3,7 +3,7 @@ package main
 import (
 	"github.com/coreeng/production-readiness/production-readiness/pkg/k8s"
 	"github.com/coreeng/production-readiness/production-readiness/pkg/linuxbench"
-	r "github.com/coreeng/production-readiness/production-readiness/pkg/report"
+	r "github.com/coreeng/production-readiness/production-readiness/pkg/template"
 	logr "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -25,7 +25,7 @@ func init() {
 
 func linuxBench(_ *cobra.Command, _ []string) {
 	kubeconfig := k8s.KubernetesConfig(kubeContext, kubeconfigPath)
-	clientset := k8s.KubernetesClient(kubeconfig)
+	clientset := k8s.KubernetesClientset(kubeconfig)
 	t := linuxbench.New(kubeconfig, clientset)
 
 	config := &linuxbench.Config{
@@ -43,7 +43,7 @@ func linuxBench(_ *cobra.Command, _ []string) {
 	fullReport := &FullReport{
 		LinuxCIS: linuxReport,
 	}
-	err = r.GenerateMarkdown(fullReport, "report-linuxCIS.md.tmpl", "report-linuxCIS.md")
+	err = r.GenerateReportFromTemplate(fullReport, "report-linuxCIS.md.tmpl", "report-linuxCIS.md")
 	if err != nil {
 		// return nil, err
 		logr.Error(err)

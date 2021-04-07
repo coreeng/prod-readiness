@@ -12,9 +12,11 @@ services:
 
 before_install:
   - wget https://github.com/aquasecurity/trivy/releases/download/v0.15.0/trivy_0.15.0_Linux-64bit.tar.gz
-  - sudo tar -C /usr/local/bin -zxf trivy_0.15.0_Linux-64bit.tar.gz
-  - curl --silent --show-error --location --output /usr/local/bin/kind https://github.com/kubernetes-sigs/kind/releases/download/v0.8.1/kind-linux-amd64  # 1.12 nodes not supported after this version
-  - chmod +x /usr/local/bin/kind /usr/local/bin/trivy
+  - sudo tar -C /usr/local/bin -zxf trivy_0.15.0_Linux-64bit.tar.gz && rm trivy_0.15.0_Linux-64bit.tar.gz && sudo chmod +x /usr/local/bin/trivy
+  - wget https://github.com/kubernetes-sigs/kind/releases/download/v0.8.1/kind-linux-amd64  # 1.12 nodes not supported after this version
+  - chmod +x kind-linux-amd64 && sudo mv kind-linux-amd64 /usr/local/bin/kind
+  - wget https://storage.googleapis.com/kubernetes-release/release/v1.13.12/bin/linux/amd64/kubectl
+  - chmod +x kubectl && sudo mv kubectl /usr/local/bin/kubectl
 
 install:
   - make kind setup

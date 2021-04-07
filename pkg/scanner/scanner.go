@@ -2,80 +2,36 @@ package scanner
 
 import (
 	"fmt"
-	"sort"
 	"strings"
 
-	"github.com/gammazero/workerpool"
-	"github.com/mitchellh/mapstructure"
-	logr "github.com/sirupsen/logrus"
-	v1 "k8s.io/api/core/v1"
+	"github.com/coreeng/production-readiness/production-readiness/pkg/k8s"
 
-	execCmd "github.com/coreeng/production-readiness/production-readiness/pkg/cmd"
-	"github.com/coreeng/production-readiness/production-readiness/pkg/utils"
-	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
+	"github.com/gammazero/workerpool"
+	logr "github.com/sirupsen/logrus"
 )
 
 // Scanner will scan images
 type Scanner struct {
-	kubeconfig *rest.Config
-	kubeClient *kubernetes.Clientset
-	config     *Config
+	config           *Config
+	kubernetesClient k8s.KubernetesClient
+	dockerClient     DockerClient
+	trivyClient      TrivyClient
 }
 
-// ImageSpec define the information of an image
-type ImageSpec struct {
-	TrivyOutput                  []TrivyOutput      `json:"trivyCommand"`
-	TrivyErrOutput               string             `json:"trivyErrCommand"`
-	DockerPullCommand            string             `json:"dockerPullCommand"`
-	DockerPullErrCommand         string             `json:"dockerPullErrCommand"`
-	DockerRmiCommand             string             `json:"dockerRmiCommand"`
-	DockerRmiErrCommand          string             `json:"dockerRmiErrCommand"`
-	Containers                   []ContainerSummary `json:"pods"`
-	TotalVulnerabilityBySeverity map[string]int
-	ImageName                    string
+// ScannedImage define the information of an image
+type ScannedImage struct {
+	TrivyOutput          []TrivyOutput
+	Containers           []k8s.ContainerSummary
+	ImageName            string
+	ScanError            error
+	VulnerabilitySummary VulnerabilitySummary
 }
 
-// Report is top level structure holding the results of the image scan
-type Report struct {
-	ImageSpecs  map[string]*ImageSpec
-	ImageByArea map[string]*ImagePerArea
-}
-
-// AreaSummary defines the summary for an area
-type AreaSummary struct {
-	ImageCount                   int `json:"number_images_scanned"`
-	ContainerCount               int `json:"number_pods_scanned"`
-	TotalVulnerabilityBySeverity map[string]int
-}
-
-// TeamSummary defines the summary for an team
-type TeamSummary struct {
-	ImageVulnerabilitySummary map[string]VulnerabilitySummary
-}
-
-// VulnerabilitySummary defines
+// VulnerabilitySummary provides a summary of the vulnerabilities found for an image
 type VulnerabilitySummary struct {
 	ContainerCount               int
+	SeverityScore                int
 	TotalVulnerabilityBySeverity map[string]int
-}
-
-// ImagePerArea regroups image vulnerabilities for an area/department
-type ImagePerArea struct {
-	AreaName string
-	Summary  *AreaSummary
-	Teams    map[string]*ImagePerTeam
-}
-
-// ImagePerTeam regroups image vulnerabilities for a team
-type ImagePerTeam struct {
-	TeamName       string
-	Summary        *TeamSummary
-	ContainerCount int
-	ImageCount     int
-	Containers     []ContainerSummary
-	Images         []ImageSpec
 }
 
 // Vulnerabilities is the object representation of the trivy vulnerability table for an image
@@ -117,275 +73,145 @@ type Config struct {
 }
 
 // New creates a Scanner to find vulnerabilities in container images
-func New(kubeClient *kubernetes.Clientset, config *Config) *Scanner {
+func New(kubernetesClient k8s.KubernetesClient, config *Config) *Scanner {
 	return &Scanner{
-		kubeClient: kubeClient,
-		config:     config,
+		config:           config,
+		kubernetesClient: kubernetesClient,
+		dockerClient:     NewDockerClient(),
+		trivyClient:      NewTrivyClient(config.Severity),
 	}
 }
 
 // ScanImages get all the images available in a cluster and scan them
-func (l *Scanner) ScanImages() (*Report, error) {
+func (s *Scanner) ScanImages() (*VulnerabilityReport, error) {
 	logr.Infof("Running scanner")
-
-	// get all pods running for now
-	// then we could get all the deployment and statefulset, job, cronjob, to gather all the images which are not running during the scan
-	// pod manifest should be available in the kube-system namespace
-	podList, err := l.getPods(l.config)
+	containers, err := s.kubernetesClient.GetContainersInNamespaces(s.config.FilterLabels)
+	if err != nil {
+		return nil, err
+	}
+	containersByImageName := s.groupContainersByImageName(containers)
+	scannedImages, err := s.scanImages(containersByImageName)
 	if err != nil {
 		return nil, err
 	}
 
-	logr.WithFields(logr.Fields{
-		"podList": podList,
-	}).Debug("Pod List")
-
-	containersByImageName, err := l.groupContainersByImageName(podList)
-	if err != nil {
-		return nil, err
+	logr.Infof("Generating vulnerability report")
+	reportGenerator := &AreaReport{
+		AreaLabelName: s.config.AreaLabels,
+		TeamLabelName: s.config.TeamsLabels,
 	}
-	scannedImages, err := l.scanImages(containersByImageName)
-	if err != nil {
-		return nil, err
-	}
-
-	logr.Infof("Generating report")
-	return l.generateReport(scannedImages)
+	return reportGenerator.GenerateVulnerabilityReport(scannedImages)
 }
 
-func (l *Scanner) generateReport(scannedImages map[string]*ImageSpec) (*Report, error) {
-	for _, imageSpec := range scannedImages {
-		imageSpec.TotalVulnerabilityBySeverity = computeTotalVulnerabilityBySeverity(imageSpec)
+func (s *Scanner) groupContainersByImageName(containers []k8s.ContainerSummary) map[string][]k8s.ContainerSummary {
+	images := make(map[string][]k8s.ContainerSummary)
+	for _, container := range containers {
+		if _, ok := images[container.Image]; !ok {
+			images[container.Image] = []k8s.ContainerSummary{}
+		}
+		images[container.Image] = append(images[container.Image], container)
 	}
-	imagesByArea, err := l.generateAreaGrouping(scannedImages)
-	if err != nil {
-		return nil, err
-	}
-	return &Report{
-		ImageSpecs:  scannedImages,
-		ImageByArea: imagesByArea,
-	}, nil
+	return images
 }
 
-func computeTotalVulnerabilityBySeverity(imageSpec *ImageSpec) map[string]int {
+func (s *Scanner) scanImages(imageList map[string][]k8s.ContainerSummary) ([]ScannedImage, error) {
+	var scannedImages []ScannedImage
+	wp := workerpool.New(s.config.Workers)
+	err := s.trivyClient.DownloadDatabase()
+	if err != nil {
+		return nil, fmt.Errorf("failed to download trivy db: %v", err)
+	}
+
+	logr.Infof("Scanning %d images with %d workers", len(imageList), s.config.Workers)
+	for imageName, containers := range imageList {
+		// allocate var to allow access inside the worker submission
+		resolvedContainers := containers
+		resolvedImageName, err := s.stringReplacement(imageName, s.config.ImageNameReplacement)
+		if err != nil {
+			logr.Errorf("Error string replacement failed, image_name : %s, image_replacement_string: %s, error: %s", imageName, s.config.ImageNameReplacement, err)
+		}
+
+		wp.Submit(func() {
+			logr.Infof("Worker processing image: %s", resolvedImageName)
+
+			// trivy fail to download from quay.io so we need to pull the image first
+			err := s.dockerClient.PullImage(resolvedImageName)
+			if err != nil {
+				logr.Errorf("Error executing docker pull for image %s: %v", resolvedImageName, err)
+			}
+
+			trivyOutput, err := s.trivyClient.ScanImage(resolvedImageName)
+			var scanError error
+			if err != nil {
+				scanError = fmt.Errorf("error executing trivy for image %s: %s", resolvedImageName, err)
+				logr.Error(scanError)
+			}
+			scannedImages = append(scannedImages, NewScannedImage(
+				resolvedImageName,
+				resolvedContainers,
+				trivyOutput,
+				scanError,
+			))
+
+			err = s.dockerClient.RmiImage(resolvedImageName)
+			if err != nil {
+				logr.Errorf("Error executing docker rmi for image %s: %v", resolvedImageName, err)
+			}
+		})
+	}
+
+	wp.StopWait()
+	return scannedImages, nil
+}
+
+const (
+	critical = 100000000
+	high     = 1000000
+	medium   = 10000
+	low      = 100
+	unknown  = 1
+)
+
+var severityScores = map[string]int{
+	"CRITICAL": critical, "HIGH": high, "MEDIUM": medium, "LOW": low, "UNKNOWN": unknown,
+}
+
+// NewScannedImage created a new ScannedImage with all fields initialised
+func NewScannedImage(imageName string, containers []k8s.ContainerSummary, trivyOutput []TrivyOutput, scanError error) ScannedImage {
+	i := ScannedImage{
+		ImageName:   imageName,
+		Containers:  containers,
+		TrivyOutput: trivyOutput,
+		ScanError:   scanError,
+	}
+	i.VulnerabilitySummary = i.buildVulnerabilitySummary()
+	return i
+}
+
+func (i *ScannedImage) buildVulnerabilitySummary() VulnerabilitySummary {
 	severityMap := make(map[string]int)
-	for _, target := range imageSpec.TrivyOutput {
+	for severity := range severityScores {
+		severityMap[severity] = 0
+	}
+	for _, target := range i.TrivyOutput {
 		for _, vulnerability := range target.Vulnerabilities {
 			severityMap[vulnerability.Severity] = severityMap[vulnerability.Severity] + 1
 		}
 	}
-	return severityMap
+
+	severityScore := 0
+	for severity, count := range severityMap {
+		score := severityScores[severity]
+		severityScore = severityScore + count*score
+	}
+	return VulnerabilitySummary{
+		ContainerCount:               len(i.Containers),
+		SeverityScore:                severityScore,
+		TotalVulnerabilityBySeverity: severityMap,
+	}
 }
 
-type teamKey struct {
-	area, team string
-}
-
-func (l *Scanner) generateAreaGrouping(imageSpecs map[string]*ImageSpec) (map[string]*ImagePerArea, error) {
-	imagesSpecByTeam, podsByTeam := l.groupImagesAndContainersByTeamAndArea(imageSpecs)
-	imagesByArea := make(map[string]*ImagePerArea)
-	for key := range podsByTeam {
-		if _, ok := imagesByArea[key.area]; !ok {
-			imagesByArea[key.area] = &ImagePerArea{AreaName: key.area, Teams: map[string]*ImagePerTeam{}}
-		}
-		if _, ok := imagesByArea[key.area].Teams[key.team]; !ok {
-			imagesByArea[key.area].Teams[key.team] = &ImagePerTeam{TeamName: key.team}
-		}
-
-		var teamImages []ImageSpec
-		for _, imageSpec := range imagesSpecByTeam[key] {
-			teamImages = append(teamImages, imageSpec)
-		}
-
-		imagesByArea[key.area].Teams[key.team].ContainerCount = len(podsByTeam[key])
-		imagesByArea[key.area].Teams[key.team].Containers = podsByTeam[key]
-		imagesByArea[key.area].Teams[key.team].Images = sortBySeverity(teamImages)
-		imagesByArea[key.area].Teams[key.team].ImageCount = len(teamImages)
-		imagesByArea[key.area].Teams[key.team].Summary = buildTeamSummary(teamImages)
-	}
-
-	for area, areaImages := range imagesByArea {
-		imagesByArea[area].Summary = buildAreaSummary(areaImages)
-	}
-
-	return imagesByArea, nil
-}
-
-func (l *Scanner) groupImagesAndContainersByTeamAndArea(imageSpecs map[string]*ImageSpec) (map[teamKey]map[string]ImageSpec, map[teamKey][]ContainerSummary) {
-	imagesSpecByTeam := make(map[teamKey]map[string]ImageSpec)
-	containersByTeam := make(map[teamKey][]ContainerSummary)
-	var areaLabel, teamsLabel string
-	for _, specs := range imageSpecs {
-		for _, podSummary := range specs.Containers {
-			areaLabel = podSummary.NamespaceLabels[l.config.AreaLabels]
-			teamsLabel = podSummary.NamespaceLabels[l.config.TeamsLabels]
-
-			if areaLabel == "" {
-				areaLabel = "all"
-			}
-			if teamsLabel == "" {
-				teamsLabel = "all"
-			}
-
-			key := teamKey{area: areaLabel, team: teamsLabel}
-			containersByTeam[key] = append(containersByTeam[key], podSummary)
-
-			if _, ok := imagesSpecByTeam[key]; !ok {
-				imagesSpecByTeam[key] = make(map[string]ImageSpec)
-			}
-			imagesSpecByTeam[key][specs.ImageName] = *specs
-		}
-	}
-	return imagesSpecByTeam, containersByTeam
-}
-
-func buildAreaSummary(areaImages *ImagePerArea) *AreaSummary {
-	summary := AreaSummary{}
-	for _, teamImages := range areaImages.Teams {
-		summary.ImageCount += teamImages.ImageCount
-		summary.ContainerCount += teamImages.ContainerCount
-		for _, vulnerabilitySummary := range teamImages.Summary.ImageVulnerabilitySummary {
-			if summary.TotalVulnerabilityBySeverity == nil {
-				summary.TotalVulnerabilityBySeverity = make(map[string]int)
-			}
-			for severity, count := range vulnerabilitySummary.TotalVulnerabilityBySeverity {
-				summary.TotalVulnerabilityBySeverity[severity] += count
-			}
-		}
-	}
-	return &summary
-}
-
-func buildTeamSummary(teamImages []ImageSpec) *TeamSummary {
-	summary := TeamSummary{}
-	for _, image := range teamImages {
-		if summary.ImageVulnerabilitySummary == nil {
-			summary.ImageVulnerabilitySummary = make(map[string]VulnerabilitySummary)
-		}
-		summary.ImageVulnerabilitySummary[image.ImageName] = VulnerabilitySummary{
-			ContainerCount:               len(image.Containers),
-			TotalVulnerabilityBySeverity: image.TotalVulnerabilityBySeverity,
-		}
-	}
-	return &summary
-}
-
-func sortBySeverity(imageArr []ImageSpec) []ImageSpec {
-	sort.Slice(imageArr, func(i, j int) bool {
-
-		firstItemScore := 0
-		secondItemScore := 0
-		if _, ok := imageArr[i].TotalVulnerabilityBySeverity["CRITICAL"]; ok {
-			firstItemScore = firstItemScore + imageArr[i].TotalVulnerabilityBySeverity["CRITICAL"]*1000000
-		}
-		if _, ok := imageArr[i].TotalVulnerabilityBySeverity["HIGH"]; ok {
-			firstItemScore = firstItemScore + imageArr[i].TotalVulnerabilityBySeverity["HIGH"]*10000
-		}
-		if _, ok := imageArr[i].TotalVulnerabilityBySeverity["MEDIUM"]; ok {
-			firstItemScore = firstItemScore + imageArr[i].TotalVulnerabilityBySeverity["MEDIUM"]*100
-		}
-		if _, ok := imageArr[i].TotalVulnerabilityBySeverity["LOW"]; ok {
-			firstItemScore = firstItemScore + imageArr[i].TotalVulnerabilityBySeverity["LOW"]
-		}
-
-		if _, ok := imageArr[j].TotalVulnerabilityBySeverity["CRITICAL"]; ok {
-			secondItemScore = secondItemScore + imageArr[j].TotalVulnerabilityBySeverity["CRITICAL"]*1000000
-		}
-		if _, ok := imageArr[j].TotalVulnerabilityBySeverity["HIGH"]; ok {
-			secondItemScore = secondItemScore + imageArr[j].TotalVulnerabilityBySeverity["HIGH"]*10000
-		}
-		if _, ok := imageArr[j].TotalVulnerabilityBySeverity["MEDIUM"]; ok {
-			secondItemScore = secondItemScore + imageArr[j].TotalVulnerabilityBySeverity["MEDIUM"]*100
-		}
-		if _, ok := imageArr[j].TotalVulnerabilityBySeverity["LOW"]; ok {
-			secondItemScore = secondItemScore + imageArr[j].TotalVulnerabilityBySeverity["LOW"]
-		}
-		return firstItemScore > secondItemScore
-	})
-	return imageArr
-}
-
-func (l *Scanner) getNamespaces(config *Config) (*v1.NamespaceList, error) {
-
-	options := metaV1.ListOptions{}
-	if config.FilterLabels != "" {
-		options.LabelSelector = config.FilterLabels
-	}
-
-	namespaceList, err := l.kubeClient.CoreV1().Namespaces().List(options)
-	if err != nil {
-		return nil, fmt.Errorf("unable to find namespaces: %v", err)
-	}
-
-	if len(namespaceList.Items) == 0 {
-		return nil, fmt.Errorf("no namespaces found")
-	}
-
-	return namespaceList, nil
-}
-
-type podDetail struct {
-	Pod       v1.Pod
-	Namespace v1.Namespace
-}
-
-// ContainerSummary - cut down version of the podDetail
-type ContainerSummary struct {
-	ContainerName   string
-	PodName         string
-	Namespace       string
-	NamespaceLabels map[string]string
-}
-
-func (l *Scanner) getPods(config *Config) ([]podDetail, error) {
-	var podList *v1.PodList
-	var podDetailList []podDetail
-	var namespaceList *v1.NamespaceList
-	var err error
-
-	namespaceList, err = l.getNamespaces(config)
-	if err != nil {
-		return nil, fmt.Errorf("unable to list namespaces: %v", err)
-	}
-
-	for _, namespace := range namespaceList.Items {
-
-		podList, err = l.kubeClient.CoreV1().Pods(namespace.Name).List(metaV1.ListOptions{})
-
-		for _, pod := range podList.Items {
-			podDetailList = append(podDetailList, podDetail{Pod: pod, Namespace: namespace})
-		}
-		logr.Infof("Get pods from namespace %s", namespace.Name)
-
-		if err != nil {
-			logr.Errorf("unable to find pods: %v", err)
-		}
-	}
-
-	if len(podDetailList) == 0 {
-		return nil, fmt.Errorf("no pod found")
-	}
-	return podDetailList, nil
-}
-
-func (l *Scanner) groupContainersByImageName(podList []podDetail) (map[string]*ImageSpec, error) {
-	imageList := map[string]*ImageSpec{}
-	for _, pod := range podList {
-		logr.Infof("pod %s in namespace %s", pod.Pod.Name, pod.Namespace.Name)
-		for _, container := range pod.Pod.Spec.Containers {
-			// if key exists
-			containerItem := ContainerSummary{Namespace: pod.Namespace.Name, NamespaceLabels: pod.Namespace.Labels, PodName: pod.Pod.Name, ContainerName: container.Name}
-			if image, ok := imageList[container.Image]; ok {
-				image.Containers = append(image.Containers, containerItem)
-			} else {
-				imageList[container.Image] = &ImageSpec{Containers: []ContainerSummary{containerItem}}
-			}
-		}
-	}
-	return imageList, nil
-}
-
-func (l *Scanner) stringReplacement(imageName string, stringReplacement string) (string, error) {
+func (s *Scanner) stringReplacement(imageName string, stringReplacement string) (string, error) {
 	if stringReplacement != "" {
 		replacementArr := strings.Split(stringReplacement, ",")
 		for _, pattern := range replacementArr {
@@ -400,193 +226,5 @@ func (l *Scanner) stringReplacement(imageName string, stringReplacement string) 
 
 		}
 	}
-
 	return imageName, nil
-}
-
-func (l *Scanner) scanImages(imageList map[string]*ImageSpec) (map[string]*ImageSpec, error) {
-	wp := workerpool.New(l.config.Workers)
-
-	err := l.execTrivyDB()
-	if err != nil {
-		logr.Errorf("Failed to download trivy db: %s", err)
-	}
-
-	logr.Infof("Scanning %d images with %d workers", len(imageList), l.config.Workers)
-	for imageName, imageSpec := range imageList {
-		// allocate var to allow access inside the worker submission
-		imageSpec := imageSpec
-		imageName, err := l.stringReplacement(imageName, l.config.ImageNameReplacement)
-		if err != nil {
-			logr.Errorf("Error string replacement failed, image_name : %s, image_replacement_string: %s, error: %s", imageName, l.config.ImageNameReplacement, err)
-		}
-
-		wp.Submit(func() {
-
-			// trivy fail to download from quay.io so we need to pull the image first
-			err := l.execDockerPull(imageName, imageSpec)
-			if err != nil {
-				logr.Errorf("Error docker pull exec: %s, image: %s, output: %s, errOutput: %s", err, imageName, imageSpec.DockerPullCommand, imageSpec.DockerPullErrCommand)
-			}
-
-			err = l.execTrivy(imageName, imageSpec)
-			if err != nil {
-				logr.Errorf("Error trivy exec: %s, image: %s, output: %v, errOutput: %s", err, imageName, imageSpec.TrivyOutput, imageSpec.TrivyErrOutput)
-			}
-
-			err = l.sortTrivyVulnerabilities(imageSpec)
-			if err != nil {
-				logr.Errorf("Error sortTrivyVulnerabilities: %s", err)
-			}
-
-			err = l.execDockerRmi(imageName, imageSpec)
-			if err != nil {
-				logr.Errorf("Error exec: %s, image: %s, output: %s, errOutput: %s", err, imageName, imageSpec.DockerRmiCommand, imageSpec.DockerRmiErrCommand)
-			}
-
-		})
-	}
-
-	wp.StopWait()
-	return imageList, nil
-}
-
-func (l *Scanner) sortTrivyVulnerabilities(imageSpec *ImageSpec) error {
-
-	for z := 0; z < len(imageSpec.TrivyOutput); z++ {
-		sort.Slice(imageSpec.TrivyOutput[z].Vulnerabilities, func(i, j int) bool {
-
-			firstItemScore := 0
-			secondItemScore := 0
-
-			if imageSpec.TrivyOutput[z].Vulnerabilities[i].Severity == "CRITICAL" {
-				firstItemScore = firstItemScore + 1000
-			}
-
-			if imageSpec.TrivyOutput[z].Vulnerabilities[i].Severity == "HIGH" {
-				firstItemScore = firstItemScore + 500
-			}
-
-			if imageSpec.TrivyOutput[z].Vulnerabilities[i].Severity == "MEDIUM" {
-				firstItemScore = firstItemScore + 100
-			}
-
-			if imageSpec.TrivyOutput[z].Vulnerabilities[i].Severity == "LOW" {
-				firstItemScore = firstItemScore + 10
-			}
-
-			if imageSpec.TrivyOutput[z].Vulnerabilities[i].Severity == "UNKNOWN" {
-				firstItemScore = firstItemScore + 1
-			}
-
-			if imageSpec.TrivyOutput[z].Vulnerabilities[j].Severity == "CRITICAL" {
-				secondItemScore = secondItemScore + 1000
-			}
-
-			if imageSpec.TrivyOutput[z].Vulnerabilities[j].Severity == "HIGH" {
-				secondItemScore = secondItemScore + 500
-			}
-
-			if imageSpec.TrivyOutput[z].Vulnerabilities[j].Severity == "MEDIUM" {
-				secondItemScore = secondItemScore + 100
-			}
-
-			if imageSpec.TrivyOutput[z].Vulnerabilities[j].Severity == "LOW" {
-				secondItemScore = secondItemScore + 10
-			}
-
-			if imageSpec.TrivyOutput[z].Vulnerabilities[j].Severity == "UNKNOWN" {
-				secondItemScore = secondItemScore + 1
-			}
-
-			return firstItemScore > secondItemScore
-		})
-	}
-	return nil
-}
-
-func (l *Scanner) execTrivyDB() error {
-
-	logr.Infof("trivy download db")
-	cmd := "trivy"
-	args := []string{"-q", "image", "--download-db-only"}
-
-	_, _, err := execCmd.Execute(cmd, args)
-
-	return err
-}
-
-func (l *Scanner) execTrivy(imageName string, imageSpec *ImageSpec) error {
-
-	logr.Infof("worker image: %s, pod_name: %s", imageName, imageSpec.Containers[0].PodName)
-	cmd := "trivy"
-	args := []string{"-q", "image", "-f", "json", "--skip-update", "--no-progress", "--severity", l.config.Severity, imageName}
-
-	output, errOutput, err := execCmd.Execute(cmd, args)
-
-	outputAsStruct := utils.ConvertByteToStruct(output)
-	errOutputAsString := utils.ConvertByteToString(errOutput)
-
-	var trivyOutput []TrivyOutput
-	err = mapstructure.Decode(outputAsStruct, &trivyOutput)
-	if err != nil {
-		// error
-	}
-
-	imageSpec.TrivyOutput = trivyOutput
-
-	imageSpec.TrivyErrOutput = errOutputAsString
-	imageSpec.ImageName = imageName
-
-	if err != nil {
-		return err
-	}
-
-	// logr.Debugf("worker image: %s, pod_name: %s, output: %v, errOutput: %s", imageName, imageSpec.Pods[0].Pod.Name, imageSpec.TrivyOutput, imageSpec.TrivyErrOutput)
-
-	return nil
-}
-
-func (l *Scanner) execDockerPull(imageName string, imageSpec *ImageSpec) error {
-
-	cmd := "docker"
-	args := []string{"pull", imageName}
-
-	output, errOutput, err := execCmd.Execute(cmd, args)
-
-	outputAsString := utils.ConvertByteToString(output)
-	errOutputAsString := utils.ConvertByteToString(errOutput)
-
-	imageSpec.DockerPullCommand = outputAsString
-	imageSpec.DockerPullErrCommand = errOutputAsString
-
-	if err != nil {
-		return err
-	}
-
-	// logr.Debugf("worker docker pull image: %s, pod_name: %s, output: %s, errOutput: %s", imageName, imageSpec.Pods[0].Pod.Name, imageSpec.DockerPullCommand, imageSpec.DockerPullErrCommand)
-
-	return nil
-}
-
-func (l *Scanner) execDockerRmi(imageName string, imageSpec *ImageSpec) error {
-
-	cmd := "docker"
-	args := []string{"rmi", imageName}
-
-	output, errOutput, err := execCmd.Execute(cmd, args)
-
-	outputAsString := utils.ConvertByteToString(output)
-	errOutputAsString := utils.ConvertByteToString(errOutput)
-
-	imageSpec.DockerRmiCommand = outputAsString
-	imageSpec.DockerRmiErrCommand = errOutputAsString
-
-	if err != nil {
-		return err
-	}
-
-	// logr.Debugf("worker docker rmi image: %s, pod_name: %s, output: %s, errOutput: %s", imageName, imageSpec.Pods[0].Pod.Name, imageSpec.DockerRmiCommand, imageSpec.DockerRmiErrCommand)
-
-	return nil
 }

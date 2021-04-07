@@ -2,8 +2,8 @@ package main
 
 import (
 	"github.com/coreeng/production-readiness/production-readiness/pkg/k8s"
-	r "github.com/coreeng/production-readiness/production-readiness/pkg/report"
 	"github.com/coreeng/production-readiness/production-readiness/pkg/scanner"
+	r "github.com/coreeng/production-readiness/production-readiness/pkg/template"
 	logr "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -32,9 +32,6 @@ func init() {
 }
 
 func scan(_ *cobra.Command, _ []string) {
-	kubeconfig := k8s.KubernetesConfig(kubeContext, kubeconfigPath)
-	clientset := k8s.KubernetesClient(kubeconfig)
-
 	config := &scanner.Config{
 		LogLevel:             logLevel,
 		Workers:              workersScan,
@@ -44,7 +41,7 @@ func scan(_ *cobra.Command, _ []string) {
 		FilterLabels:         filterLabels,
 		Severity:             severity,
 	}
-	t := scanner.New(clientset, config)
+	t := scanner.New(k8s.NewKubernetesClient(kubeContext, kubeconfigPath), config)
 
 	imageScanReport, err := t.ScanImages()
 	if err != nil {
@@ -54,7 +51,7 @@ func scan(_ *cobra.Command, _ []string) {
 	fullReport := &FullReport{
 		ImageScan: imageScanReport,
 	}
-	err = r.GenerateMarkdown(fullReport, reportTemplate, reportFile)
+	err = r.GenerateReportFromTemplate(fullReport, reportTemplate, reportFile)
 	if err != nil {
 		logr.Fatal(err)
 	}

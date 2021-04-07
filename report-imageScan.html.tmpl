@@ -22,14 +22,14 @@
 
     <h2>Sections index</h2>
     <ul>
-      {{- range $keyArea, $area := .ImageScan.ImageByArea }}
+      {{- range $keyArea, $area := .ImageScan.AreaSummary }}
         <li>
-          <a href="#area-{{ $keyArea }}">Vulnerabilities for {{ $area.AreaName }}</a>
+          <a href="#area-{{ $keyArea }}">Vulnerabilities for {{ $area.Name }}</a>
         </li>
         {{- range $keyTeam, $team := $area.Teams }}
         <ul>
           <li>
-            <a href="#area-{{ $keyArea }}-team-{{ $keyTeam }}">Vulnerabilities for {{ $area.AreaName }} - {{ $team.TeamName }}</a>
+            <a href="#area-{{ $keyArea }}-team-{{ $keyTeam }}">Vulnerabilities for {{ $area.Name }} - {{ $team.Name }}</a>
           </li>
         </ul>
         {{- end}} {{/* end of team range */}}
@@ -37,8 +37,8 @@
     </ul>
 
 
-    {{- range $keyArea, $area := .ImageScan.ImageByArea }}
-      <h2 id="area-{{ $keyArea }}">Vulnerabilities for {{ $area.AreaName }}</h2>
+    {{- range $keyArea, $area := .ImageScan.AreaSummary }}
+      <h2 id="area-{{ $keyArea }}">Vulnerabilities for {{ $area.Name }}</h2>
 
       <table>
         <thead>
@@ -54,20 +54,30 @@
         </thead>
         <tbody>
           <tr>
-            <td>{{ $area.Summary.ImageCount }}</td>
-            <td>{{ $area.Summary.ContainerCount }}</td>
-            <td>{{ index $area.Summary.TotalVulnerabilityBySeverity "CRITICAL" }}</td>
-            <td>{{ index $area.Summary.TotalVulnerabilityBySeverity "HIGH" }}</td>
-            <td>{{ index $area.Summary.TotalVulnerabilityBySeverity "MEDIUM" }}</td>
-            <td>{{ index $area.Summary.TotalVulnerabilityBySeverity "LOW" }}</td>
-            <td>{{ index $area.Summary.TotalVulnerabilityBySeverity "UNKNOWN" }}</td>
+            <td>{{ $area.ImageCount }}</td>
+            <td>{{ $area.ContainerCount }}</td>
+            <td>{{ index $area.TotalVulnerabilityBySeverity "CRITICAL" }}</td>
+            <td>{{ index $area.TotalVulnerabilityBySeverity "HIGH" }}</td>
+            <td>{{ index $area.TotalVulnerabilityBySeverity "MEDIUM" }}</td>
+            <td>{{ index $area.TotalVulnerabilityBySeverity "LOW" }}</td>
+            <td>{{ index $area.TotalVulnerabilityBySeverity "UNKNOWN" }}</td>
           </tr>
         </tbody>
       </table>
 
       {{- range $keyTeam, $team := $area.Teams }}
 
-        <h3 id="area-{{ $keyArea }}-team-{{ $keyTeam }}">Vulnerabilities for {{ $area.AreaName }} - {{ $team.TeamName }}</h3>
+        <h3 id="area-{{ $keyArea }}-team-{{ $keyTeam }}">Vulnerabilities for {{ $area.Name }} - {{ $team.Name }}</h3>
+        {{- if $team.HasScanErrors }}
+        <h4>Errors</h4>
+        The following errors have occurred while scanning images:
+        <ul>
+        {{- range $key, $scanError := $team.ScanErrors }}
+           <li>{{ $scanError }}</li>
+        {{- end }}
+        </ul>
+        {{- end }}
+
         <h4>Summary</h4>
 
         <table>
@@ -83,16 +93,19 @@
             </tr>
           </thead>
           <tbody>
-            {{- range $key, $specs := $team.Summary.ImageVulnerabilitySummary }}
+            {{- range $unused, $image := $team.Images }}
+            {{- $vulnerabilitySummary := $image.VulnerabilitySummary }}
+            {{- if not $image.ScanError }}
             <tr>
-              <td>{{ $key }} </td>
-              <td>{{ $specs.ContainerCount }}</td>
-              <td>{{ index $specs.TotalVulnerabilityBySeverity "CRITICAL" }}</td>
-              <td>{{ index $specs.TotalVulnerabilityBySeverity "HIGH" }}</td>
-              <td>{{ index $specs.TotalVulnerabilityBySeverity "MEDIUM" }}</td>
-              <td>{{ index $specs.TotalVulnerabilityBySeverity "LOW" }}</td>
-              <td>{{ index $specs.TotalVulnerabilityBySeverity "UNKNOWN" }}</td>
+              <td>{{ $image.ImageName }} </td>
+              <td>{{ $vulnerabilitySummary.ContainerCount }}</td>
+              <td>{{ index $vulnerabilitySummary.TotalVulnerabilityBySeverity "CRITICAL" }}</td>
+              <td>{{ index $vulnerabilitySummary.TotalVulnerabilityBySeverity "HIGH" }}</td>
+              <td>{{ index $vulnerabilitySummary.TotalVulnerabilityBySeverity "MEDIUM" }}</td>
+              <td>{{ index $vulnerabilitySummary.TotalVulnerabilityBySeverity "LOW" }}</td>
+              <td>{{ index $vulnerabilitySummary.TotalVulnerabilityBySeverity "UNKNOWN" }}</td>
             </tr>
+            {{- end }}
             {{- end }}
           </tbody>
         </table>
@@ -110,8 +123,8 @@
             </tr>
           </thead>
           <tbody>
-            {{ range $key, $specs := $team.Images }}
-              {{- range $trivyKeyOutput, $trivyOutput := $specs.TrivyOutput }}
+            {{ range $unused, $image := $team.Images }}
+              {{- range $trivyKeyOutput, $trivyOutput := $image.TrivyOutput }}
                 {{- if $trivyOutput.Vulnerabilities }}
                   {{- range $trivyKey, $trivySpecs := $trivyOutput.Vulnerabilities }}
                     {{- $description := $trivySpecs.Title -}}
@@ -119,7 +132,7 @@
                         {{- $description = $trivySpecs.Description -}}
                       {{- end -}}
                     <tr>
-                      <td>{{ $specs.ImageName }}</td>
+                      <td>{{ $image.ImageName }}</td>
                       <td><a href="https://nvd.nist.gov/vuln/detail/{{ $trivySpecs.VulnerabilityID }}">{{ $trivySpecs.VulnerabilityID }}</a></td>
                       <td>{{ $trivySpecs.Severity }}</td>
                       <td>{{ $trivySpecs.PkgName }}</td>
