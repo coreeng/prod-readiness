@@ -17,7 +17,8 @@ var (
 )
 
 func init() {
-	rootCmd.AddCommand(linuxBenchCmd)
+	// TODO register as root command once ready
+	//rootCmd.AddCommand(linuxBenchCmd)
 	linuxBenchCmd.PersistentFlags().StringVar(&kubeconfigPath, "kubeconfig", "", "kubeconfig file to use if connecting from outside a cluster")
 	linuxBenchCmd.PersistentFlags().StringVar(&kubeContext, "context", "", "kubeconfig context to use if connecting from outside a cluster")
 	linuxBenchCmd.Flags().IntVar(&workersLinuxBench, "workers-linux-bench", 5, "number of worker to process linux-bench in parallel")
