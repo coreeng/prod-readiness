@@ -6,6 +6,7 @@ import (
 	"html/template"
 	"os"
 	"path/filepath"
+	"strings"
 
 	logr "github.com/sirupsen/logrus"
 )
@@ -18,6 +19,7 @@ func GenerateReportFromTemplate(report interface{}, templateFilename string, rep
 		"safe": func(s string) template.HTML { return template.HTML(s) },
 	})
 	tmp.Funcs(template.FuncMap{"inc": func(i int) int { return i + 1 }})
+	tmp.Funcs(template.FuncMap{"replace": func(str string, from string, to string) string { return strings.Replace(str, from, to, -1) }})
 	tmp.Funcs(template.FuncMap{"mod": func(i, j int) bool { return i%j == 0 }})
 	tmp.Funcs(template.FuncMap{"truncate": func(s string, i int) string {
 		runes := []rune(s)
@@ -64,7 +66,7 @@ func GenerateReportFromTemplate(report interface{}, templateFilename string, rep
 	if err != nil {
 		return err
 	}
-	logr.Infof("Generated report file: %s", templateFilename)
+	logr.Infof("Generated report file: %s", reportOutputFilename)
 	return nil
 }
 

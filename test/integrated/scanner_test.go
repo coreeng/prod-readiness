@@ -128,9 +128,9 @@ var _ = Describe("Scan Images", func() {
 
 		team2 := report.AreaSummary["area1"].Teams["team2"]
 		Expect(team2.ImageCount).To(Equal(1))
-		Expect(team2.Images[0].TrivyOutput).To(HaveLen(1))
-		Expect(len(team2.Images[0].TrivyOutput[0].Vulnerabilities)).To(BeNumerically(">", 0))
-		Expect(team2.Images[0].TrivyOutput[0].Vulnerabilities).To(BeOrderedByHighestSeverity())
+		Expect(team2.Images[0].TrivyOutputResults).To(HaveLen(1))
+		Expect(len(team2.Images[0].TrivyOutputResults[0].Vulnerabilities)).To(BeNumerically(">", 0))
+		Expect(team2.Images[0].TrivyOutputResults[0].Vulnerabilities).To(BeOrderedByHighestSeverity())
 		Expect(team2.ContainerCount).To(Equal(2))
 		Expect(vulnerabilityFor(team2, "nginx:1.15-alpine").ContainerCount).To(Equal(2))
 		Expect(countOf(vulnerabilityFor(team2, "nginx:1.15-alpine").TotalVulnerabilityBySeverity)).To(BeNumerically(">", 0))

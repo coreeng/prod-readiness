@@ -88,7 +88,7 @@ var _ = Describe("Scanner", func() {
 
 	Describe("NewScannedImage", func() {
 		It("count the number of vulnerability per severity", func() {
-			trivyOutput := []TrivyOutput{
+			trivyOutput := []TrivyOutputResults{
 				{
 					Vulnerabilities: []Vulnerabilities{
 						{Severity: "CRITICAL"},
@@ -114,7 +114,7 @@ var _ = Describe("Scanner", func() {
 				map[string]int{"CRITICAL": 3, "HIGH": 2, "MEDIUM": 3, "LOW": 3, "UNKNOWN": 3}),
 			)
 			Expect(image.ScanError).To(BeNil())
-			Expect(image.TrivyOutput).To(Equal(trivyOutput))
+			Expect(image.TrivyOutputResults).To(Equal(trivyOutput))
 			Expect(image.Containers).To(Equal(containers))
 		})
 
@@ -122,14 +122,14 @@ var _ = Describe("Scanner", func() {
 			It("captures the error and the container details", func() {
 				containers := []k8s.ContainerSummary{{Image: "image1"}}
 				scanError := fmt.Errorf("some error")
-				image := NewScannedImage("image", containers, []TrivyOutput{}, scanError)
+				image := NewScannedImage("image", containers, []TrivyOutputResults{}, scanError)
 				Expect(image.Containers).To(Equal(containers))
 				Expect(image.ScanError).To(Equal(scanError))
-				Expect(image.TrivyOutput).To(BeEmpty())
+				Expect(image.TrivyOutputResults).To(BeEmpty())
 			})
 
 			It("shows a vulnerability summary with 0 vulnerability for each severity", func() {
-				image := NewScannedImage("image", []k8s.ContainerSummary{{Image: "image1"}}, []TrivyOutput{}, fmt.Errorf("some error"))
+				image := NewScannedImage("image", []k8s.ContainerSummary{{Image: "image1"}}, []TrivyOutputResults{}, fmt.Errorf("some error"))
 				Expect(image.VulnerabilitySummary.ContainerCount).To(Equal(1))
 				Expect(image.VulnerabilitySummary.SeverityScore).To(Equal(0))
 				Expect(image.VulnerabilitySummary.TotalVulnerabilityBySeverity).To(Equal(
@@ -187,8 +187,8 @@ var _ = Describe("Scanner", func() {
 				On("PullImage", "alpine:3.11.0").Return(nil).
 				On("PullImage", "registry/image:0.1").Return(nil)
 			mockTrivyClient.
-				On("ScanImage", "alpine:3.11.0").Return([]TrivyOutput{}, nil).
-				On("ScanImage", "registry/image:0.1").Return([]TrivyOutput{}, nil)
+				On("ScanImage", "alpine:3.11.0").Return([]TrivyOutputResults{}, nil).
+				On("ScanImage", "registry/image:0.1").Return([]TrivyOutputResults{}, nil)
 			mockDockerClient.
 				On("RmiImage", "alpine:3.11.0").Return(nil).
 				On("RmiImage", "registry/image:0.1").Return(nil)
@@ -250,8 +250,8 @@ var _ = Describe("Scanner", func() {
 					On("PullImage", "alpine:3.11.0").Return(fmt.Errorf("some docker error")).
 					On("PullImage", "registry/image:0.1").Return(nil)
 				mockTrivyClient.
-					On("ScanImage", "alpine:3.11.0").Return([]TrivyOutput{}, fmt.Errorf("some trivy error")).
-					On("ScanImage", "registry/image:0.1").Return([]TrivyOutput{}, nil)
+					On("ScanImage", "alpine:3.11.0").Return([]TrivyOutputResults{}, fmt.Errorf("some trivy error")).
+					On("ScanImage", "registry/image:0.1").Return([]TrivyOutputResults{}, nil)
 				mockDockerClient.
 					On("RmiImage", "alpine:3.11.0").Return(fmt.Errorf("some docker error")).
 					On("RmiImage", "registry/image:0.1").Return(nil)
@@ -274,7 +274,7 @@ var _ = Describe("Scanner", func() {
 				mockDockerClient.
 					On("PullImage", "alpine:3.11.0").Return(nil)
 				mockTrivyClient.
-					On("ScanImage", "alpine:3.11.0").Return([]TrivyOutput{}, fmt.Errorf("some trivy error"))
+					On("ScanImage", "alpine:3.11.0").Return([]TrivyOutputResults{}, fmt.Errorf("some trivy error"))
 				mockDockerClient.
 					On("RmiImage", "alpine:3.11.0").Return(fmt.Errorf("some docker error"))
 
@@ -307,14 +307,19 @@ type mockTrivy struct {
 // force implementation of TrivyClient at compilation time
 var _ TrivyClient = &mockTrivy{}
 
-func (t *mockTrivy) DownloadDatabase() error {
+func (t *mockTrivy) DownloadDatabase(_ string) error {
 	args := t.Called()
 	return args.Error(0)
 
 }
-func (t *mockTrivy) ScanImage(image string) ([]TrivyOutput, error) {
+func (t *mockTrivy) ScanImage(image string) ([]TrivyOutputResults, error) {
 	args := t.Called(image)
-	return args.Get(0).([]TrivyOutput), args.Error(1)
+	return args.Get(0).([]TrivyOutputResults), args.Error(1)
+}
+
+func (t *mockTrivy) CisScan(benchmark string) (*CisOutput, error) {
+	args := t.Called()
+	return args.Get(0).(*CisOutput), args.Error(1)
 }
 
 type mockDocker struct {

@@ -124,7 +124,7 @@
           </thead>
           <tbody>
             {{ range $unused, $image := $team.Images }}
-              {{- range $trivyKeyOutput, $trivyOutput := $image.TrivyOutput }}
+              {{- range $trivyKeyOutput, $trivyOutput := $image.TrivyOutputResults }}
                 {{- if $trivyOutput.Vulnerabilities }}
                   {{- range $trivyKey, $trivySpecs := $trivyOutput.Vulnerabilities }}
                     {{- $description := $trivySpecs.Title -}}

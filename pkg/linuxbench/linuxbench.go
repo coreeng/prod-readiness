@@ -2,6 +2,7 @@ package linuxbench
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"html/template"
@@ -146,7 +147,8 @@ func (l *LinuxBench) Run(config *Config) (*LinuxReport, error) {
 	}
 
 	// list all k8s nodes and execute on each node
-	options = metav1.ListOptions{LabelSelector: "node-role.kubernetes.io/kubernetes-node"}
+	// node-role.kubernetes.io/kubernetes-node
+	options = metav1.ListOptions{LabelSelector: "!node-role.kubernetes.io/apiserver"}
 	nodeList, err := l.getNodes(config, options)
 	nodeReport := map[string]*NodeData{}
 
@@ -290,7 +292,7 @@ func (l *LinuxBench) isNodeEqual(firstNode *NodeData, secondNode *NodeData) bool
 
 // getNodes - getNodes
 func (l *LinuxBench) getNodes(config *Config, options metav1.ListOptions) (*v1.NodeList, error) {
-	nodeList, err := l.kubeClient.CoreV1().Nodes().List(options)
+	nodeList, err := l.kubeClient.CoreV1().Nodes().List(context.Background(), options)
 	if err != nil {
 		return nil, fmt.Errorf("unable to find nodes: %v", err)
 	}
@@ -361,16 +363,17 @@ func (l *LinuxBench) RunJob(config *Config, nodeData *NodeData) (*NodeData, erro
 
 // GetLogsFromPod - GetLogsFromPod and wait for completion
 func (l *LinuxBench) GetLogsFromPod(config *Config, nodeData *NodeData) ([]Output, error) {
-	pods, err := l.kubeClient.CoreV1().Pods(nodeData.Node[0].Namespace).List(metav1.ListOptions{LabelSelector: nodeData.Selector})
+	pods, err := l.kubeClient.CoreV1().Pods(nodeData.Node[0].Namespace).List(context.Background(), metav1.ListOptions{LabelSelector: nodeData.Selector})
 	if err != nil {
 		return nil, err
 	}
 
-	fmt.Printf("%v\n", pods.Items[0])
+	//fmt.Printf("%v\n", pods.Items[0])
+	logr.Infof("first")
 	pod := pods.Items[0]
 	podLogOpts := corev1.PodLogOptions{}
 	req := l.kubeClient.CoreV1().Pods(pod.Namespace).GetLogs(pod.Name, &podLogOpts)
-	podLogs, err := req.Stream()
+	podLogs, err := req.Stream(context.Background())
 	if err != nil {
 		return nil, err
 	}
@@ -416,14 +419,14 @@ func (l *LinuxBench) GetLogsFromPod(config *Config, nodeData *NodeData) ([]Outpu
 // CreateJob - CreateJob and wait for completion
 func (l *LinuxBench) CreateJob(config *Config, job *batchv1.Job, nodeData *NodeData) error {
 	jobsClient := l.kubeClient.BatchV1().Jobs(nodeData.Namespace)
-	result, err := jobsClient.Create(job)
+	result, err := jobsClient.Create(context.Background(), job, metav1.CreateOptions{})
 	if err != nil {
 		return err
 	}
 	fmt.Printf("Job created %q.\n", result.GetObjectMeta().GetName())
 
 	wait.PollImmediate(500*time.Millisecond, 15*time.Minute, func() (bool, error) {
-		pods, _ := l.kubeClient.CoreV1().Pods(nodeData.Namespace).List(metav1.ListOptions{LabelSelector: nodeData.Selector})
+		pods, _ := l.kubeClient.CoreV1().Pods(nodeData.Namespace).List(context.Background(), metav1.ListOptions{LabelSelector: nodeData.Selector})
 		if len(pods.Items) == 1 {
 			fmt.Printf("pod created %v \n", pods.Items[0].Status.Conditions)
 
@@ -443,12 +446,12 @@ func (l *LinuxBench) CreateJob(config *Config, job *batchv1.Job, nodeData *NodeD
 func (l *LinuxBench) DeleteJob(config *Config, nodeData *NodeData) error {
 	deletePolicy := metav1.DeletePropagationForeground
 
-	err := l.kubeClient.BatchV1().Jobs(nodeData.Namespace).DeleteCollection(&metav1.DeleteOptions{PropagationPolicy: &deletePolicy}, metav1.ListOptions{LabelSelector: nodeData.Selector})
+	err := l.kubeClient.BatchV1().Jobs(nodeData.Namespace).DeleteCollection(context.Background(), metav1.DeleteOptions{PropagationPolicy: &deletePolicy}, metav1.ListOptions{LabelSelector: nodeData.Selector})
 	if err != nil {
 		return err
 	}
 	wait.PollImmediate(500*time.Millisecond, 5*time.Minute, func() (bool, error) {
-		pods, _ := l.kubeClient.BatchV1().Jobs(nodeData.Namespace).List(metav1.ListOptions{LabelSelector: nodeData.Selector})
+		pods, _ := l.kubeClient.BatchV1().Jobs(nodeData.Namespace).List(context.Background(), metav1.ListOptions{LabelSelector: nodeData.Selector})
 		if len(pods.Items) == 0 {
 			fmt.Printf("Jobs deleted\n")
 			return true, nil
@@ -457,7 +460,7 @@ func (l *LinuxBench) DeleteJob(config *Config, nodeData *NodeData) error {
 	})
 
 	wait.PollImmediate(500*time.Millisecond, 5*time.Minute, func() (bool, error) {
-		pods, _ := l.kubeClient.CoreV1().Pods(nodeData.Namespace).List(metav1.ListOptions{LabelSelector: nodeData.Selector})
+		pods, _ := l.kubeClient.CoreV1().Pods(nodeData.Namespace).List(context.Background(), metav1.ListOptions{LabelSelector: nodeData.Selector})
 		if len(pods.Items) == 0 {
 			fmt.Printf("Pods are gone\n")
 			return true, nil
@@ -486,7 +489,8 @@ func (l *LinuxBench) LoadJob(config *Config, nodeData *NodeData) (*batchv1.Job, 
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("%#v\n", obj)
+	logr.Infof("second")
+	//fmt.Printf("%#v\n", obj)
 
 	job := obj.(*batchv1.Job)
 

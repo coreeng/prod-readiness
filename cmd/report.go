@@ -2,7 +2,6 @@ package main
 
 import (
 	"github.com/coreeng/production-readiness/production-readiness/pkg/k8s"
-	"github.com/coreeng/production-readiness/production-readiness/pkg/kubebench"
 	"github.com/coreeng/production-readiness/production-readiness/pkg/linuxbench"
 	"github.com/coreeng/production-readiness/production-readiness/pkg/scanner"
 	r "github.com/coreeng/production-readiness/production-readiness/pkg/template"
@@ -17,17 +16,15 @@ var (
 		Run:   report,
 	}
 	kubeContext, kubeconfigPath, imageNameReplacement, areaLabel, teamLabels, filterLabels, severity, jsonReportFile, reportFile, reportTemplate string
-	workersScan, workersKubeBench, workersLinuxBench                                                                                             int
+	workersScan, workersLinuxBench                                                                                                               int
 )
 
 func init() {
-	// TODO register as root command once ready
-	//rootCmd.AddCommand(reportCmd)
+	rootCmd.AddCommand(reportCmd)
 	reportCmd.PersistentFlags().StringVar(&kubeconfigPath, "kubeconfig", "", "kubeconfig file to use if connecting from outside a cluster")
 	reportCmd.PersistentFlags().StringVar(&kubeContext, "context", "", "kubeconfig context to use if connecting from outside a cluster")
 	reportCmd.Flags().StringVar(&imageNameReplacement, "image-name-replacement", "", "string replacement to replace name into the image name for ex: registry url, format: 'registry-mirror:5000|registry.com,registry-second:5000|registry-second.com' list separated by comma, matching and replacement string are seperated by a pipe '|'")
 	reportCmd.Flags().IntVar(&workersScan, "workers-scan", 10, "number of worker to process images scan in parallel")
-	reportCmd.Flags().IntVar(&workersKubeBench, "workers-kube-bench", 5, "number of worker to process kube-bench in parallel")
 	reportCmd.Flags().IntVar(&workersLinuxBench, "workers-linux-bench", 5, "number of worker to process linux-bench in parallel")
 	reportCmd.Flags().StringVar(&areaLabel, "area-labels", "", "string allowing to split per area the image scan")
 	reportCmd.Flags().StringVar(&teamLabels, "teams-labels", "", "string allowing to split per team the image scan")
@@ -41,11 +38,11 @@ func init() {
 // FullReport - FullReport
 type FullReport struct {
 	ImageScan *scanner.VulnerabilityReport
-	KubeCIS   *kubebench.KubeReport
 	LinuxCIS  *linuxbench.LinuxReport
+	CisScan   *scanner.CisOutput
 }
 
-func report(_ *cobra.Command, _ []string) {
+func report(cmd *cobra.Command, str []string) {
 	kubeconfig := k8s.KubernetesConfig(kubeContext, kubeconfigPath)
 	clientset := k8s.KubernetesClientset(kubeconfig)
 
@@ -65,18 +62,7 @@ func report(_ *cobra.Command, _ []string) {
 		logr.Errorf("Error scanning images with config %v: %v", config, err)
 	}
 
-	k := kubebench.New(kubeconfig, clientset)
-
-	configKubeBench := &kubebench.Config{
-		LogLevel: logLevel,
-		Workers:  workersKubeBench,
-		Template: "job-node.yaml.tmpl",
-	}
-
-	kubeReport, err := k.Run(configKubeBench)
-	if err != nil {
-		logr.Errorf("Error scanning images with config %v: %v", config, err)
-	}
+	cisScan(cmd, str)
 
 	l := linuxbench.New(kubeconfig, clientset)
 
@@ -94,7 +80,6 @@ func report(_ *cobra.Command, _ []string) {
 
 	fullReport := &FullReport{
 		ImageScan: imageScanReport,
-		KubeCIS:   kubeReport,
 		LinuxCIS:  linuxReport,
 	}
 

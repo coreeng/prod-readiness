@@ -17,7 +17,7 @@ var _ = Describe("Trivy client", func() {
 	Describe("Trivyoutput sorting", func() {
 
 		It("should sort the vulnerabilility by severity", func() {
-			output := []TrivyOutput{
+			output := []TrivyOutputResults{
 				{
 					Target: "allSeverities",
 					Vulnerabilities: []Vulnerabilities{

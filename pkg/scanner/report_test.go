@@ -167,7 +167,7 @@ var _ = Describe("Vulnerability report", func() {
 				NewScannedImage(
 					"leastCriticalTeam1",
 					[]k8s.ContainerSummary{team1Pod},
-					[]TrivyOutput{
+					[]TrivyOutputResults{
 						{
 							Vulnerabilities: buildVulnerabilities(map[string]int{
 								"CRITICAL": 3,
@@ -182,7 +182,7 @@ var _ = Describe("Vulnerability report", func() {
 				NewScannedImage(
 					"mostCriticalTeam2",
 					[]k8s.ContainerSummary{team2Pod},
-					[]TrivyOutput{
+					[]TrivyOutputResults{
 						{
 							Vulnerabilities: buildVulnerabilities(map[string]int{
 								"CRITICAL": 1,
@@ -197,7 +197,7 @@ var _ = Describe("Vulnerability report", func() {
 				NewScannedImage(
 					"leastCriticalTeam2",
 					[]k8s.ContainerSummary{team2Pod},
-					[]TrivyOutput{
+					[]TrivyOutputResults{
 						{
 							Vulnerabilities: buildVulnerabilities(map[string]int{
 								"CRITICAL": 0,
@@ -212,7 +212,7 @@ var _ = Describe("Vulnerability report", func() {
 				NewScannedImage(
 					"mostHighAfterSameCritical",
 					[]k8s.ContainerSummary{team1Pod},
-					[]TrivyOutput{
+					[]TrivyOutputResults{
 						{
 							Vulnerabilities: buildVulnerabilities(map[string]int{
 								"CRITICAL": 3,
@@ -227,7 +227,7 @@ var _ = Describe("Vulnerability report", func() {
 				NewScannedImage(
 					"mostCritical",
 					[]k8s.ContainerSummary{team1Pod},
-					[]TrivyOutput{
+					[]TrivyOutputResults{
 						{
 							Vulnerabilities: buildVulnerabilities(map[string]int{
 								"CRITICAL": 4,
@@ -242,7 +242,7 @@ var _ = Describe("Vulnerability report", func() {
 				NewScannedImage(
 					"mostMediumAfterSameCriticalAndHigh",
 					[]k8s.ContainerSummary{team1Pod},
-					[]TrivyOutput{
+					[]TrivyOutputResults{
 						{
 							Vulnerabilities: buildVulnerabilities(map[string]int{
 								"CRITICAL": 3,
@@ -303,7 +303,7 @@ var _ = Describe("Vulnerability report", func() {
 				NewScannedImage(
 					"area1-team1-image1",
 					[]k8s.ContainerSummary{team1Pod},
-					[]TrivyOutput{
+					[]TrivyOutputResults{
 						{
 							Vulnerabilities: buildVulnerabilities(map[string]int{
 								"CRITICAL": 1,
@@ -319,7 +319,7 @@ var _ = Describe("Vulnerability report", func() {
 				NewScannedImage(
 					"area1-team1-image2",
 					[]k8s.ContainerSummary{team1Pod},
-					[]TrivyOutput{
+					[]TrivyOutputResults{
 						{
 							Vulnerabilities: buildVulnerabilities(map[string]int{
 								"CRITICAL": 2,
@@ -335,7 +335,7 @@ var _ = Describe("Vulnerability report", func() {
 				NewScannedImage(
 					"area1-team1-image2",
 					[]k8s.ContainerSummary{team2Pod},
-					[]TrivyOutput{
+					[]TrivyOutputResults{
 						{
 							Vulnerabilities: buildVulnerabilities(map[string]int{
 								"CRITICAL": 1,
@@ -351,7 +351,7 @@ var _ = Describe("Vulnerability report", func() {
 				NewScannedImage(
 					"area2-team3-image1",
 					[]k8s.ContainerSummary{team3Pod1, team3Pod2, team3Pod3},
-					[]TrivyOutput{
+					[]TrivyOutputResults{
 						{
 							Vulnerabilities: buildVulnerabilities(map[string]int{
 								"CRITICAL": 1,
