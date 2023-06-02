@@ -33,30 +33,6 @@ function delete_cluster() {
 }
 
 function create_cluster() {
-  local registry_name=$1
-  local registry_port=$2
-
-  echo "==="
-echo $registry_name
-echo $registry_port
-  echo "==="
-
-  # create a cluster
-#  tmpDir=$(mktemp -d)
-#  trap '{ CODE=$?; rm -rf ${tmpDir} ; exit ${CODE}; }' EXIT
-#  cat << EOF > ${tmpDir}/kind-cluster.yml
-#kind: Cluster
-#apiVersion: kind.x-k8s.io/v1alpha4
-#containerdConfigPatches:
-#- |-
-#  [plugins."io.containerd.grpc.v1.cri".registry.mirrors."localhost:${registry_port}"]
-#    endpoint = ["http://${registry_name}:${registry_port}"]
-#nodes:
-#  - role: control-plane
-#  - role: worker
-#EOF
-
-#  KIND_NODE_IMAGE=${KIND_NODE_IMAGE:-"kindest/node:v1.26.30@sha256:61b92f38dff6ccc29969e7aa154d34e38b89443af1a2c14e6cfbd2df6419c66f"}
   kind create cluster
   kubectl config rename-context "kind-kind" "kind"
 }
