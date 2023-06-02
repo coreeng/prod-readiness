@@ -4,7 +4,6 @@ mkShell {
     go
     gotools
     golint
-    ginkgo
     trivy
     docker
     azure-cli
@@ -13,8 +12,4 @@ mkShell {
     kind
   ];
 
-  shellHook = ''
-    export GOROOT=""
-    export GOPATH=""
-  '';
 }

@@ -65,7 +65,7 @@ install: build
 .PHONY: integrated-test
 integrated-test:
 	@echo "== integrated-test"
-	ginkgo -r --v --progress test/integrated
+	go run github.com/onsi/ginkgo/v2/ginkgo -r --v --show-node-events test/integrated
 
 .PHONY: clean
 clean:
