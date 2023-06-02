@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"reflect"
 	"sort"
-	"testing"
 
 	"github.com/coreeng/production-readiness/production-readiness/pkg/k8s"
 
@@ -13,11 +12,6 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
-
-func TestReportGenerator(t *testing.T) {
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "Report Suite")
-}
 
 var _ = Describe("Vulnerability report", func() {
 

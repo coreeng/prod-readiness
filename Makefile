@@ -53,9 +53,7 @@ test:
 	go test -v $(pkgs)
 
 .PHONY: build
-# TODO test has been removed because of the setup issue. It was throwing: You may only call BeforeEach from within a Describe, Context or When
-#build: check test
-build: check
+build: check test
 	@echo "build"
 	 GOOS=$(GOOS) GOARCH=$(GOARCH) go build -o $(buildDir)/bin/production-readiness -v github.com/coreeng/production-readiness/production-readiness/cmd
 

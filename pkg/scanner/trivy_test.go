@@ -1,16 +1,9 @@
 package scanner
 
 import (
-	"testing"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
-
-func TestTrivy(t *testing.T) {
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "Trivy Suite")
-}
 
 var _ = Describe("Trivy client", func() {
 

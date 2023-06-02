@@ -1,6 +1,7 @@
 package integrated
 
 import (
+	"context"
 	"testing"
 
 	"github.com/coreeng/production-readiness/production-readiness/pkg/k8s"
@@ -58,7 +59,7 @@ var _ = Describe("Scan Images", func() {
 	It("should produce a vulnerability report for the scanned images", func() {
 		// given
 		// team-1
-		team1Pod, err := env.KubeClientset.CoreV1().Pods("namespace1").Create(&v1.Pod{
+		team1Pod, err := env.KubeClientset.CoreV1().Pods("namespace1").Create(context.Background(), &v1.Pod{
 			ObjectMeta: metav1.ObjectMeta{Name: "pod1"},
 			Spec: v1.PodSpec{
 				Containers: []v1.Container{
@@ -75,25 +76,25 @@ var _ = Describe("Scan Images", func() {
 				},
 				TerminationGracePeriodSeconds: &terminateImmediately,
 			},
-		})
+		}, metav1.CreateOptions{})
 		Expect(err).NotTo(HaveOccurred())
 
 		// team2
-		team2Pod, err := env.KubeClientset.CoreV1().Pods("namespace2").Create(&v1.Pod{
+		team2Pod, err := env.KubeClientset.CoreV1().Pods("namespace2").Create(context.Background(), &v1.Pod{
 			ObjectMeta: metav1.ObjectMeta{Name: "nginx-pod1"},
 			Spec: v1.PodSpec{
 				Containers:                    []v1.Container{{Name: "container", Image: "nginx:1.15-alpine"}},
 				TerminationGracePeriodSeconds: &terminateImmediately,
 			},
-		})
+		}, metav1.CreateOptions{})
 		Expect(err).NotTo(HaveOccurred())
-		team3Pod, err := env.KubeClientset.CoreV1().Pods("namespace2").Create(&v1.Pod{
+		team3Pod, err := env.KubeClientset.CoreV1().Pods("namespace2").Create(context.Background(), &v1.Pod{
 			ObjectMeta: metav1.ObjectMeta{Name: "nginx-pod2"},
 			Spec: v1.PodSpec{
 				Containers:                    []v1.Container{{Name: "container", Image: "nginx:1.15-alpine"}},
 				TerminationGracePeriodSeconds: &terminateImmediately,
 			},
-		})
+		}, metav1.CreateOptions{})
 		Expect(err).NotTo(HaveOccurred())
 		Eventually(f.PodIsReady(types.NamespacedName{Namespace: team1Pod.Namespace, Name: team1Pod.Name}))
 		Eventually(f.PodIsReady(types.NamespacedName{Namespace: team2Pod.Namespace, Name: team2Pod.Name}))
@@ -145,13 +146,13 @@ var _ = Describe("Scan Images", func() {
 
 	It("should not report pods in empty namespaces", func() {
 		// given
-		teamPod, err := env.KubeClientset.CoreV1().Pods("namespace2").Create(&v1.Pod{
+		teamPod, err := env.KubeClientset.CoreV1().Pods("namespace2").Create(context.Background(), &v1.Pod{
 			ObjectMeta: metav1.ObjectMeta{Name: "nginx-pod1"},
 			Spec: v1.PodSpec{
 				Containers:                    []v1.Container{{Name: "container", Image: "nginx:1.15-alpine"}},
 				TerminationGracePeriodSeconds: &terminateImmediately,
 			},
-		})
+		}, metav1.CreateOptions{})
 		Expect(err).NotTo(HaveOccurred())
 		Eventually(f.PodIsReady(types.NamespacedName{Namespace: teamPod.Namespace, Name: teamPod.Name}))
 
