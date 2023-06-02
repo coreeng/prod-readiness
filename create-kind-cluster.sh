@@ -21,7 +21,7 @@ function run_local_registry() {
 function ensure_kind_exists() {
   # pre-requisite
   if ! [ -x "$(command -v kind)" ]; then
-    echo 'Error: kind is not installed. Try "curl -L https://github.com/kubernetes-sigs/kind/releases/download/v0.8.1/kind-linux-amd64 --output kind"' >&2
+    echo 'Error: kind is not installed. Try "curl -L https://github.com/kubernetes-sigs/kind/releases/download/v0.18.0/kind-linux-amd64 --output kind"' >&2
     exit 1
   fi
 }
@@ -36,24 +36,28 @@ function create_cluster() {
   local registry_name=$1
   local registry_port=$2
 
-  # create a cluster
-  tmpDir=$(mktemp -d)
-  trap '{ CODE=$?; rm -rf ${tmpDir} ; exit ${CODE}; }' EXIT
-  cat << EOF > ${tmpDir}/kind-cluster.yml
-kind: Cluster
-apiVersion: kind.x-k8s.io/v1alpha4
-containerdConfigPatches:
-- |-
-  [plugins."io.containerd.grpc.v1.cri".registry.mirrors."localhost:${registry_port}"]
-    endpoint = ["http://${registry_name}:${registry_port}"]
-nodes:
-  - role: control-plane
-  - role: worker
-EOF
+  echo "==="
+echo $registry_name
+echo $registry_port
+  echo "==="
 
-  # node image officially supported for v0.8.1 - see https://github.com/kubernetes-sigs/kind/releases/tag/v0.8.0 for list of supported
-  KIND_NODE_IMAGE=${KIND_NODE_IMAGE:-"kindest/node:v1.12.10@sha256:faeb82453af2f9373447bb63f50bae02b8020968e0889c7fa308e19b348916cb"}
-  kind create cluster --config ${tmpDir}/kind-cluster.yml --image ${KIND_NODE_IMAGE}
+  # create a cluster
+#  tmpDir=$(mktemp -d)
+#  trap '{ CODE=$?; rm -rf ${tmpDir} ; exit ${CODE}; }' EXIT
+#  cat << EOF > ${tmpDir}/kind-cluster.yml
+#kind: Cluster
+#apiVersion: kind.x-k8s.io/v1alpha4
+#containerdConfigPatches:
+#- |-
+#  [plugins."io.containerd.grpc.v1.cri".registry.mirrors."localhost:${registry_port}"]
+#    endpoint = ["http://${registry_name}:${registry_port}"]
+#nodes:
+#  - role: control-plane
+#  - role: worker
+#EOF
+
+#  KIND_NODE_IMAGE=${KIND_NODE_IMAGE:-"kindest/node:v1.26.30@sha256:61b92f38dff6ccc29969e7aa154d34e38b89443af1a2c14e6cfbd2df6419c66f"}
+  kind create cluster
   kubectl config rename-context "kind-kind" "kind"
 }
 

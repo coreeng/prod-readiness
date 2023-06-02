@@ -31,10 +31,6 @@ type LinuxBench struct {
 	kubeClient *kubernetes.Clientset
 }
 
-// Report define report
-type Report struct {
-}
-
 // NodeData defines NodeData
 type NodeData struct {
 	Node      []v1.Node

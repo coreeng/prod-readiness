@@ -1,4 +1,4 @@
-with (import (fetchTarball https://github.com/nixos/nixpkgs/archive/9c8ff8b426a8b07b9e0a131ac3218740dc85ba1e.tar.gz) {});
+with (import (fetchTarball https://github.com/nixos/nixpkgs/archive/3a70dd92993182f8e514700ccf5b1ae9fc8a3b8d.tar.gz) {});
 mkShell {
   buildInputs = [
     go
@@ -9,6 +9,7 @@ mkShell {
     azure-cli
     kubelogin
     kubectl
+    kind
   ];
 
   shellHook = ''

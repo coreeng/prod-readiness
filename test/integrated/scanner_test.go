@@ -2,6 +2,7 @@ package integrated
 
 import (
 	"context"
+
 	"testing"
 
 	"github.com/coreeng/production-readiness/production-readiness/pkg/k8s"
@@ -12,7 +13,7 @@ import (
 
 	"github.com/coreeng/production-readiness/production-readiness/pkg/scanner"
 	. "github.com/coreeng/production-readiness/production-readiness/test"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
@@ -26,31 +27,30 @@ func TestScannerIntegratedTest(t *testing.T) {
 	RunSpecs(t, "Integrated Scanner Suite")
 }
 
+var (
+	terminateImmediately = int64(0)
+	scan                 *scanner.Scanner
+	env                  *Environment
+	f                    *Fixture
+)
+var _ = BeforeSuite(func() {
+	env = NewIntegratedEnv()
+	f = NewFixture(env)
+	config := &scanner.Config{
+		LogLevel:     "info",
+		Workers:      3,
+		AreaLabels:   areaLabel,
+		TeamsLabels:  teamLabel,
+		FilterLabels: areaLabel,
+		Severity:     "UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL",
+	}
+	scan = scanner.New(k8s.NewKubernetesClientWith(env.KubeClientset), config)
+	f.DeleteNamespaces("namespace1", "namespace2")
+	f.CreateNamespace("namespace1", map[string]string{areaLabel: "area1", teamLabel: "team1"})
+	f.CreateNamespace("namespace2", map[string]string{areaLabel: "area1", teamLabel: "team2"})
+})
+
 var _ = Describe("Scan Images", func() {
-
-	var (
-		terminateImmediately = int64(0)
-		scan                 *scanner.Scanner
-		env                  *Environment
-		f                    *Fixture
-	)
-
-	BeforeSuite(func() {
-		env = NewIntegratedEnv()
-		f = NewFixture(env)
-		config := &scanner.Config{
-			LogLevel:     "info",
-			Workers:      3,
-			AreaLabels:   areaLabel,
-			TeamsLabels:  teamLabel,
-			FilterLabels: areaLabel,
-			Severity:     "UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL",
-		}
-		scan = scanner.New(k8s.NewKubernetesClientWith(env.KubeClientset), config)
-		f.DeleteNamespaces("namespace1", "namespace2")
-		f.CreateNamespace("namespace1", map[string]string{areaLabel: "area1", teamLabel: "team1"})
-		f.CreateNamespace("namespace2", map[string]string{areaLabel: "area1", teamLabel: "team2"})
-	})
 
 	BeforeEach(func() {
 		f.DeletePods("namespace1", "namespace2")
