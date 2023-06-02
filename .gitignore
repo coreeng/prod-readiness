@@ -7,3 +7,4 @@ output-save
 .idea
 node_modules
 package-lock.json
+.trivycache
