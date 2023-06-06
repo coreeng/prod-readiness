@@ -45,7 +45,7 @@ func cisScan(_ *cobra.Command, _ []string) {
 			CisScan: cisScanReport,
 		}
 		logr.Infof("Generating %s security benchmark report", benchmark)
-		err = r.GenerateReportFromTemplate(fullReport, "report-cisScan.html.tmpl", "report-CIS-"+benchmark+".html")
+		err = r.GenerateReportFromTemplate(fullReport, "templates/report-cisScan.html.tmpl", reportDir, "report-CIS-"+benchmark+".html")
 		if err != nil {
 			logr.Fatal(err)
 		}

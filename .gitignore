@@ -3,6 +3,7 @@ results
 test/integrated/results
 report-*.md
 audit-report/report.md
+audit-report/report-*
 output-save
 .idea
 node_modules
