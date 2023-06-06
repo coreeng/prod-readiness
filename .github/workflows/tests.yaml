@@ -33,3 +33,9 @@ jobs:
       - name: Run integration tests
         id: integrated-test
         run: nix-shell --command "make build integrated-test"
+
+      - name: Test Report
+        uses: dorny/test-reporter@v1
+        with:
+          path: "*-tests-report.xml"
+          reporter: java-junit
