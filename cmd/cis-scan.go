@@ -19,7 +19,7 @@ var (
 
 func init() {
 	rootCmd.AddCommand(cisScanCmd)
-	cisScanCmd.PersistentFlags().StringVar(&kubeconfigPath, "kubeconfig", "", "kubeconfig file to use if connecting from outside a cluster")
+	cisScanCmd.PersistentFlags().StringVar(&kubeconfigPath, "kubeconfig", "", "path to kubeconfig file if connecting from outside a cluster")
 	cisScanCmd.PersistentFlags().StringVar(&kubeContext, "context", "", "kubeconfig context to use if connecting from outside a cluster")
 	cisScanCmd.Flags().StringVar(&severity, "severity", "UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL", "severities of vulnerabilities to be reported (comma separated) ")
 	cisScanCmd.Flags().StringSliceVar(&benchmarks, "benchmarks", defaultBenchmarks, "List of security benchmarks to run. If not specified all are run (permitted values: k8s-cis,k8s-nsa,k8s-pss-restricted)")
