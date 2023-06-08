@@ -50,7 +50,7 @@ format:
 .PHONY: test
 test:
 	@echo "== run unit tests"
-	go run github.com/onsi/ginkgo/v2/ginkgo --skip-package test/integrated --junit-report=unit-tests-report.xml -r --v
+	go run github.com/onsi/ginkgo/v2/ginkgo --skip-package test/integrated --junit-report=test-reports/unit-tests-report.xml -r --v
 
 .PHONY: build
 build: check test
@@ -65,7 +65,7 @@ install: build
 .PHONY: integrated-test
 integrated-test:
 	@echo "== integrated-test"
-	go run github.com/onsi/ginkgo/v2/ginkgo --junit-report=integrated-tests-report.xml -r --v --show-node-events test/integrated
+	go run github.com/onsi/ginkgo/v2/ginkgo --junit-report=test-reports/integrated-tests-report.xml -r --v --show-node-events test/integrated
 
 .PHONY: clean
 clean:
