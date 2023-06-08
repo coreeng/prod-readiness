@@ -37,7 +37,7 @@ The following errors have occurred while scanning images:
 | Image | CVE | Severity | PkgName | Description |
 |-------|-----|----------|---------|-------------|
 {{ range $key, $specs := $team.Images }}
-{{- range $trivyKeyOutput, $trivyOutput := $specs.TrivyOutput }}
+{{- range $trivyKeyOutput, $trivyOutput := $specs.TrivyOutputResults }}
 {{- if $trivyOutput.Vulnerabilities }}
 {{- range $trivyKey, $trivySpecs := $trivyOutput.Vulnerabilities }}
 {{- $description := $trivySpecs.Title -}}

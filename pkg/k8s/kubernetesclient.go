@@ -1,6 +1,7 @@
 package k8s
 
 import (
+	"context"
 	"fmt"
 
 	logr "github.com/sirupsen/logrus"
@@ -63,7 +64,7 @@ func (k *kubernetesClient) getAllPodContainersInNamespaces(namespaceList *v1.Nam
 	var containers []ContainerSummary
 	for _, namespace := range namespaceList.Items {
 		logr.Infof("Getting pods from namespace %s", namespace.Name)
-		podList, err := k.clientset.CoreV1().Pods(namespace.Name).List(metaV1.ListOptions{})
+		podList, err := k.clientset.CoreV1().Pods(namespace.Name).List(context.Background(), metaV1.ListOptions{})
 		if err != nil {
 			return nil, fmt.Errorf("unable to find pods in namespace %s %v", namespace.Namespace, err)
 		}
@@ -95,7 +96,7 @@ func (k *kubernetesClient) getNamespaces(labelSelector string) (*v1.NamespaceLis
 		options.LabelSelector = labelSelector
 	}
 
-	namespaceList, err := k.clientset.CoreV1().Namespaces().List(options)
+	namespaceList, err := k.clientset.CoreV1().Namespaces().List(context.Background(), options)
 	if err != nil {
 		return nil, fmt.Errorf("unable to find namespaces: %v", err)
 	}

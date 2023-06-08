@@ -1,23 +1,16 @@
 package scanner
 
 import (
-	"testing"
-
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
-
-func TestTrivy(t *testing.T) {
-	RegisterFailHandler(Fail)
-	RunSpecs(t, "Trivy Suite")
-}
 
 var _ = Describe("Trivy client", func() {
 
 	Describe("Trivyoutput sorting", func() {
 
 		It("should sort the vulnerabilility by severity", func() {
-			output := []TrivyOutput{
+			output := []TrivyOutputResults{
 				{
 					Target: "allSeverities",
 					Vulnerabilities: []Vulnerabilities{

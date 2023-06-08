@@ -1,7 +1,10 @@
 package test
 
 import (
+	"context"
 	"time"
+
+	"k8s.io/utils/pointer"
 
 	. "github.com/onsi/gomega"
 	v1 "k8s.io/api/core/v1"
@@ -19,18 +22,18 @@ func NewFixture(env *Environment) *Fixture {
 }
 
 func (f *Fixture) CreateNamespace(name string, labels map[string]string) {
-	_, err := f.env.KubeClientset.CoreV1().Namespaces().Create(&v1.Namespace{
+	_, err := f.env.KubeClientset.CoreV1().Namespaces().Create(context.Background(), &v1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   name,
 			Labels: labels,
 		},
-	})
+	}, metav1.CreateOptions{})
 	Expect(err).NotTo(HaveOccurred())
 }
 
 func (f *Fixture) DeleteNamespaces(namespaces ...string) {
 	for _, namespace := range namespaces {
-		err := f.env.KubeClientset.CoreV1().Namespaces().Delete(namespace, &metav1.DeleteOptions{})
+		err := f.env.KubeClientset.CoreV1().Namespaces().Delete(context.Background(), namespace, metav1.DeleteOptions{})
 		if errors.IsNotFound(err) {
 			continue
 		}
@@ -41,7 +44,7 @@ func (f *Fixture) DeleteNamespaces(namespaces ...string) {
 
 func (f *Fixture) NamespaceIsAbsent(namespace string) func() (bool, error) {
 	return func() (bool, error) {
-		_, err := f.env.KubeClientset.CoreV1().Namespaces().Get(namespace, metav1.GetOptions{})
+		_, err := f.env.KubeClientset.CoreV1().Namespaces().Get(context.Background(), namespace, metav1.GetOptions{})
 		if errors.IsNotFound(err) {
 			return true, nil
 		}
@@ -51,7 +54,7 @@ func (f *Fixture) NamespaceIsAbsent(namespace string) func() (bool, error) {
 
 func (f *Fixture) PodIsReady(podName types.NamespacedName) func() (bool, error) {
 	return func() (bool, error) {
-		pod, err := f.env.KubeClientset.CoreV1().Pods(podName.Namespace).Get(podName.Name, metav1.GetOptions{})
+		pod, err := f.env.KubeClientset.CoreV1().Pods(podName.Namespace).Get(context.Background(), podName.Name, metav1.GetOptions{})
 		if err != nil {
 			return false, err
 		}
@@ -65,7 +68,7 @@ func (f *Fixture) PodIsReady(podName types.NamespacedName) func() (bool, error) 
 
 func (f *Fixture) DeletePods(namespaces ...string) {
 	for _, namespace := range namespaces {
-		err := f.env.KubeClientset.CoreV1().Pods(namespace).DeleteCollection(metav1.NewDeleteOptions(0), metav1.ListOptions{})
+		err := f.env.KubeClientset.CoreV1().Pods(namespace).DeleteCollection(context.Background(), metav1.DeleteOptions{GracePeriodSeconds: pointer.Int64(0)}, metav1.ListOptions{})
 		Expect(err).NotTo(HaveOccurred())
 		Eventually(f.PodIsAbsent(namespace), 10*time.Second, time.Second).Should(BeTrue())
 	}
@@ -73,7 +76,7 @@ func (f *Fixture) DeletePods(namespaces ...string) {
 
 func (f *Fixture) PodIsAbsent(namespace string) func() (bool, error) {
 	return func() (bool, error) {
-		pods, err := f.env.KubeClientset.CoreV1().Pods(namespace).List(metav1.ListOptions{})
+		pods, err := f.env.KubeClientset.CoreV1().Pods(namespace).List(context.Background(), metav1.ListOptions{})
 		if err != nil {
 			return false, err
 		}

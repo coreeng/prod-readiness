@@ -20,7 +20,7 @@ type Scanner struct {
 
 // ScannedImage define the information of an image
 type ScannedImage struct {
-	TrivyOutput          []TrivyOutput
+	TrivyOutputResults   []TrivyOutputResults
 	Containers           []k8s.ContainerSummary
 	ImageName            string
 	ScanError            error
@@ -48,11 +48,76 @@ type Vulnerabilities struct {
 	Layer            *Layer
 }
 
-// TrivyOutput is an object representation of the trivy output for an image scan
-type TrivyOutput struct {
+// TrivyOutputResults is an object representation of the trivy image scan summary
+type TrivyOutputResults struct {
 	Vulnerabilities []Vulnerabilities
 	Type            string
 	Target          string
+}
+
+// TrivyOutput is an object representation of the trivy output for an image scan
+type TrivyOutput struct {
+	Results []TrivyOutputResults
+}
+
+// CisOutput is an object representation of the trivy security compliance scan
+type CisOutput struct {
+	ID               string   `json:"ID"`
+	Title            string   `json:"Title"`
+	Description      string   `json:"Description"`
+	Version          string   `json:"Version"`
+	RelatedResources []string `json:"RelatedResources"`
+	Results          []struct {
+		ID          string `json:"ID"`
+		Name        string `json:"Name"`
+		Description string `json:"Description"`
+		Severity    string `json:"Severity"`
+		Results     []struct {
+			Target         string `json:"Target"`
+			Class          string `json:"Class"`
+			Type           string `json:"Type"`
+			MisconfSummary struct {
+				Successes  int `json:"Successes"`
+				Failures   int `json:"Failures"`
+				Exceptions int `json:"Exceptions"`
+			} `json:"MisconfSummary"`
+			Misconfigurations []struct {
+				Type        string   `json:"Type"`
+				ID          string   `json:"ID"`
+				Avdid       string   `json:"AVDID"`
+				Title       string   `json:"Title"`
+				Description string   `json:"Description"`
+				Message     string   `json:"Message"`
+				Namespace   string   `json:"Namespace"`
+				Query       string   `json:"Query"`
+				Resolution  string   `json:"Resolution"`
+				Severity    string   `json:"Severity"`
+				PrimaryURL  string   `json:"PrimaryURL"`
+				References  []string `json:"References"`
+				Status      string   `json:"Status"`
+				Layer       struct {
+				} `json:"Layer"`
+				CauseMetadata struct {
+					Provider  string `json:"Provider"`
+					Service   string `json:"Service"`
+					StartLine int    `json:"StartLine"`
+					EndLine   int    `json:"EndLine"`
+					Code      struct {
+						Lines []struct {
+							Number     int    `json:"Number"`
+							Content    string `json:"Content"`
+							IsCause    bool   `json:"IsCause"`
+							Annotation string `json:"Annotation"`
+							Truncated  bool   `json:"Truncated"`
+							FirstCause bool   `json:"FirstCause"`
+							LastCause  bool   `json:"LastCause"`
+						} `json:"Lines"`
+					} `json:"Code"`
+				} `json:"CauseMetadata"`
+			} `json:"Misconfigurations"`
+		} `json:"Results"`
+		DefaultStatus string `json:"DefaultStatus,omitempty"`
+	} `json:"Results"`
 }
 
 // Layer is the object representation of the trivy image layer
@@ -117,7 +182,7 @@ func (s *Scanner) groupContainersByImageName(containers []k8s.ContainerSummary) 
 func (s *Scanner) scanImages(imageList map[string][]k8s.ContainerSummary) ([]ScannedImage, error) {
 	var scannedImages []ScannedImage
 	wp := workerpool.New(s.config.Workers)
-	err := s.trivyClient.DownloadDatabase()
+	err := s.trivyClient.DownloadDatabase("image")
 	if err != nil {
 		return nil, fmt.Errorf("failed to download trivy db: %v", err)
 	}
@@ -164,6 +229,25 @@ func (s *Scanner) scanImages(imageList map[string][]k8s.ContainerSummary) ([]Sca
 	return scannedImages, nil
 }
 
+// CisScan perform trivy compliance scan
+func (s *Scanner) CisScan(benchmark string) (*VulnerabilityReport, error) {
+	logr.Infof("Running %s security benchmark", benchmark)
+
+	trivyOutput, err := s.trivyClient.CisScan(benchmark)
+	if err != nil {
+		return nil, fmt.Errorf("error executing trivy cluster scan: %v", err)
+	}
+
+	logr.Infof("SUCCESS: %v", trivyOutput)
+
+	logr.Infof("Generating %s security benchmark report", benchmark)
+	reportGenerator := &AreaReport{
+		AreaLabelName: s.config.AreaLabels,
+		TeamLabelName: s.config.TeamsLabels,
+	}
+	return reportGenerator.GenerateVulnerabilityReport(nil)
+}
+
 const (
 	critical = 100000000
 	high     = 1000000
@@ -177,12 +261,12 @@ var severityScores = map[string]int{
 }
 
 // NewScannedImage created a new ScannedImage with all fields initialised
-func NewScannedImage(imageName string, containers []k8s.ContainerSummary, trivyOutput []TrivyOutput, scanError error) ScannedImage {
+func NewScannedImage(imageName string, containers []k8s.ContainerSummary, trivyOutput []TrivyOutputResults, scanError error) ScannedImage {
 	i := ScannedImage{
-		ImageName:   imageName,
-		Containers:  containers,
-		TrivyOutput: trivyOutput,
-		ScanError:   scanError,
+		ImageName:          imageName,
+		Containers:         containers,
+		TrivyOutputResults: trivyOutput,
+		ScanError:          scanError,
 	}
 	i.VulnerabilitySummary = i.buildVulnerabilitySummary()
 	return i
@@ -193,7 +277,7 @@ func (i *ScannedImage) buildVulnerabilitySummary() VulnerabilitySummary {
 	for severity := range severityScores {
 		severityMap[severity] = 0
 	}
-	for _, target := range i.TrivyOutput {
+	for _, target := range i.TrivyOutputResults {
 		for _, vulnerability := range target.Vulnerabilities {
 			severityMap[vulnerability.Severity] = severityMap[vulnerability.Severity] + 1
 		}

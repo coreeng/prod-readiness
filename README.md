@@ -2,6 +2,23 @@
 
 This tool will help running diagnostic to have a better understanding of a cluster in term of security and best practises.
 
+## Requirements
+
+Installed [nix](https://nixos.org/download.html)
+After installation just run `nix-shell` from project directory and all required tools will be fetched.
+
+Cluster admin privileges for security compliance scan (trivy needs to create `trivy-tmp` namespace just for testing purposes)
+
+## Cluster scan
+
+The `report` command can be used to perform container image and security compliance scans.
+It will generate an `HTML` report for all types of scans. Summary report can be opened by opening `index.html` in the browser.
+
+### Usage 
+
+`production-readiness report  --context "sandbox-azure"`
+`--context` points to context to use from kube config file.
+
 ## Container Image scanning
 
 The `scan` command can be used to scan your container images for vulnerabilities.
@@ -42,15 +59,35 @@ One tool that works for us is [wkhtmltopdf](https://wkhtmltopdf.org/downloads.ht
 wkhtmltopdf <report.html> <report.pdf>
 ```
 
+## Cluster security compliance scanning
+
+The `cis-scan` command can be used to scan compliance of the cluster with the k8s CIS benchmark, NSA k8s Hardening Guidance and Pod Security Standards (PSS).
+It will perform a compliance scan against using [trivy](https://github.com/aquasecurity/trivy) for whole kubernetes cluster.
+Then it will generate an `HTML` report and will show which criteria has been passed and which failed.
+Report allows to see vulnerable resources, their severity, description, suggested resolution and references.
+
+Here is a sample report:
+![Sample Report](sample-CIS-report.png)
+
+
+### Usage
+
+To run compliance scan just execute: `production-readiness cis-scan --context "sandbox-azure"` 
+`--context` points to context to use from kube config file.
+Optional parameter `--benchmarks k8s-cis,k8s-nsa,k8s-pss-restricted` can be used to run specific scan type.
+
+
+## Known bugs
+
+- Security compliance scans may not work on GCP if there is no CNI on the node in `/opt/cni/bin` location  
+
+
 ### TODOs
 
+- Fix tests configuration as some of the tests are throwing `You may only call BeforeEach from within a Describe, Context or When`  
 - use trivy library rather than the command line
 - use docker library rather than the command line
 - releasing
-
-## Kubebench
-
-_This is work in progress_
 
 
 ## Linuxbench

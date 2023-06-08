@@ -15,7 +15,7 @@ import (
 
 	"github.com/coreeng/production-readiness/production-readiness/pkg/scanner"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
@@ -217,7 +217,7 @@ func anAlpineImageScan(vulnerabilitiesDefinition map[string]int) scanner.Scanned
 		[]k8s.ContainerSummary{
 			{},
 		},
-		[]scanner.TrivyOutput{
+		[]scanner.TrivyOutputResults{
 			{
 				Target:          "alpine (alpine 3.13.1)",
 				Type:            "alpine",
@@ -235,7 +235,7 @@ func aDebianImageScan(vulnerabilitiesDefinition map[string]int) scanner.ScannedI
 			{ContainerName: "c1"},
 			{ContainerName: "c2"},
 		},
-		[]scanner.TrivyOutput{
+		[]scanner.TrivyOutputResults{
 			{
 				Target:          "debian (debian 10.7)",
 				Type:            "debian",
@@ -254,7 +254,7 @@ func anUbuntuImageScan(vulnerabilitiesDefinition map[string]int) scanner.Scanned
 			{ContainerName: "c2"},
 			{ContainerName: "c3"},
 		},
-		[]scanner.TrivyOutput{
+		[]scanner.TrivyOutputResults{
 			{
 				Target:          "ubuntu (ubuntu 18.04)",
 				Type:            "ubuntu",

@@ -127,7 +127,7 @@ func groupImagesByTeam(allImages []ScannedImage, areaLabelName, teamLabelName st
 			if _, ok := imageByTeam[teamID][i.ImageName]; !ok {
 				imageByTeam[teamID][i.ImageName] = &ScannedImage{
 					ImageName:            i.ImageName,
-					TrivyOutput:          i.TrivyOutput,
+					TrivyOutputResults:   i.TrivyOutputResults,
 					VulnerabilitySummary: i.VulnerabilitySummary,
 					Containers:           nil,
 					ScanError:            i.ScanError,
