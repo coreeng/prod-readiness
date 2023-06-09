@@ -15,7 +15,8 @@ jobs:
 
     permissions:
       contents: read
-      id-token: write
+      issues: read
+      checks: write
       pull-requests: write
 
     steps:
@@ -34,10 +35,9 @@ jobs:
         id: integrated-test
         run: nix-shell --command "make build integrated-test"
 
-      - name: Test Report
-        uses: dorny/test-reporter@v1
+      - name: Publish Test Results
+        uses: EnricoMi/publish-unit-test-result-action@v2
         if: success() || failure()
         with:
-          name: Tests
-          path: test-reports/*-tests-report.xml
-          reporter: jest-junit
+          files: |
+            test-reports/*-tests-report.xml
