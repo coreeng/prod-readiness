@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <title>Vulnerability Report</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+</head>
+<body class="p-3">
+<h1># CIS Benchmark - Linux</h1>
+<br><br>
+<div class="form-inline">
+<div class="form-check mr-3">
+  <input id="check1" type="checkbox" class="form-check-input" onclick="if(this.checked) { $('.check-fail').addClass('d-none'); } else { $('.check-fail').removeClass('d-none'); }">
+  <label class="form-check-label" for="check1">Hide failed</label>
+</div>
+<div class="form-check mr-3">
+  <input id="check2" type="checkbox" class="form-check-input" onclick="if(this.checked) { $('.check-warn').addClass('d-none'); } else { $('.check-warn').removeClass('d-none'); }">
+  <label class="form-check-label" for="check2">Hide warnings</label>
+</div>
+<div class="form-check mr-3">
+  <input id="check3" type="checkbox" class="form-check-input" onclick="if(this.checked) { $('.check-pass').addClass('d-none'); } else { $('.check-pass').removeClass('d-none'); }">
+  <label class="form-check-label" for="check3">Hide passed</label>
+</div>
+<div class="form-check mr-3">
+  <input id="check4" type="checkbox" class="form-check-input" onclick="if(this.checked) { $('.check-info').addClass('d-none'); } else { $('.check-info').removeClass('d-none'); }">
+  <label class="form-check-label" for="check4">Hide info</label>
+</div>
+{{ if gt .LinuxCIS.NodeCount 0 }}
+  {{ $count := 1}}
+  <table class="table table-striped table-hover">
+      <thead>
+      <tr class="table-primary">
+          <th>No.</th>
+          <th>Node pool name</th>
+          <th>Nodes</th>
+          <th>OS</th>
+          <th>Kernel</th>
+          <th>Kubelet</th>
+          <th>Result</th>
+      </tr>
+      </thead>
+      <tbody>
+  {{- range $unused, $nodePool := .LinuxCIS.NodeReport }}
+    <tr>
+    <td>{{$count}}</td>
+    {{$count = inc $count}}
+    <td>
+      <a data-toggle="collapse" href="#nodepool{{ $count }}">{{ $nodePool.Name }}</a><br>
+    </td>
+    <td>{{ len $nodePool.Node }}</td>
+    {{ $node := index $nodePool.Node 0 }}
+    <td>{{ $node.Status.NodeInfo.OSImage }}</td>
+    <td>{{ $node.Status.NodeInfo.KernelVersion }}</td>
+    <td>{{ $node.Status.NodeInfo.KubeletVersion }}</td>
+    <td><small>
+      {{ range $unused, $output := $nodePool.Output -}}
+        <span class="badge badge-pill badge-danger">{{ $output.TotalFail }}</span>
+        <span class="badge badge-pill badge-warning">{{ $output.TotalWarn }}</span>
+        <span class="badge badge-pill badge-success">{{ $output.TotalPass }}</span>
+        <span class="badge badge-pill badge-info">{{ $output.TotalInfo }}</span>
+      {{ end }}</small>
+    </td>
+    </tr>
+        <tr><td class="p-0" colspan="7">
+        <div class="accordion collapse" id="nodepool{{ $count }}">
+        {{- range $ndIdx, $npOutput := $nodePool.Output }}
+          {{- range $rdIdx, $npoTest := $npOutput.Tests }}
+            <div class="card">
+              <div class="row card-header p-0" id="npotest{{ $count }}{{ $ndIdx }}{{ $rdIdx }}">
+                <div class="col-sm-10 mb-0">
+                  <button class="btn btn-link" type="button" data-toggle="collapse" data-target="#npotest{{ $count }}{{ $ndIdx }}{{ $rdIdx }}card" aria-expanded="false" aria-controls="npotest{{ $count }}{{ $ndIdx }}{{ $rdIdx }}">
+                    {{ $npoTest.Section }} {{ $npoTest.Desc }}
+                  </button>
+                </div>
+                <div class="col-sm-2 btn mb-0">
+                  <span class="badge badge-pill badge-danger">{{ $npoTest.Fail }}</span>
+                  <span class="badge badge-pill badge-warning">{{ $npoTest.Warn }}</span>
+                  <span class="badge badge-pill badge-success">{{ $npoTest.Pass }}</span>
+                  <span class="badge badge-pill badge-info">{{ $npoTest.Info }}</span>
+                </div>
+              </div>
+              <div id="npotest{{ $count }}{{ $ndIdx }}{{ $rdIdx }}card" class="collapse" aria-labelledby="npotest{{ $count }}{{ $ndIdx }}{{ $rdIdx }}" data-parent="#npotest{{ $count }}{{ $ndIdx }}{{ $rdIdx }}">
+                <div class="card-body p-1">
+                  <table class="table table-sm table-striped table-hover"><tbody>
+                  {{- range $fourthIdx, $testResult := $npoTest.Results }}
+                    <tr class="{{if eq $testResult.Status "FAIL" }}check-fail{{end}}{{if eq $testResult.Status "WARN" }}check-warn{{end}}{{if eq $testResult.Status "PASS" }}check-pass{{end}}{{if eq $testResult.Status "INFO" }}check-info{{end}}">
+                      <td style="width:5%;">
+                        <a data-toggle="collapse" href="#{{$count}}{{$ndIdx}}{{$rdIdx}}{{$fourthIdx}}" aria-controls="{{$count}}{{$ndIdx}}{{$rdIdx}}{{$fourthIdx}}">{{ $testResult.TestNumber }}</a>
+                      </td>
+                      <td>
+                        <a data-toggle="collapse" href="#testdetails{{$count}}{{$ndIdx}}{{$rdIdx}}{{$fourthIdx}}" aria-controls="testdetails{{$count}}{{$ndIdx}}{{$rdIdx}}{{$fourthIdx}}">{{ $testResult.TestDesc }}</a>
+                        <div id="testdetails{{$count}}{{$ndIdx}}{{$rdIdx}}{{$fourthIdx}}" class="collapse" aria-labelledby="" data-parent="">
+                        <div class="card-body p-0">
+                          {{ if $testResult.Reason }}<div class="row">
+                            <label class="col-sm-2 mb-0"><strong>Reason:</strong></label>
+                            <div class="col-sm-10">
+                              {{ $testResult.Reason }}
+                            </div>
+                          </div>{{ end }}
+                          {{ if $testResult.Audit -}}<div class="row">
+                            <label class="col-sm-2 mb-0"><strong>Audit:</strong></label>
+                            <div class="col-sm-10">
+                              {{ $testResult.Audit }}
+                            </div>
+                          </div>{{ end }}
+                          {{ if $testResult.ActualValue }}<div class="row">
+                            <label class="col-sm-2 mb-0"><strong>Result:</strong></label>
+                            <div class="col-sm-10">
+                              {{ $testResult.ActualValue }}
+                            </div>
+                          </div>{{ end }}
+                          {{ if $testResult.ExpectedResult }}<div class="row">
+                            <label class="col-sm-2 mb-0"><strong>Expected:</strong></label>
+                            <div class="col-sm-10">
+                              {{ $testResult.ExpectedResult }}
+                            </div>
+                          </div>{{ end }}
+                        </div>
+                        </div>
+                      </td>
+                      <td class="col-sm-1">
+                        <div class="badge badge-{{if eq $testResult.Status "FAIL" }}danger{{end}}{{if eq $testResult.Status "WARN" }}warning{{end}}{{if eq $testResult.Status "PASS" }}success{{end}}{{if eq $testResult.Status "INFO" }}info{{end}}">
+                          {{ $testResult.Status }}
+                        </div>
+                      </td>
+                    </tr>
+                  {{ end }}
+                  </tbody></table>
+                </div>
+              </div>
+            </div>
+          {{ end }}
+        {{ end }}
+        </div></td></tr>
+  {{ end }}
+  </table>
+
+{{ end }}
+
+
+<script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/popper.js@1.14.7/dist/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.3.1/dist/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+</body>
+</html>

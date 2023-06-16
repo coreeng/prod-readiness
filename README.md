@@ -92,5 +92,3 @@ Optional parameter `--benchmarks k8s-cis,k8s-nsa,k8s-pss-restricted` can be used
 
 ## Linuxbench
 
-_This is work in progress_
-

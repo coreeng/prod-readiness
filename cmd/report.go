@@ -15,8 +15,8 @@ var (
 		Short: "Will create a full audit of a cluster and generate presentation and json output",
 		Run:   report,
 	}
-	kubeContext, kubeconfigPath, imageNameReplacement, areaLabel, teamLabels, filterLabels, severity, jsonReportFile, reportFile, reportTemplate string
-	workersScan, workersLinuxBench                                                                                                               int
+	kubeContext, kubeconfigPath, imageNameReplacement, areaLabel, teamLabels, filterLabels, severity, jsonReportFile, reportDir, reportFile, reportTemplate string
+	workersScan, workersLinuxBench                                                                                                                          int
 )
 
 func init() {
@@ -30,7 +30,8 @@ func init() {
 	reportCmd.Flags().StringVar(&teamLabels, "teams-labels", "", "string allowing to split per team the image scan")
 	reportCmd.Flags().StringVar(&filterLabels, "filters-labels", "", "string allowing to filter the namespaces string separated by comma")
 	reportCmd.Flags().StringVar(&severity, "severity", "UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL", "severities of vulnerabilities to be reported (comma separated) ")
-	reportCmd.Flags().StringVar(&reportTemplate, "report-template-filename", "report.md.tmpl", "input filename that will be used as report template")
+	reportCmd.Flags().StringVar(&reportTemplate, "report-template-filename", "templates/report.md.tmpl", "input filename that will be used as report template")
+	reportCmd.Flags().StringVar(&reportDir, "report-directory", "audit-report/", "output directory that will contain the generated report")
 	reportCmd.Flags().StringVar(&reportFile, "report-filename", "report.md", "output filename that will contain the generated report based on the report-template")
 	reportCmd.Flags().StringVar(&jsonReportFile, "json-report-filename", "", "output filename where the json representation of the report will be saved. No json representation will be created unless this option is specified")
 }
@@ -83,7 +84,7 @@ func report(cmd *cobra.Command, str []string) {
 		LinuxCIS:  linuxReport,
 	}
 
-	err = r.GenerateReportFromTemplate(fullReport, reportTemplate, reportFile)
+	err = r.GenerateReportFromTemplate(fullReport, reportTemplate, reportDir, reportFile)
 	if err != nil {
 		logr.Error(err)
 	}

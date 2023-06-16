@@ -15,7 +15,8 @@ jobs:
 
     permissions:
       contents: read
-      id-token: write
+      issues: read
+      checks: write
       pull-requests: write
 
     steps:
@@ -33,3 +34,10 @@ jobs:
       - name: Run integration tests
         id: integrated-test
         run: nix-shell --command "make build integrated-test"
+
+      - name: Publish Test Results
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        if: success() || failure()
+        with:
+          files: |
+            test-reports/*-tests-report.xml

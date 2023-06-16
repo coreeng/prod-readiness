@@ -12,7 +12,7 @@ import (
 )
 
 // GenerateReportFromTemplate - Generate the report based on the given template file
-func GenerateReportFromTemplate(report interface{}, templateFilename string, reportOutputFilename string) error {
+func GenerateReportFromTemplate(report interface{}, templateFilename string, reportDir string, reportOutputFilename string) error {
 	logr.Infof("Generating report based on template %s", templateFilename)
 	tmp := template.New(filepath.Base(templateFilename))
 	tmp.Funcs(template.FuncMap{
@@ -57,16 +57,16 @@ func GenerateReportFromTemplate(report interface{}, templateFilename string, rep
 		return err
 	}
 
-	reportFile, err := os.Create(reportOutputFilename)
+	reportFile, err := os.Create(reportDir + reportOutputFilename)
 	if err != nil {
-		return fmt.Errorf("could not create report file %s: %v", reportOutputFilename, err)
+		return fmt.Errorf("could not create report file %s: %v", reportDir+reportOutputFilename, err)
 	}
 
 	err = tmpl.Execute(reportFile, report)
 	if err != nil {
 		return err
 	}
-	logr.Infof("Generated report file: %s", reportOutputFilename)
+	logr.Infof("Generated report file: %s", reportDir+reportOutputFilename)
 	return nil
 }
 

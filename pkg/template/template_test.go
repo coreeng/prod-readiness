@@ -46,16 +46,16 @@ var _ = Describe("Generating vulnerability report", func() {
 
 	It("should generate the report according to the md template file", func() {
 		actualReportFile := filepath.Join(tmpDir, "actual-report.md")
-		reportTemplate := filepath.Join(findProjectDir(), "report-imageScan.md.tmpl")
-		err := GenerateReportFromTemplate(aReport(), reportTemplate, actualReportFile)
+		reportTemplate := filepath.Join(findProjectDir(), "templates/report-imageScan.md.tmpl")
+		err := GenerateReportFromTemplate(aReport(), reportTemplate, "", actualReportFile)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(fileContentEqual("expected-test-report-imageScan.md", actualReportFile)).To(BeTrue())
 	})
 
 	It("should generate the report according to the html template file", func() {
 		actualReportFile := filepath.Join(tmpDir, "actual-report.html")
-		reportTemplate := filepath.Join(findProjectDir(), "report-imageScan.html.tmpl")
-		err := GenerateReportFromTemplate(aReport(), reportTemplate, actualReportFile)
+		reportTemplate := filepath.Join(findProjectDir(), "templates/report-imageScan.html.tmpl")
+		err := GenerateReportFromTemplate(aReport(), reportTemplate, "", actualReportFile)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(fileContentEqual("expected-test-report-imageScan.html", actualReportFile, "-B", "-w")).To(BeTrue())
 	})
@@ -63,16 +63,16 @@ var _ = Describe("Generating vulnerability report", func() {
 	Context("error occurred during image scanning", func() {
 		It("should report the errors according to the md template file", func() {
 			actualReportFile := filepath.Join(tmpDir, "actual-report.md")
-			reportTemplate := filepath.Join(findProjectDir(), "report-imageScan.md.tmpl")
-			err := GenerateReportFromTemplate(aReportWithErrors(), reportTemplate, actualReportFile)
+			reportTemplate := filepath.Join(findProjectDir(), "templates/report-imageScan.md.tmpl")
+			err := GenerateReportFromTemplate(aReportWithErrors(), reportTemplate, "", actualReportFile)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(fileContentEqual("expected-test-report-imageScan-error.md", actualReportFile)).To(BeTrue())
 		})
 
 		It("should report the errors according to the html template file", func() {
 			actualReportFile := filepath.Join(tmpDir, "actual-report.html")
-			reportTemplate := filepath.Join(findProjectDir(), "report-imageScan.html.tmpl")
-			err := GenerateReportFromTemplate(aReportWithErrors(), reportTemplate, actualReportFile)
+			reportTemplate := filepath.Join(findProjectDir(), "templates/report-imageScan.html.tmpl")
+			err := GenerateReportFromTemplate(aReportWithErrors(), reportTemplate, "", actualReportFile)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(fileContentEqual("expected-test-report-imageScan-error.html", actualReportFile, "-B", "-w")).To(BeTrue())
 		})

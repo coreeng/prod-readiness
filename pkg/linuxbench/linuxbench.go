@@ -105,47 +105,14 @@ func New(kubeconfig *rest.Config, kubeClient *kubernetes.Clientset) *LinuxBench 
 
 // LinuxReport - LinuxReport
 type LinuxReport struct {
-	NodeReport   map[string]*NodeData
-	NodeCount    int
-	MasterReport map[string]*NodeData
-	MasterCount  int
+	NodeReport map[string]*NodeData
+	NodeCount  int
 }
 
 // Run - Run
 func (l *LinuxBench) Run(config *Config) (*LinuxReport, error) {
-
-	// list all k8s master and execute on each node
-	// node-role.kubernetes.io/apiserver
-	// node-role.kubernetes.io/master
-	options := metav1.ListOptions{LabelSelector: "node-role.kubernetes.io/apiserver"}
-	masterList, err := l.getNodes(config, options)
-	masterReport := map[string]*NodeData{}
-
-	if err != nil {
-		// return err
-		logr.Infof("No master found")
-	} else {
-		for _, masterNode := range masterList.Items {
-			masterReport[masterNode.Name] = &NodeData{
-				Name:      masterNode.Name,
-				Node:      []v1.Node{masterNode},
-				Type:      "master",
-				Namespace: "kube-system",
-				JobName:   fmt.Sprintf("linux-bench-%s", masterNode.Name),
-				Selector:  fmt.Sprintf("job-name=linux-bench-%s", masterNode.Name),
-			}
-		}
-		result, err := l.RunJobs(masterReport, config)
-		if err != nil {
-			return nil, err
-		}
-		logr.Infof("Master result %v", result)
-	}
-
 	// list all k8s nodes and execute on each node
-	// node-role.kubernetes.io/kubernetes-node
-	options = metav1.ListOptions{LabelSelector: "!node-role.kubernetes.io/apiserver"}
-	nodeList, err := l.getNodes(config, options)
+	nodeList, err := l.getNodes(config, metav1.ListOptions{})
 	nodeReport := map[string]*NodeData{}
 
 	if err != nil {
@@ -169,13 +136,10 @@ func (l *LinuxBench) Run(config *Config) (*LinuxReport, error) {
 	}
 
 	nodeReportDedup, nodeCount := l.dedup(nodeReport)
-	masterReportDedup, masterCount := l.dedup(masterReport)
 
 	linuxReport := &LinuxReport{
-		NodeReport:   nodeReportDedup,
-		NodeCount:    nodeCount,
-		MasterReport: masterReportDedup,
-		MasterCount:  masterCount,
+		NodeReport: nodeReportDedup,
+		NodeCount:  nodeCount,
 	}
 
 	return linuxReport, nil
@@ -189,7 +153,6 @@ func (l *LinuxBench) dedup(nodeReport map[string]*NodeData) (map[string]*NodeDat
 	for _, node := range nodeReport {
 		for _, nodeDedup := range nodeReportDedup {
 			if l.isNodeEqual(node, nodeDedup) {
-				// fmt.Println("Is Map 1 is equal to Map 2: ", res1)
 				nodeDedup.Node = append(nodeDedup.Node, node.Node...)
 				duplicationFound = true
 				nodeCount++
@@ -364,8 +327,6 @@ func (l *LinuxBench) GetLogsFromPod(config *Config, nodeData *NodeData) ([]Outpu
 		return nil, err
 	}
 
-	//fmt.Printf("%v\n", pods.Items[0])
-	logr.Infof("first")
 	pod := pods.Items[0]
 	podLogOpts := corev1.PodLogOptions{}
 	req := l.kubeClient.CoreV1().Pods(pod.Namespace).GetLogs(pod.Name, &podLogOpts)
@@ -383,7 +344,7 @@ func (l *LinuxBench) GetLogsFromPod(config *Config, nodeData *NodeData) ([]Outpu
 
 	var output Output
 	data := utils.ConvertByteToString(buf.Bytes())
-	logr.Infof("data %v", data)
+	logr.Debugf("data %v", data)
 	err = json.Unmarshal(buf.Bytes(), &output)
 
 	arrOutput := []Output{output}
@@ -485,8 +446,6 @@ func (l *LinuxBench) LoadJob(config *Config, nodeData *NodeData) (*batchv1.Job, 
 	if err != nil {
 		return nil, err
 	}
-	logr.Infof("second")
-	//fmt.Printf("%#v\n", obj)
 
 	job := obj.(*batchv1.Job)
 
