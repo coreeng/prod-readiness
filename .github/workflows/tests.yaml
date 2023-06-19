@@ -41,3 +41,7 @@ jobs:
         with:
           files: |
             test-reports/*-tests-report.xml
+
+      - name: Build executables for other platforms
+        id: build-other-platforms
+        run: nix-shell --command "make build-other-platforms"
