@@ -57,7 +57,7 @@ func (t *trivyClient) ScanImage(image string) ([]TrivyOutputResults, error) {
 
 func (t *trivyClient) CisScan(benchmark string) (*CisOutput, error) {
 	cmd := "trivy"
-	args := []string{"--cache-dir", ".trivycache/", "--timeout", "10m0s", "--format", "json", "kubernetes", "--exit-code", "0", "--no-progress", "--compliance", benchmark, "cluster", "--severity", t.severity}
+	args := []string{"--cache-dir", ".trivycache/", "--timeout", "60m0s", "--format", "json", "kubernetes", "--exit-code", "0", "--no-progress", "--compliance", benchmark, "--slow", "cluster", "--severity", t.severity}
 	output, errOutput, err := execCmd.Execute(cmd, args)
 
 	errOutputAsString := utils.ConvertByteToString(errOutput)

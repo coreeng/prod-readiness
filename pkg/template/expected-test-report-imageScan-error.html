@@ -17,7 +17,7 @@
     </style>
 
   </head>
-  <body>
+  <body class="p-3">
     <h1>Vulnerability Report</h1>
 
     <h2>Sections index</h2>
@@ -199,6 +199,68 @@
                     </tr>
                         
           </tbody>
-        </table>  
+        </table>
+
+
+    <script src="dist/jquery.slim.min.js"></script>
+    <script src="dist/umd/popper.min.js"></script>
+    <script src="dist/js/bootstrap.min.js"></script>
+
+    <script>
+        var currentSortBy = "";
+
+        function sortBy(column) {
+            var asc = true;
+            if ($('th#th-' + column).hasClass('dropup')) asc = false;
+            $('[id^=a-]').removeClass('dropdown-toggle');
+            $('[id^=th-]').removeClass('dropup');
+            if (currentSortBy === column && asc) $('th#th-' + column).addClass('dropup');
+
+            $('a#a-' + column).addClass('dropdown-toggle')
+            currentSortBy = column;
+        }
+
+        $('th').click(function () {
+            var table = $(this).parents('table').eq(0)
+            var rows = table.find('tr:gt(0)').toArray().sort(comparer($(this).index()))
+            this.asc = !this.asc
+            if (!this.asc) {
+                rows = rows.reverse()
+            }
+            for (var i = 0; i < rows.length; i++) {
+                table.append(rows[i])
+            }
+        })
+
+        function comparer(index) {
+            return function (a, b) {
+                var valA = severityToInt(getCellValue(a, index)), valB = severityToInt(getCellValue(b, index))
+                return $.isNumeric(valA) && $.isNumeric(valB) ? valA - valB : valA.toString().localeCompare(valB)
+            }
+        }
+
+        function severityToInt(severity){
+            switch (severity) {
+                case 'CRITICAL':
+                    return 4
+                case 'HIGH':
+                    return 3;
+                case 'MEDIUM':
+                    return 2;
+                case 'LOW':
+                    return 1;
+                case 'UNKNOWN':
+                    return 0;
+                default:
+                    return severity;
+            }
+        }
+
+        function getCellValue(row, index) {
+            return $(row).children('td').eq(index).text()
+        }
+
+    </script>
+
   </body>
 </html>
