@@ -83,6 +83,7 @@ func report(cmd *cobra.Command, str []string) {
 		ImageScan: imageScanReport,
 		LinuxCIS:  linuxReport,
 	}
+	err = r.GenerateReportFromTemplate(fullReport, "templates/report-linuxCIS.html.tmpl", reportDir, "report-linuxCIS.html")
 
 	err = r.GenerateReportFromTemplate(fullReport, reportTemplate, reportDir, reportFile)
 	if err != nil {

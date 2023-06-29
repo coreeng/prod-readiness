@@ -84,9 +84,9 @@ Optional parameter `--benchmarks k8s-cis,k8s-nsa,k8s-pss-restricted` can be used
 
 ### TODOs
 
-- Fix tests configuration as some of the tests are throwing `You may only call BeforeEach from within a Describe, Context or When`  
-- use trivy library rather than the command line
-- use docker library rather than the command line
+- [IMPORTANT!] We should not be requesting destructive access to the production as it may bring clients confidence down. The tool should be modified to work with 'read-only' permissions to the cluster or at least within a namespace we (CECG) own. We need to be super careful especially with live environments.
+- use trivy library rather than the command line (to prevent: "trivy": executable file not found in $PATH )
+- use docker library rather than the command line (to prevent: "docker": executable file not found in $PATH )
 - releasing
 
 
