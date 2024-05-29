@@ -55,16 +55,18 @@ test:
 .PHONY: build
 build: check test
 	@echo "== build"
-	 GOOS=$(GOOS) GOARCH=$(GOARCH) go build -o $(buildDir)/bin/production-readiness -v github.com/coreeng/production-readiness/production-readiness/cmd
+	GOOS=$(GOOS) GOARCH=$(GOARCH) go build -o $(buildDir)/bin/production-readiness -v github.com/coreeng/production-readiness/production-readiness/cmd
 
 .PHONY: build-other-platforms
 build-other-platforms:
 	@echo "== build for other platforms"
-	 GOOS=windows GOARCH=amd64 go build -o $(buildDir)/bin/production-readiness-amd64.exe -v github.com/coreeng/production-readiness/production-readiness/cmd
-	 GOOS=windows GOARCH=386 go build -o $(buildDir)/bin/production-readiness-386.exe -v github.com/coreeng/production-readiness/production-readiness/cmd
-	 GOOS=darwin GOARCH=amd64 go build -o $(buildDir)/bin/production-readiness-amd64-darwin -v github.com/coreeng/production-readiness/production-readiness/cmd
-	 GOOS=linux GOARCH=amd64 go build -o $(buildDir)/bin/production-readiness-amd64-linux -v github.com/coreeng/production-readiness/production-readiness/cmd
-	 GOOS=linux GOARCH=386 go build -o $(buildDir)/bin/production-readiness-386-linux -v github.com/coreeng/production-readiness/production-readiness/cmd
+	GOOS=windows GOARCH=amd64 go build -o $(buildDir)/bin/production-readiness-amd64.exe -v github.com/coreeng/production-readiness/production-readiness/cmd
+	GOOS=windows GOARCH=386 go build -o $(buildDir)/bin/production-readiness-386.exe -v github.com/coreeng/production-readiness/production-readiness/cmd
+	GOOS=darwin GOARCH=amd64 go build -o $(buildDir)/bin/production-readiness-amd64-darwin -v github.com/coreeng/production-readiness/production-readiness/cmd
+	GOOS=linux GOARCH=amd64 go build -o $(buildDir)/bin/production-readiness-amd64-linux -v github.com/coreeng/production-readiness/production-readiness/cmd
+	GOOS=linux GOARCH=386 go build -o $(buildDir)/bin/production-readiness-386-linux -v github.com/coreeng/production-readiness/production-readiness/cmd
+	@echo "== finished building all distros"
+	ls -ltr $(buildDir)/bin/
 
 .PHONY: install
 install: build
