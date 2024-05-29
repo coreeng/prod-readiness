@@ -1,6 +1,8 @@
 package main
 
 import (
+	"time"
+
 	"github.com/coreeng/production-readiness/production-readiness/pkg/k8s"
 	"github.com/coreeng/production-readiness/production-readiness/pkg/linuxbench"
 	"github.com/coreeng/production-readiness/production-readiness/pkg/scanner"
@@ -17,6 +19,7 @@ var (
 	}
 	kubeContext, kubeconfigPath, imageNameReplacement, areaLabel, teamLabels, filterLabels, severity, jsonReportFile, reportDir, reportFile, reportTemplate string
 	workersScan, workersLinuxBench                                                                                                                          int
+	scanTimeout                                                                                                                                             time.Duration
 )
 
 func init() {
@@ -34,6 +37,7 @@ func init() {
 	reportCmd.Flags().StringVar(&reportDir, "report-directory", "audit-report/", "output directory that will contain the generated report")
 	reportCmd.Flags().StringVar(&reportFile, "report-filename", "report.md", "output filename that will contain the generated report based on the report-template")
 	reportCmd.Flags().StringVar(&jsonReportFile, "json-report-filename", "", "output filename where the json representation of the report will be saved. No json representation will be created unless this option is specified")
+	scanCmd.Flags().DurationVar(&scanTimeout, "scan-timeout", 5*time.Minute, "timeout for the container image scan")
 }
 
 // FullReport - FullReport
@@ -55,6 +59,7 @@ func report(cmd *cobra.Command, str []string) {
 		TeamsLabels:          teamLabels,
 		FilterLabels:         filterLabels,
 		Severity:             severity,
+		ScanImageTimeout:     scanTimeout,
 	}
 
 	t := scanner.New(k8s.NewKubernetesClientWith(clientset), config)

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os/exec"
 	"sort"
+	"time"
 
 	execCmd "github.com/coreeng/production-readiness/production-readiness/pkg/cmd"
 	"github.com/coreeng/production-readiness/production-readiness/pkg/utils"
@@ -19,12 +20,14 @@ type TrivyClient interface {
 }
 
 type trivyClient struct {
-	severity string
+	severity      string
+	timeout       time.Duration
+	commandRunner execCmd.CommandRunner
 }
 
 // NewTrivyClient creates a new TrivyClient
-func NewTrivyClient(severity string) TrivyClient {
-	return &trivyClient{severity: severity}
+func NewTrivyClient(severity string, timeout time.Duration) TrivyClient {
+	return &trivyClient{severity: severity, timeout: timeout, commandRunner: execCmd.NewCommandRunner()}
 }
 
 func (t *trivyClient) DownloadDatabase(cmd string) error {
@@ -39,8 +42,8 @@ func (t *trivyClient) DownloadDatabase(cmd string) error {
 
 func (t *trivyClient) ScanImage(image string) ([]TrivyOutputResults, error) {
 	cmd := "trivy"
-	args := []string{"-q", "image", "-f", "json", "--skip-update", "--no-progress", "--severity", t.severity, image}
-	output, errOutput, err := execCmd.Execute(cmd, args)
+	args := []string{"-q", "image", "-f", "json", "--skip-update", "--no-progress", "--severity", t.severity, "--timeout", t.timeout.String(), image}
+	output, errOutput, err := t.commandRunner.Execute(cmd, args)
 
 	errOutputAsString := utils.ConvertByteToString(errOutput)
 	if err != nil {
@@ -57,8 +60,8 @@ func (t *trivyClient) ScanImage(image string) ([]TrivyOutputResults, error) {
 
 func (t *trivyClient) CisScan(benchmark string) (*CisOutput, error) {
 	cmd := "trivy"
-	args := []string{"--cache-dir", ".trivycache/", "--timeout", "60m0s", "--format", "json", "kubernetes", "--exit-code", "0", "--no-progress", "--compliance", benchmark, "--slow", "cluster", "--severity", t.severity}
-	output, errOutput, err := execCmd.Execute(cmd, args)
+	args := []string{"--cache-dir", ".trivycache/", "--timeout", t.timeout.String(), "--format", "json", "kubernetes", "--exit-code", "0", "--no-progress", "--compliance", benchmark, "--slow", "cluster", "--severity", t.severity}
+	output, errOutput, err := t.commandRunner.Execute(cmd, args)
 
 	errOutputAsString := utils.ConvertByteToString(errOutput)
 	if err != nil {
