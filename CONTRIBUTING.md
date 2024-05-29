@@ -87,6 +87,13 @@ npm install --save-dev semantic-release
 
 4. Commit both `package.json` and `package-lock.json`at the root of your repository
 
+### Local run
+
+Use the `dry-run` mode to check the changes `semantic-release` would perform
+```sh
+GITHUB_TOKEN=$(gh auth token) npx semantic-release --dry-run --branches=$(git rev-parse --abbrev-ref HEAD)
+```
+
 
 ## Contributor Code of Conduct
 
