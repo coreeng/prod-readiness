@@ -1,7 +1,7 @@
 # Production readiness
 
 This tool will help running diagnostic to have a better understanding of a cluster in terms of security and best practises.
-Use it to identify security vulnerability in your container images and perform a Kubernetes CIS benchmark. 
+Use it to identify security vulnerabilities in your cluster and container images. 
 
 ## Prerequisites
 
@@ -95,4 +95,3 @@ Optional parameter `--benchmarks k8s-cis,k8s-nsa,k8s-pss-restricted` can be used
 - use trivy library rather than the command line (to prevent: "trivy": executable file not found in $PATH )
 - use docker library rather than the command line (to prevent: "docker": executable file not found in $PATH )
 - release a versioning image, rather than requesting users to build it
-

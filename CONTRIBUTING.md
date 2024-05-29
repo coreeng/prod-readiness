@@ -64,7 +64,7 @@ make integrated-test
 
 Use [semantic-release](https://github.com/semantic-release/github) to automate versioning, tag and 
 create GitHub releases based on the commit message.
-semantic-release works from release branches, not pull requests. As a result nothing will be released on pull requests.
+semantic-release works from release branches, not pull requests. As a result, nothing will be released on pull requests.
 
 Commit messages must follow [Angular Commit Message Conventions](https://github.com/angular/angular/blob/main/CONTRIBUTING.md#-commit-message-format)
 
