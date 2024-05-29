@@ -1,23 +1,29 @@
 # Production readiness
 
-This tool will help running diagnostic to have a better understanding of a cluster in term of security and best practises.
+This tool will help running diagnostic to have a better understanding of a cluster in terms of security and best practises.
+Use it to identify security vulnerability in your container images and perform a Kubernetes CIS benchmark. 
 
-## Requirements
+## Prerequisites
 
-Installed [nix](https://nixos.org/download.html)
-After installation just run `nix-shell` from project directory and all required tools will be fetched.
-
-Cluster admin privileges for security compliance scan (trivy needs to create `trivy-tmp` namespace just for testing purposes)
+To prepare your environment you must install [trivy](https://github.com/aquasecurity/trivy) and `docker`
+as the image scan utility require both command line tools.
+We use [nix](https://nixos.org/download.html) to make it easier to install the required tools 
+and provide a reproducible dev environment.
+To use nix, install it and run `nix-shell` from the project directory.
 
 ## Cluster scan
 
-The `report` command can be used to perform container image and security compliance scans.
-It will generate an `HTML` report for all types of scans. Summary report can be opened by opening `index.html` in the browser.
+The `report` command will perform both [container image scan](#Container-image-scanning) and [security compliance scan](#Cluster-security-compliance-scanning).
+You can run either report individually by referring to the corresponding sections below. 
+
+The command will generate an `HTML` report for all types of scans. 
+The summary report can be opened by opening `index.html` in the browser.
 
 ### Usage 
 
-`production-readiness report  --context "sandbox-azure"`
-`--context` points to context to use from kube config file.
+```
+production-readiness report  --context <cluster-name>
+```
 
 ## Container Image scanning
 
@@ -34,11 +40,14 @@ Here is a sample report:
 
 ### Usage
 
-To prepare your environment you must install [trivy](https://github.com/aquasecurity/trivy) and `docker`
-as the image scan utility require both command line tools.
-
+To generate a report for a given cluster:
 ```
-production-readiness scan --context cluster-name --area-labels=area-name --teams-labels=team --image-name-replacement='mirror.registry:5000|registry.new.url,mirror-2.registry:5000|registry.new.url'
+production-readiness scan --context <cluster-name>
+```
+
+To generate a report broken down per team name, specify the `label` used to identify the team name:
+```
+production-readiness scan --context <cluster-name> --teams-labels=<label>
 ```
 
 Run `production-readiness scan --help` for a complete list of options available.
@@ -76,19 +85,14 @@ To run compliance scan just execute: `production-readiness cis-scan --context "s
 `--context` points to context to use from kube config file.
 Optional parameter `--benchmarks k8s-cis,k8s-nsa,k8s-pss-restricted` can be used to run specific scan type.
 
+### Limitations
 
-## Known bugs
+- At the moment, cluster admin privileges is required by trivy as it needs to create `trivy-tmp` namespace just for testing purposes. The tool should be modified to work with 'read-only' permissions to the cluster or at least within a namespace we (CECG) own. We need to be super careful especially with live environments.
+- Security compliance scans may not work on GCP if there is no CNI on the node in `/opt/cni/bin` location
 
-- Security compliance scans may not work on GCP if there is no CNI on the node in `/opt/cni/bin` location  
+## Roadmap
 
-
-### TODOs
-
-- [IMPORTANT!] We should not be requesting destructive access to the production as it may bring clients confidence down. The tool should be modified to work with 'read-only' permissions to the cluster or at least within a namespace we (CECG) own. We need to be super careful especially with live environments.
 - use trivy library rather than the command line (to prevent: "trivy": executable file not found in $PATH )
 - use docker library rather than the command line (to prevent: "docker": executable file not found in $PATH )
-- releasing
-
-
-## Linuxbench
+- release a versioning image, rather than requesting users to build it
 

@@ -7,19 +7,20 @@ issue before making a change.  This saves everyone from wasted effort in the eve
 changes need some adjustment before they are ready for submission.
 All new code, including changes to existing code, should be tested and have a corresponding test added or updated where applicable.
 
-
 ## Prerequisites
 
 The following must be installed on your development machine:
 
-- `go` (>=1.15)
+- `go` (>=1.20)
 - `docker`
 - `kind`
 - `trivy`
 - `kubectl`
 
-This project uses [Go Modules](https://github.com/golang/go/wiki/Modules).
-
+You can use [nix](https://nixos.org/download.html) to make install the required tools by running:
+```
+nix-shell
+```
 
 ## Building and testing
 

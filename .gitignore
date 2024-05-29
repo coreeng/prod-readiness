@@ -9,3 +9,4 @@ output-save
 node_modules
 package-lock.json
 .trivycache
+/test-reports/
