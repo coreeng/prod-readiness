@@ -1,0 +1,14 @@
+{
+  "name": "prod-readiness",
+  "version": "1.0.0",
+  "description": "Find security vulnerability in your cluster and container images",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "semantic-release": "^23.1.1"
+  }
+}

@@ -1,4 +1,4 @@
-name: Run tests
+name: CI
 
 on:
   push:
@@ -9,19 +9,20 @@ on:
       - main
 
 jobs:
-  tests:
-    name: Run tests
+  build:
+    name: Build and tests
     runs-on: ubuntu-latest
 
     permissions:
-      contents: read
-      issues: read
+      contents: write # to be able to publish a GitHub release
+      issues: write # to be able to comment on released issues
       checks: write
-      pull-requests: write
+      pull-requests: write # to be able to comment on released pull requests
+      id-token: write # to enable use of OIDC for npm provenance
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - uses: cachix/install-nix-action@v21
         with:
@@ -45,3 +46,19 @@ jobs:
       - name: Build executables for other platforms
         id: build-other-platforms
         run: nix-shell --command "make build-other-platforms"
+
+      - name: Release - setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "lts/*"
+
+      - name: Release - install dependencies
+        run: npm ci
+
+      - name: Release - verify installed dependencies
+        run: npm audit signatures
+
+      - name: Release - perform the release
+        run: npx semantic-release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

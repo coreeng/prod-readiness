@@ -7,19 +7,20 @@ issue before making a change.  This saves everyone from wasted effort in the eve
 changes need some adjustment before they are ready for submission.
 All new code, including changes to existing code, should be tested and have a corresponding test added or updated where applicable.
 
-
 ## Prerequisites
 
 The following must be installed on your development machine:
 
-- `go` (>=1.15)
+- `go` (>=1.20)
 - `docker`
 - `kind`
 - `trivy`
 - `kubectl`
 
-This project uses [Go Modules](https://github.com/golang/go/wiki/Modules).
-
+You can use [nix](https://nixos.org/download.html) to make install the required tools by running:
+```
+nix-shell
+```
 
 ## Building and testing
 
@@ -44,7 +45,6 @@ To run unit tests only:
 make test
 ```
 
-
 ### Integrated tests
 
 Integrated tests will run an image scan against a local [Kind](https://kind.sigs.k8s.io/) cluster.
@@ -62,7 +62,38 @@ make integrated-test
 
 ## Releasing
 
-_To be defined_
+Use [semantic-release](https://github.com/semantic-release/github) to automate versioning, tag and 
+create GitHub releases based on the commit message.
+semantic-release works from release branches, not pull requests. As a result, nothing will be released on pull requests.
+
+Commit messages must follow [Angular Commit Message Conventions](https://github.com/angular/angular/blob/main/CONTRIBUTING.md#-commit-message-format)
+
+### Initial semantic release installation
+
+1. Make sure you're on the latest version of npm
+```
+npm install -g npm
+```
+
+2. Generate the `package.json`
+```
+npm init
+```
+
+3. Generate the `package-lock.json`
+```
+npm install --save-dev semantic-release
+```
+
+4. Commit both `package.json` and `package-lock.json`at the root of your repository
+
+### Local run
+
+Use the `dry-run` mode to check the changes `semantic-release` would perform
+```sh
+GITHUB_TOKEN=$(gh auth token) npx semantic-release --dry-run --branches=$(git rev-parse --abbrev-ref HEAD)
+```
+
 
 ## Contributor Code of Conduct
 
