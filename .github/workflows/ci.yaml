@@ -67,6 +67,13 @@ jobs:
           GOOS: ${{ matrix.os }}
           GOARCH: ${{ matrix.arch }}
 
+      - name: Store dist artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: build/bin/production-readiness*
+          retention-days: 1
+
   release:
     #if: github.ref == 'refs/heads/main' && success()
     if: success()
