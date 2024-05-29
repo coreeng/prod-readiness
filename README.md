@@ -7,9 +7,7 @@ Use it to identify security vulnerabilities in your cluster and container images
 
 To prepare your environment you must install [trivy](https://github.com/aquasecurity/trivy) and `docker`
 as the image scan utility require both command line tools.
-We use [nix](https://nixos.org/download.html) to make it easier to install the required tools 
-and provide a reproducible dev environment.
-To use nix, install it and run `nix-shell` from the project directory.
+Then download the `production-readiness` tool from the [releases](https://github.com/coreeng/prod-readiness/releases) area.
 
 ## Cluster scan
 
