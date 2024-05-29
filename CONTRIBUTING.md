@@ -45,7 +45,6 @@ To run unit tests only:
 make test
 ```
 
-
 ### Integrated tests
 
 Integrated tests will run an image scan against a local [Kind](https://kind.sigs.k8s.io/) cluster.
@@ -63,7 +62,30 @@ make integrated-test
 
 ## Releasing
 
-_To be defined_
+Use [semantic-release](https://github.com/semantic-release/github) to automate versioning, tag and 
+create GitHub releases based on the commit message.
+
+Commit messages must follow [Angular Commit Message Conventions](https://github.com/angular/angular/blob/main/CONTRIBUTING.md#-commit-message-format)
+
+### Initial semantic release installation
+
+1. Make sure you're on the latest version of npm
+```
+npm install -g npm
+```
+
+2. Generate the `package.json`
+```
+npm init
+```
+
+3. Generate the `package-lock.json`
+```
+npm install --save-dev semantic-release
+```
+
+4. Commit both `package.json` and `package-lock.json`at the root of your repository
+
 
 ## Contributor Code of Conduct
 
