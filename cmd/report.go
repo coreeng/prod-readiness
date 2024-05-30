@@ -1,6 +1,8 @@
 package main
 
 import (
+	"time"
+
 	"github.com/coreeng/production-readiness/production-readiness/pkg/k8s"
 	"github.com/coreeng/production-readiness/production-readiness/pkg/linuxbench"
 	"github.com/coreeng/production-readiness/production-readiness/pkg/scanner"
@@ -16,7 +18,8 @@ var (
 		Run:   report,
 	}
 	kubeContext, kubeconfigPath, imageNameReplacement, areaLabel, teamLabels, filterLabels, severity, jsonReportFile, reportDir, reportFile, reportTemplate string
-	workersScan, workersLinuxBench                                                                                                                          int
+	scanWorkers, workersLinuxBench                                                                                                                          int
+	scanTimeout                                                                                                                                             time.Duration
 )
 
 func init() {
@@ -24,16 +27,17 @@ func init() {
 	reportCmd.PersistentFlags().StringVar(&kubeconfigPath, "kubeconfig", "", "kubeconfig file to use if connecting from outside a cluster")
 	reportCmd.PersistentFlags().StringVar(&kubeContext, "context", "", "kubeconfig context to use if connecting from outside a cluster")
 	reportCmd.Flags().StringVar(&imageNameReplacement, "image-name-replacement", "", "string replacement to replace name into the image name for ex: registry url, format: 'registry-mirror:5000|registry.com,registry-second:5000|registry-second.com' list separated by comma, matching and replacement string are seperated by a pipe '|'")
-	reportCmd.Flags().IntVar(&workersScan, "workers-scan", 10, "number of worker to process images scan in parallel")
+	reportCmd.Flags().IntVar(&scanWorkers, "scan-workers", 10, "number of worker to process images scan in parallel")
 	reportCmd.Flags().IntVar(&workersLinuxBench, "workers-linux-bench", 5, "number of worker to process linux-bench in parallel")
 	reportCmd.Flags().StringVar(&areaLabel, "area-labels", "", "string allowing to split per area the image scan")
 	reportCmd.Flags().StringVar(&teamLabels, "teams-labels", "", "string allowing to split per team the image scan")
 	reportCmd.Flags().StringVar(&filterLabels, "filters-labels", "", "string allowing to filter the namespaces string separated by comma")
 	reportCmd.Flags().StringVar(&severity, "severity", "UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL", "severities of vulnerabilities to be reported (comma separated) ")
-	reportCmd.Flags().StringVar(&reportTemplate, "report-template-filename", "templates/report.md.tmpl", "input filename that will be used as report template")
-	reportCmd.Flags().StringVar(&reportDir, "report-directory", "audit-report/", "output directory that will contain the generated report")
-	reportCmd.Flags().StringVar(&reportFile, "report-filename", "report.md", "output filename that will contain the generated report based on the report-template")
-	reportCmd.Flags().StringVar(&jsonReportFile, "json-report-filename", "", "output filename where the json representation of the report will be saved. No json representation will be created unless this option is specified")
+	reportCmd.Flags().StringVar(&reportTemplate, "report-input-template", "templates/report.md.tmpl", "input filename that will be used as report template")
+	reportCmd.Flags().StringVar(&reportDir, "report-output-directory", "audit-report/", "output directory that will contain the generated report")
+	reportCmd.Flags().StringVar(&reportFile, "report-output-filename", "report.md", "output filename that will contain the generated report based on the report-template")
+	reportCmd.Flags().StringVar(&jsonReportFile, "report-output-filename-json", "", "output filename where the json representation of the report will be saved. No json representation will be created unless this option is specified")
+	reportCmd.Flags().DurationVar(&scanTimeout, "scan-timeout", 5*time.Minute, "timeout for the container image scan")
 }
 
 // FullReport - FullReport
@@ -49,12 +53,13 @@ func report(cmd *cobra.Command, str []string) {
 
 	config := &scanner.Config{
 		LogLevel:             logLevel,
-		Workers:              workersScan,
+		Workers:              scanWorkers,
 		ImageNameReplacement: imageNameReplacement,
 		AreaLabels:           areaLabel,
 		TeamsLabels:          teamLabels,
 		FilterLabels:         filterLabels,
 		Severity:             severity,
+		ScanImageTimeout:     scanTimeout,
 	}
 
 	t := scanner.New(k8s.NewKubernetesClientWith(clientset), config)

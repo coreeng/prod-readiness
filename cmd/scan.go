@@ -1,6 +1,8 @@
 package main
 
 import (
+	"time"
+
 	"github.com/coreeng/production-readiness/production-readiness/pkg/k8s"
 	"github.com/coreeng/production-readiness/production-readiness/pkg/scanner"
 	r "github.com/coreeng/production-readiness/production-readiness/pkg/template"
@@ -25,21 +27,23 @@ func init() {
 	scanCmd.Flags().StringVar(&teamLabels, "teams-labels", "", "string allowing to split per team the image scan")
 	scanCmd.Flags().StringVar(&filterLabels, "filters-labels", "", "string allowing to filter the namespaces string separated by comma")
 	scanCmd.Flags().StringVar(&severity, "severity", "UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL", "severities of vulnerabilities to be reported (comma separated) ")
-	scanCmd.Flags().IntVar(&workersScan, "workers-scan", 10, "number of worker to process images scan in parallel")
-	scanCmd.Flags().StringVar(&reportTemplate, "report-template-filename", "templates/report-imageScan.html.tmpl", "input filename that will be used as report template")
-	scanCmd.Flags().StringVar(&reportFile, "report-filename", "report-imageScan.html", "output filename where that will contain the generated report based on the report-template")
-	scanCmd.Flags().StringVar(&jsonReportFile, "json-report-filename", "", "output filename where the json representation of the report will be saved. No json representation will be created unless this option is specified")
+	scanCmd.Flags().StringVar(&reportTemplate, "report-input-template", "templates/report-imageScan.html.tmpl", "input filename that will be used as report template")
+	scanCmd.Flags().StringVar(&reportFile, "report-output-filename", "report-imageScan.html", "output filename where that will contain the generated report based on the report-template")
+	scanCmd.Flags().StringVar(&jsonReportFile, "report-output-filename-json", "", "output filename where the json representation of the report will be saved. No json representation will be created unless this option is specified")
+	scanCmd.Flags().DurationVar(&scanTimeout, "scan-timeout", 5*time.Minute, "timeout for each container image scan")
+	scanCmd.Flags().IntVar(&scanWorkers, "scan-workers", 10, "number of worker to process images scan in parallel")
 }
 
 func scan(_ *cobra.Command, _ []string) {
 	config := &scanner.Config{
 		LogLevel:             logLevel,
-		Workers:              workersScan,
+		Workers:              scanWorkers,
 		ImageNameReplacement: imageNameReplacement,
 		AreaLabels:           areaLabel,
 		TeamsLabels:          teamLabels,
 		FilterLabels:         filterLabels,
 		Severity:             severity,
+		ScanImageTimeout:     scanTimeout,
 	}
 	t := scanner.New(k8s.NewKubernetesClient(kubeContext, kubeconfigPath), config)
 

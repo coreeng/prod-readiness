@@ -2,6 +2,7 @@ package integrated
 
 import (
 	"context"
+	"time"
 
 	"testing"
 
@@ -37,12 +38,13 @@ var _ = BeforeSuite(func() {
 	env = NewIntegratedEnv()
 	f = NewFixture(env)
 	config := &scanner.Config{
-		LogLevel:     "info",
-		Workers:      3,
-		AreaLabels:   areaLabel,
-		TeamsLabels:  teamLabel,
-		FilterLabels: areaLabel,
-		Severity:     "UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL",
+		LogLevel:         "info",
+		Workers:          3,
+		AreaLabels:       areaLabel,
+		TeamsLabels:      teamLabel,
+		FilterLabels:     areaLabel,
+		Severity:         "UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL",
+		ScanImageTimeout: time.Minute,
 	}
 	scan = scanner.New(k8s.NewKubernetesClientWith(env.KubeClientset), config)
 	f.DeleteNamespaces("namespace1", "namespace2")

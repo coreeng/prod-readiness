@@ -57,7 +57,7 @@ func runCheck(_ *cobra.Command, _ []string) {
 		cmd := "trivy"
 		args := []string{"image", "-f", "json", image}
 
-		execCmd.Execute(cmd, args)
+		execCmd.NewCommandRunner().Execute(cmd, args)
 	}
 
 	handleSignals(doneCh)

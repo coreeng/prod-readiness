@@ -7,8 +7,22 @@ import (
 	"runtime"
 )
 
+// CommandRunner defines how to run commands
+type CommandRunner interface {
+	Execute(cmd string, arg []string) (output []byte, erroutput []byte, err error)
+}
+
+// ExecCommandRunner is a thin wrapper around exec.Command
+type ExecCommandRunner struct {
+}
+
+// NewCommandRunner creates a new CommandRunner
+func NewCommandRunner() CommandRunner {
+	return &ExecCommandRunner{}
+}
+
 // Execute will execute command
-func Execute(cmd string, arg []string) (output []byte, erroutput []byte, err error) {
+func (c *ExecCommandRunner) Execute(cmd string, arg []string) (output []byte, erroutput []byte, err error) {
 	if runtime.GOOS == "linux" || runtime.GOOS == "darwin" {
 		cmd := exec.Command(cmd, arg...)
 

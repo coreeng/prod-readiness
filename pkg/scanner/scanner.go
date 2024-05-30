@@ -3,6 +3,7 @@ package scanner
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/coreeng/production-readiness/production-readiness/pkg/k8s"
 
@@ -135,6 +136,7 @@ type Config struct {
 	TeamsLabels          string
 	FilterLabels         string
 	Severity             string
+	ScanImageTimeout     time.Duration
 }
 
 // New creates a Scanner to find vulnerabilities in container images
@@ -143,7 +145,7 @@ func New(kubernetesClient k8s.KubernetesClient, config *Config) *Scanner {
 		config:           config,
 		kubernetesClient: kubernetesClient,
 		dockerClient:     NewDockerClient(),
-		trivyClient:      NewTrivyClient(config.Severity),
+		trivyClient:      NewTrivyClient(config.Severity, config.ScanImageTimeout),
 	}
 }
 
