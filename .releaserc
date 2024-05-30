@@ -6,11 +6,11 @@
         "@semantic-release/github",
         {
           "assets": [
-            { "path": "build//bin/production-readiness-amd64.exe", "label": "Windows amd64 distribution" },
-            { "path": "build/bin/production-readiness-386.exe", "label": "Windows 386 distribution" },
-            { "path": "build/bin/production-readiness-amd64-darwin", "label": "Darwin amd64 distribution" },
-            { "path": "build/bin/production-readiness-amd64-linux ", "label": "Linux amd64 distribution" },
-            { "path": "build/bin/production-readiness-386-linux ", "label": "Linux 386 distribution" },
+            { "path": "build//bin/production-readiness-amd64.exe", "label": "Windows amd64 binary" },
+            { "path": "build/bin/production-readiness-386.exe", "label": "Windows 386 binary" },
+            { "path": "build/bin/production-readiness-amd64-darwin", "label": "Darwin amd64 binary" },
+            { "path": "build/bin/production-readiness-amd64-linux", "label": "Linux amd64 binary" },
+            { "path": "build/bin/production-readiness-386-linux", "label": "Linux 386 binary" },
           ]
         }
       ]
