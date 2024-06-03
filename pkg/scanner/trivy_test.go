@@ -2,6 +2,9 @@ package scanner
 
 import (
 	"encoding/json"
+	"os"
+	"path/filepath"
+	"runtime"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -65,17 +68,33 @@ var _ = Describe("Trivy client", func() {
 
 		Describe("Scan", func() {
 
-			It("invokes trivy CLI to scan the image", func() {
-				output, jsonerr := json.Marshal(TrivyOutput{
-					Results: []TrivyOutputResults{},
-				})
-				Expect(jsonerr).NotTo(HaveOccurred())
+			It("invokes trivy CLI to scan the image and parse the output", func() {
+				_, filename, _, _ := runtime.Caller(0)
+				testPackage := filepath.Dir(filename)
+				test_output, fileerr := os.ReadFile(filepath.Join(testPackage, "trivy_test_output.json"))
+				Expect(fileerr).NotTo(HaveOccurred())
+
 				mockRunner.On("Execute", "trivy", []string{"-q", "image", "-f", "json", "--skip-update", "--no-progress", "--severity", severity, "--timeout", "7m0s", "alpine:3.11.0"}).
-					Return(output, []byte{}, nil)
+					Return(test_output, []byte{}, nil)
 
 				scanOutput, err := trivy.ScanImage("alpine:3.11.0")
 				Expect(err).NotTo(HaveOccurred())
-				Expect(scanOutput).Should(Equal([]TrivyOutputResults{}))
+				Expect(scanOutput).Should(HaveLen(2))
+				Expect(scanOutput[0].Vulnerabilities).Should(HaveLen(12))
+				Expect(scanOutput[1].Vulnerabilities).Should(HaveLen(1))
+				Expect(scanOutput[0].Vulnerabilities[0].VulnerabilityID).Should(Equal("CVE-2023-45853"))
+				Expect(scanOutput[0].Vulnerabilities[0].Severity).Should(Equal("CRITICAL"))
+				Expect(scanOutput[0].Vulnerabilities[0].PkgName).Should(Equal("zlib1g"))
+				Expect(scanOutput[0].Vulnerabilities[0].InstalledVersion).Should(Equal("1:1.2.13.dfsg-1"))
+				Expect(scanOutput[0].Vulnerabilities[0].Status).Should(Equal("will_not_fix"))
+				Expect(scanOutput[0].Vulnerabilities[0].FixedVersion).Should(BeEmpty())
+
+				Expect(scanOutput[1].Vulnerabilities[0].VulnerabilityID).Should(Equal("CVE-2022-40897"))
+				Expect(scanOutput[1].Vulnerabilities[0].Severity).Should(Equal("HIGH"))
+				Expect(scanOutput[1].Vulnerabilities[0].PkgName).Should(Equal("setuptools"))
+				Expect(scanOutput[1].Vulnerabilities[0].Status).Should(Equal("fixed"))
+				Expect(scanOutput[1].Vulnerabilities[0].InstalledVersion).Should(Equal("58.1.0"))
+				Expect(scanOutput[1].Vulnerabilities[0].FixedVersion).Should(Equal("65.5.1"))
 			})
 
 			It("return the error when unable to parse the scan output", func() {
@@ -84,6 +103,7 @@ var _ = Describe("Trivy client", func() {
 				_, err := trivy.ScanImage("alpine:3.11.0")
 				Expect(err).Should(MatchError(ContainSubstring("error while decoding trivy output for image alpine:3.11.0")))
 			})
+
 		})
 
 		Describe("CisScan", func() {
