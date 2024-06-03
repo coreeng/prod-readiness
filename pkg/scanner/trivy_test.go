@@ -71,11 +71,11 @@ var _ = Describe("Trivy client", func() {
 			It("invokes trivy CLI to scan the image and parse the output", func() {
 				_, filename, _, _ := runtime.Caller(0)
 				testPackage := filepath.Dir(filename)
-				test_output, fileerr := os.ReadFile(filepath.Join(testPackage, "trivy_test_output.json"))
-				Expect(fileerr).NotTo(HaveOccurred())
+				testoutput, err := os.ReadFile(filepath.Join(testPackage, "trivy_test_output.json"))
+				Expect(err).NotTo(HaveOccurred())
 
 				mockRunner.On("Execute", "trivy", []string{"-q", "image", "-f", "json", "--skip-update", "--no-progress", "--severity", severity, "--timeout", "7m0s", "alpine:3.11.0"}).
-					Return(test_output, []byte{}, nil)
+					Return(testoutput, []byte{}, nil)
 
 				scanOutput, err := trivy.ScanImage("alpine:3.11.0")
 				Expect(err).NotTo(HaveOccurred())
