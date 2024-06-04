@@ -140,7 +140,7 @@ var _ = Describe("Scanner", func() {
 
 	})
 
-	Describe("scan processing", func() {
+	Describe("Scan processing", func() {
 		const (
 			areaLabel = "area-label"
 		)
@@ -196,6 +196,48 @@ var _ = Describe("Scanner", func() {
 			// when
 			_, err := scan.ScanImages()
 			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should produce a vulnerability report", func() {
+			// given
+			mockKubernetesClient.On("GetContainersInNamespaces", areaLabel).Return([]k8s.ContainerSummary{{
+				Image:   "alpine:3.11.0",
+				PodName: "pod1",
+			}}, nil)
+			mockTrivyClient.On("DownloadDatabase").Return(nil)
+			mockDockerClient.On("PullImage", "alpine:3.11.0").Return(nil)
+			mockTrivyClient.On("ScanImage", "alpine:3.11.0").Return([]TrivyOutputResults{{
+				Vulnerabilities: []Vulnerabilities{
+					{
+						Description:      "vuln 1",
+						PkgName:          "setuptools",
+						InstalledVersion: "58.1.0",
+						FixedVersion:     "65.5.1",
+						Severity:         "CRITICAL",
+						Status:           "fixed",
+						VulnerabilityID:  "CVE-2022-40897",
+					},
+				},
+			}}, nil)
+			mockDockerClient.On("RmiImage", "alpine:3.11.0").Return(nil)
+
+			// when
+			report, err := scan.ScanImages()
+
+			// then
+			Expect(err).NotTo(HaveOccurred())
+			Expect(report.ScannedImages).To(HaveLen(1))
+			Expect(report.ScannedImages[0].TrivyOutputResults).To(HaveLen(1))
+			Expect(report.ScannedImages[0].TrivyOutputResults[0].Vulnerabilities).To(HaveLen(1))
+
+			vulnerability := report.ScannedImages[0].TrivyOutputResults[0].Vulnerabilities[0]
+			Expect(vulnerability.Description).To(Equal("vuln 1"))
+			Expect(vulnerability.PkgName).To(Equal("setuptools"))
+			Expect(vulnerability.InstalledVersion).To(Equal("58.1.0"))
+			Expect(vulnerability.FixedVersion).To(Equal("65.5.1"))
+			Expect(vulnerability.Severity).To(Equal("CRITICAL"))
+			Expect(vulnerability.VulnerabilityID).To(Equal("CVE-2022-40897"))
+			Expect(vulnerability.Status).To(Equal("fixed"))
 		})
 
 		Context("an error occurs when communicating with the Kubernetes cluster", func() {
