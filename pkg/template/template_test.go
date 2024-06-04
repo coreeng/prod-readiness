@@ -69,7 +69,7 @@ var _ = Describe("Generating vulnerability report", func() {
 	})
 
 	It("should generate a verbose report according to the html template file", func() {
-		actualReportFile := filepath.Join(findProjectDir(), "templates/actual-report.html")
+		actualReportFile := filepath.Join(tmpDir, "actual-report.html")
 		reportTemplate := filepath.Join(findProjectDir(), "templates/report-imageScan.html.tmpl")
 		err := GenerateReportFromTemplate(aReport(true), reportTemplate, "", actualReportFile)
 		Expect(err).NotTo(HaveOccurred())
@@ -78,7 +78,7 @@ var _ = Describe("Generating vulnerability report", func() {
 
 	Context("error occurred during image scanning", func() {
 		It("should report the errors according to the md template file", func() {
-			actualReportFile := filepath.Join(findProjectDir(), "templates/actual-report.md")
+			actualReportFile := filepath.Join(tmpDir, "actual-report.md")
 			reportTemplate := filepath.Join(findProjectDir(), "templates/report-imageScan.md.tmpl")
 			err := GenerateReportFromTemplate(aReportWithErrors(), reportTemplate, "", actualReportFile)
 			Expect(err).NotTo(HaveOccurred())
@@ -86,7 +86,7 @@ var _ = Describe("Generating vulnerability report", func() {
 		})
 
 		It("should report the errors according to the html template file", func() {
-			actualReportFile := filepath.Join(findProjectDir(), "templates/actual-report.html")
+			actualReportFile := filepath.Join(tmpDir, "actual-report.html")
 			reportTemplate := filepath.Join(findProjectDir(), "templates/report-imageScan.html.tmpl")
 			err := GenerateReportFromTemplate(aReportWithErrors(), reportTemplate, "", actualReportFile)
 			Expect(err).NotTo(HaveOccurred())
