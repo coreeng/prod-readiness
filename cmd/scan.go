@@ -54,7 +54,7 @@ func scan(_ *cobra.Command, _ []string) {
 	}
 
 	fullReport := &FullReport{
-		ImageScan: imageScanReport,
+		ImageScan:   imageScanReport,
 		VerboseScan: reportVerbose,
 	}
 	err = r.GenerateReportFromTemplate(fullReport, reportTemplate, reportDir, reportFile)

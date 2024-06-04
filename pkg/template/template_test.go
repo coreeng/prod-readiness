@@ -24,7 +24,8 @@ func TestManager(t *testing.T) {
 }
 
 type TestReport struct {
-	ImageScan *scanner.VulnerabilityReport
+	ImageScan   *scanner.VulnerabilityReport
+	VerboseScan bool
 }
 
 var _ = Describe("Generating vulnerability report", func() {
@@ -34,7 +35,7 @@ var _ = Describe("Generating vulnerability report", func() {
 
 	BeforeEach(func() {
 		var err error
-		tmpDir, err = ioutil.TempDir("", "")
+		tmpDir, err = os.MkdirTemp("", "")
 		Expect(err).NotTo(HaveOccurred())
 	})
 
@@ -43,33 +44,41 @@ var _ = Describe("Generating vulnerability report", func() {
 		Expect(err).NotTo(HaveOccurred())
 	})
 
-	FIt("should generate the report according to the md template file", func() {
+	It("should generate the report according to the md template file", func() {
 		actualReportFile := filepath.Join(tmpDir, "actual-report.md")
 		reportTemplate := filepath.Join(findProjectDir(), "templates/report-imageScan.md.tmpl")
-		err := GenerateReportFromTemplate(aReport(), reportTemplate, "", actualReportFile)
+		err := GenerateReportFromTemplate(aReport(false), reportTemplate, "", actualReportFile)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(fileContentEqual("expected-test-report-imageScan.md", actualReportFile)).To(BeTrue())
+	})
+
+	It("should generate the verbose report according to the md template file", func() {
+		actualReportFile := filepath.Join(tmpDir, "actual-report.md")
+		reportTemplate := filepath.Join(findProjectDir(), "templates/report-imageScan.md.tmpl")
+		err := GenerateReportFromTemplate(aReport(true), reportTemplate, "", actualReportFile)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(fileContentEqual("expected-test-report-imageScan-verbose.md", actualReportFile)).To(BeTrue())
 	})
 
 	It("should generate the report according to the html template file", func() {
 		actualReportFile := filepath.Join(tmpDir, "actual-report.html")
 		reportTemplate := filepath.Join(findProjectDir(), "templates/report-imageScan.html.tmpl")
-		err := GenerateReportFromTemplate(aReport(), reportTemplate, "", actualReportFile)
+		err := GenerateReportFromTemplate(aReport(false), reportTemplate, "", actualReportFile)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(fileContentEqual("expected-test-report-imageScan.html", actualReportFile, "-B", "-w")).To(BeTrue())
 	})
 
 	It("should generate a verbose report according to the html template file", func() {
-		actualReportFile := filepath.Join(tmpDir, "actual-report.html")
+		actualReportFile := filepath.Join(findProjectDir(), "templates/actual-report.html")
 		reportTemplate := filepath.Join(findProjectDir(), "templates/report-imageScan.html.tmpl")
-		err := GenerateReportFromTemplate(aReport(), reportTemplate, "", actualReportFile)
+		err := GenerateReportFromTemplate(aReport(true), reportTemplate, "", actualReportFile)
 		Expect(err).NotTo(HaveOccurred())
-		Expect(fileContentEqual("expected-test-verbose-report-imageScan.html", actualReportFile, "-B", "-w")).To(BeTrue())
+		Expect(fileContentEqual("expected-test-report-imageScan-verbose.html", actualReportFile, "-B", "-w")).To(BeTrue())
 	})
 
 	Context("error occurred during image scanning", func() {
 		It("should report the errors according to the md template file", func() {
-			actualReportFile := filepath.Join(tmpDir, "actual-report.md")
+			actualReportFile := filepath.Join(findProjectDir(), "templates/actual-report.md")
 			reportTemplate := filepath.Join(findProjectDir(), "templates/report-imageScan.md.tmpl")
 			err := GenerateReportFromTemplate(aReportWithErrors(), reportTemplate, "", actualReportFile)
 			Expect(err).NotTo(HaveOccurred())
@@ -77,7 +86,7 @@ var _ = Describe("Generating vulnerability report", func() {
 		})
 
 		It("should report the errors according to the html template file", func() {
-			actualReportFile := filepath.Join(tmpDir, "actual-report.html")
+			actualReportFile := filepath.Join(findProjectDir(), "templates/actual-report.html")
 			reportTemplate := filepath.Join(findProjectDir(), "templates/report-imageScan.html.tmpl")
 			err := GenerateReportFromTemplate(aReportWithErrors(), reportTemplate, "", actualReportFile)
 			Expect(err).NotTo(HaveOccurred())
@@ -86,11 +95,12 @@ var _ = Describe("Generating vulnerability report", func() {
 	})
 })
 
-func aReport() *TestReport {
+func aReport(verbose bool) *TestReport {
 	debianImageScan := aDebianImageScan(map[string]int{"CRITICAL": 0, "HIGH": 10, "MEDIUM": 5, "LOW": 20, "UNKNOWN": 0})
 	ubuntuImageScan := anUbuntuImageScan(map[string]int{"CRITICAL": 0, "HIGH": 2, "MEDIUM": 1, "LOW": 10, "UNKNOWN": 0})
 	alpineImageScan := anAlpineImageScan(map[string]int{})
 	return &TestReport{
+		VerboseScan: verbose,
 		ImageScan: &scanner.VulnerabilityReport{
 			ScannedImages: []scanner.ScannedImage{debianImageScan, alpineImageScan, ubuntuImageScan},
 			AreaSummary: map[string]*scanner.AreaSummary{

@@ -1,3 +1,4 @@
+{{- $verboseScan := .VerboseScan }}
 <!DOCTYPE html>
   <html lang="en">
   <head>
@@ -119,9 +120,11 @@
               <th>CVE</th>
               <th>Severity</th>
               <th>PkgName</th>
+{{- if $verboseScan }}
               <th>Status</th>
               <th>Installed Version</th>
               <th>Fixed Version</th>
+{{- end }}
               <th>Description</th>
             </tr>
           </thead>
@@ -139,9 +142,11 @@
                       <td><a href="https://nvd.nist.gov/vuln/detail/{{ $trivySpecs.VulnerabilityID }}">{{ $trivySpecs.VulnerabilityID }}</a></td>
                       <td>{{ $trivySpecs.Severity }}</td>
                       <td>{{ $trivySpecs.PkgName }}</td>
+{{- if $verboseScan }}
                       <td>{{ $trivySpecs.Status }}</td>
                       <td>{{ $trivySpecs.InstalledVersion }}</td>
                       <td>{{ $trivySpecs.FixedVersion }}</td>
+{{- end }}
                       <td>{{ truncate $description 105 }}</td>
                     </tr>
                   {{ end}} {{/* end of team vulnerabilities range */}}

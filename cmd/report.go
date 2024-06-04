@@ -20,7 +20,7 @@ var (
 	kubeContext, kubeconfigPath, imageNameReplacement, areaLabel, teamLabels, filterLabels, severity, jsonReportFile, reportDir, reportFile, reportTemplate string
 	scanWorkers, workersLinuxBench                                                                                                                          int
 	scanTimeout                                                                                                                                             time.Duration
-	reportVerbose																																		  	bool	
+	reportVerbose                                                                                                                                           bool
 )
 
 func init() {
@@ -44,10 +44,10 @@ func init() {
 
 // FullReport - FullReport
 type FullReport struct {
-	ImageScan *scanner.VulnerabilityReport
+	ImageScan   *scanner.VulnerabilityReport
 	VerboseScan bool
-	LinuxCIS  *linuxbench.LinuxReport
-	CisScan   *scanner.CisOutput
+	LinuxCIS    *linuxbench.LinuxReport
+	CisScan     *scanner.CisOutput
 }
 
 func report(cmd *cobra.Command, str []string) {

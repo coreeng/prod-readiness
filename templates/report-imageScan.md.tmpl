@@ -1,5 +1,6 @@
 # Image Scanning
 
+{{- $verboseScan := .VerboseScan }}
 {{- range $keyArea, $area := .ImageScan.AreaSummary }}
 
 ## Vulnerabilities for {{ $area.Name }}
@@ -34,7 +35,7 @@ The following errors have occurred while scanning images:
 
 #### Vulnerabilities details
 
-{{- if .VerboseScan }}
+{{ if $verboseScan -}}
 | Image | CVE | Severity | PkgName | Status | Installed Version | Fixed Version | Description |
 |-------|-----|----------|---------|--------|-------------------|---------------|-------------|
 {{- else -}}
@@ -49,9 +50,9 @@ The following errors have occurred while scanning images:
 {{- if not $trivySpecs.Title -}}
 {{- $description = $trivySpecs.Description -}}
 {{- end -}}
-{{- if .VerboseScan }}
+{{- if $verboseScan }}
 | {{ $specs.ImageName }} | [{{ $trivySpecs.VulnerabilityID }}](https://nvd.nist.gov/vuln/detail/{{ $trivySpecs.VulnerabilityID }}) | {{ $trivySpecs.Severity }} | {{ $trivySpecs.PkgName }} | {{ $trivySpecs.Status }} | {{ $trivySpecs.InstalledVersion }} | {{ $trivySpecs.FixedVersion }} | {{ truncate $description 105 }} |
-{{- else -}}
+{{- else }}
 | {{ $specs.ImageName }} | [{{ $trivySpecs.VulnerabilityID }}](https://nvd.nist.gov/vuln/detail/{{ $trivySpecs.VulnerabilityID }}) | {{ $trivySpecs.Severity }} | {{ $trivySpecs.PkgName }} | {{ truncate $description 105 }} |
 {{- end -}}
 {{ end}} {{/* end of team if vulnerabilities */}}
