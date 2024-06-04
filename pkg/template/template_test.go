@@ -7,11 +7,10 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/coreeng/production-readiness/production-readiness/pkg/k8s"
-
-	logr "github.com/sirupsen/logrus"
 
 	"github.com/coreeng/production-readiness/production-readiness/pkg/scanner"
 
@@ -58,6 +57,14 @@ var _ = Describe("Generating vulnerability report", func() {
 		err := GenerateReportFromTemplate(aReport(), reportTemplate, "", actualReportFile)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(fileContentEqual("expected-test-report-imageScan.html", actualReportFile, "-B", "-w")).To(BeTrue())
+	})
+
+	It("should generate a verbose report according to the html template file", func() {
+		actualReportFile := filepath.Join(tmpDir, "actual-report.html")
+		reportTemplate := filepath.Join(findProjectDir(), "templates/report-imageScan.html.tmpl")
+		err := GenerateReportFromTemplate(aReport(), reportTemplate, "", actualReportFile)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(fileContentEqual("expected-test-verbose-report-imageScan.html", actualReportFile, "-B", "-w")).To(BeTrue())
 	})
 
 	Context("error occurred during image scanning", func() {
@@ -312,6 +319,7 @@ func aLowVulnerablity() scanner.Vulnerabilities {
 		VulnerabilityID:  "CVE-2011-3374",
 		PkgName:          "apt",
 		InstalledVersion: "1.8.2.2",
+		Status:           "will_not_fix",
 		Layer: &scanner.Layer{
 			Digest: "sha256:b9a857cbf04d2c0d2f0f6b73e894b20a977a6d3b6edd9e27d080e03142954950",
 			DiffID: "sha256:4762552ad7d851a9901571428078281985074e5ddb806979dd7ad24748db4ca0",
@@ -330,6 +338,8 @@ func aHighVulnerablity() scanner.Vulnerabilities {
 		VulnerabilityID:  "CVE-2021-3326",
 		PkgName:          "libc-bin",
 		InstalledVersion: "2.28-10",
+		FixedVersion:     "2.29",
+		Status:           "fixed",
 		Layer: &scanner.Layer{
 			Digest: "sha256:b9a857cbf04d2c0d2f0f6b73e894b20a977a6d3b6edd9e27d080e03142954950",
 			DiffID: "sha256:4762552ad7d851a9901571428078281985074e5ddb806979dd7ad24748db4ca0",
@@ -349,6 +359,7 @@ func aMediumVulnerablity() scanner.Vulnerabilities {
 		VulnerabilityID:  "CVE-2020-13844",
 		PkgName:          "libstdc++6",
 		InstalledVersion: "8.4.0-1ubuntu1~18.04",
+		Status:           "affected",
 		Layer: &scanner.Layer{
 			DiffID: "sha256:80580270666742c625aecc56607a806ba343a66a8f5a7fd708e6c4e4c07a3e9b",
 		},
@@ -363,17 +374,7 @@ func aMediumVulnerablity() scanner.Vulnerabilities {
 }
 
 func findProjectDir() string {
-	workingDir, err := os.Getwd()
-	if err != nil {
-		logr.Fatalf("Unable to stat current directory: %v", err)
-	}
-
-	for {
-		parentPath := filepath.Dir(workingDir)
-		parentDirName := filepath.Base(parentPath)
-		if parentDirName == "prod-readiness" {
-			return parentPath
-		}
-		workingDir = parentPath
-	}
+	_, filename, _, _ := runtime.Caller(0)
+	testDir := filepath.Dir(filename)
+	return filepath.Join(testDir + "/../..")
 }
