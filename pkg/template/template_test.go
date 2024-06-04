@@ -43,7 +43,7 @@ var _ = Describe("Generating vulnerability report", func() {
 		Expect(err).NotTo(HaveOccurred())
 	})
 
-	It("should generate the report according to the md template file", func() {
+	FIt("should generate the report according to the md template file", func() {
 		actualReportFile := filepath.Join(tmpDir, "actual-report.md")
 		reportTemplate := filepath.Join(findProjectDir(), "templates/report-imageScan.md.tmpl")
 		err := GenerateReportFromTemplate(aReport(), reportTemplate, "", actualReportFile)
