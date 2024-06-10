@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+  <html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Vulnerability Report</title>
+
+    <style>
+      table, th, td {
+        padding: 5px;
+        border: 1px solid black;
+        border-collapse: collapse;
+      }
+
+      li {
+          padding-top: 3px;
+      }
+    </style>
+
+  </head>
+  <body class="p-3">
+    <h1>Vulnerability Report</h1>
+
+    <h2>Sections index</h2>
+    <ul>
+      {{- range $keyArea, $area := .ImageScan.AreaSummary }}
+        <li>
+          <a href="#area-{{ $keyArea }}">Vulnerabilities for {{ $area.Name }}</a>
+        </li>
+        {{- range $keyTeam, $team := $area.Teams }}
+        <ul>
+          <li>
+            <a href="#area-{{ $keyArea }}-team-{{ $keyTeam }}">Vulnerabilities for {{ $area.Name }} - {{ $team.Name }}</a>
+          </li>
+        </ul>
+        {{- end}} {{/* end of team range */}}
+      {{- end}} {{/* end of area range */}}
+    </ul>
+
+
+    {{- range $keyArea, $area := .ImageScan.AreaSummary }}
+      <h2 id="area-{{ $keyArea }}">Vulnerabilities for {{ $area.Name }}</h2>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Total Image Count</th>
+            <th>Total Container Count</th>
+            <th>Total Critical</th>
+            <th>Total High</th>
+            <th>Total Medium</th>
+            <th>Total Low</th>
+            <th>Total Unknown</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>{{ $area.ImageCount }}</td>
+            <td>{{ $area.ContainerCount }}</td>
+            <td>{{ index $area.TotalVulnerabilityBySeverity "CRITICAL" }}</td>
+            <td>{{ index $area.TotalVulnerabilityBySeverity "HIGH" }}</td>
+            <td>{{ index $area.TotalVulnerabilityBySeverity "MEDIUM" }}</td>
+            <td>{{ index $area.TotalVulnerabilityBySeverity "LOW" }}</td>
+            <td>{{ index $area.TotalVulnerabilityBySeverity "UNKNOWN" }}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      {{- range $keyTeam, $team := $area.Teams }}
+
+        <h3 id="area-{{ $keyArea }}-team-{{ $keyTeam }}">Vulnerabilities for {{ $area.Name }} - {{ $team.Name }}</h3>
+        {{- if $team.HasScanErrors }}
+        <h4>Errors</h4>
+        The following errors have occurred while scanning images:
+        <ul>
+        {{- range $key, $scanError := $team.ScanErrors }}
+           <li>{{ $scanError }}</li>
+        {{- end }}
+        </ul>
+        {{- end }}
+
+        <h4>Summary</h4>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Images</th>
+              <th>Containers</th>
+              <th>Critical</th>
+              <th>High</th>
+              <th>Medium</th>
+              <th>Low</th>
+              <th>Unknown</th>
+            </tr>
+          </thead>
+          <tbody>
+            {{- range $unused, $image := $team.Images }}
+            {{- $vulnerabilitySummary := $image.VulnerabilitySummary }}
+            {{- if not $image.ScanError }}
+            <tr>
+              <td>{{ $image.ImageName }} </td>
+              <td>{{ $vulnerabilitySummary.ContainerCount }}</td>
+              <td>{{ index $vulnerabilitySummary.TotalVulnerabilityBySeverity "CRITICAL" }}</td>
+              <td>{{ index $vulnerabilitySummary.TotalVulnerabilityBySeverity "HIGH" }}</td>
+              <td>{{ index $vulnerabilitySummary.TotalVulnerabilityBySeverity "MEDIUM" }}</td>
+              <td>{{ index $vulnerabilitySummary.TotalVulnerabilityBySeverity "LOW" }}</td>
+              <td>{{ index $vulnerabilitySummary.TotalVulnerabilityBySeverity "UNKNOWN" }}</td>
+            </tr>
+            {{- end }}
+            {{- end }}
+          </tbody>
+        </table>
+
+        <h4>Vulnerabilities details</h4>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Image</th>
+              <th>CVE</th>
+              <th>Severity</th>
+              <th>PkgName</th>
+              <th>Status</th>
+              <th>Installed Version</th>
+              <th>Fixed Version</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            {{ range $unused, $image := $team.Images }}
+              {{- range $trivyKeyOutput, $trivyOutput := $image.TrivyOutputResults }}
+                {{- if $trivyOutput.Vulnerabilities }}
+                  {{- range $trivyKey, $trivySpecs := $trivyOutput.Vulnerabilities }}
+                    {{- $description := $trivySpecs.Title -}}
+                      {{- if not $trivySpecs.Title -}}
+                        {{- $description = $trivySpecs.Description -}}
+                      {{- end -}}
+                    <tr>
+                      <td>{{ $image.ImageName }}</td>
+                      <td><a href="https://nvd.nist.gov/vuln/detail/{{ $trivySpecs.VulnerabilityID }}">{{ $trivySpecs.VulnerabilityID }}</a></td>
+                      <td>{{ $trivySpecs.Severity }}</td>
+                      <td>{{ $trivySpecs.PkgName }}</td>
+                      <td>{{ $trivySpecs.Status }}</td>
+                      <td>{{ $trivySpecs.InstalledVersion }}</td>
+                      <td>{{ $trivySpecs.FixedVersion }}</td>
+                      <td>{{ truncate $description 105 }}</td>
+                    </tr>
+                  {{ end}} {{/* end of team vulnerabilities range */}}
+                {{- end}} {{/* end of team vulnerabilities if condition*/}}
+              {{- end}} {{/* end of team trivy output range */}}
+            {{- end}} {{/* end of team images range */}}
+          </tbody>
+        </table>
+      {{- end}} {{/* end of team range */}}
+    {{- end}} {{/* end of area range */}}
+
+
+<script src="dist/jquery.slim.min.js"></script>
+<script src="dist/umd/popper.min.js"></script>
+<script src="dist/js/bootstrap.min.js"></script>
+
+<script>
+    var currentSortBy = "";
+
+    function sortBy(column) {
+        var asc = true;
+        if ($('th#th-' + column).hasClass('dropup')) asc = false;
+        $('[id^=a-]').removeClass('dropdown-toggle');
+        $('[id^=th-]').removeClass('dropup');
+        if (currentSortBy === column && asc) $('th#th-' + column).addClass('dropup');
+
+        $('a#a-' + column).addClass('dropdown-toggle')
+        currentSortBy = column;
+    }
+
+    $('th').click(function () {
+        var table = $(this).parents('table').eq(0)
+        var rows = table.find('tr:gt(0)').toArray().sort(comparer($(this).index()))
+        this.asc = !this.asc
+        if (!this.asc) {
+            rows = rows.reverse()
+        }
+        for (var i = 0; i < rows.length; i++) {
+            table.append(rows[i])
+        }
+    })
+
+    function comparer(index) {
+        return function (a, b) {
+            var valA = severityToInt(getCellValue(a, index)), valB = severityToInt(getCellValue(b, index))
+            return $.isNumeric(valA) && $.isNumeric(valB) ? valA - valB : valA.toString().localeCompare(valB)
+        }
+    }
+
+    function severityToInt(severity){
+        switch (severity) {
+            case 'CRITICAL':
+                return 4
+            case 'HIGH':
+                return 3;
+            case 'MEDIUM':
+                return 2;
+            case 'LOW':
+                return 1;
+            case 'UNKNOWN':
+                return 0;
+            default:
+                return severity;
+        }
+    }
+
+    function getCellValue(row, index) {
+        return $(row).children('td').eq(index).text()
+    }
+
+</script>
+
+</body>
+</html>
