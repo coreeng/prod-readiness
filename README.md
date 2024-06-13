@@ -31,7 +31,7 @@ and perform a vulnerability scan against using [trivy](https://github.com/aquase
 It will then generate an `HTML` or `Markdown` report summarising the vulnerabilities found, their severity, CVE reference
 and how many containers are affected.
 
-It can also provide a break down of the vulnerabilities per area (`--area-labels`) / team (`--teams-labels`) when specified.
+It can also provide a break-down of the vulnerabilities per area (`--area-labels`) / team (`--teams-labels`) when specified.
 
 Here is a sample report:
 ![Sample Report](sample-report-extract.png)
