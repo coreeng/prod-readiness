@@ -32,6 +32,7 @@ func init() {
 	scanCmd.Flags().StringVar(&jsonReportFile, "report-output-filename-json", "", "output filename where the json representation of the report will be saved. No json representation will be created unless this option is specified")
 	scanCmd.Flags().DurationVar(&scanTimeout, "scan-timeout", 5*time.Minute, "timeout for each container image scan")
 	scanCmd.Flags().IntVar(&scanWorkers, "scan-workers", 10, "number of worker to process images scan in parallel")
+	scanCmd.Flags().BoolVar(&reportVerbose, "report-output-verbose", false, "enable additional scan output columns (status, installed version, fixed version) in the report")
 }
 
 func scan(_ *cobra.Command, _ []string) {
@@ -53,7 +54,8 @@ func scan(_ *cobra.Command, _ []string) {
 	}
 
 	fullReport := &FullReport{
-		ImageScan: imageScanReport,
+		ImageScan:   imageScanReport,
+		VerboseScan: reportVerbose,
 	}
 	err = r.GenerateReportFromTemplate(fullReport, reportTemplate, reportDir, reportFile)
 	if err != nil {

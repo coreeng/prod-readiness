@@ -47,6 +47,7 @@ type Vulnerabilities struct {
 	Title            string
 	References       []string
 	Layer            *Layer
+	Status           string
 }
 
 // TrivyOutputResults is an object representation of the trivy image scan summary

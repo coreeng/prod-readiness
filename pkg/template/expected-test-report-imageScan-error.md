@@ -36,5 +36,4 @@ The following errors have occurred while scanning images:
 | ubuntu:18.04 | [CVE-2011-3374](https://nvd.nist.gov/vuln/detail/CVE-2011-3374) | LOW | apt | It was found that apt-key in apt, all versions, do not correctly validate gpg keys with the master keyrin... |
 | ubuntu:18.04 | [CVE-2011-3374](https://nvd.nist.gov/vuln/detail/CVE-2011-3374) | LOW | apt | It was found that apt-key in apt, all versions, do not correctly validate gpg keys with the master keyrin... |
 | ubuntu:18.04 | [CVE-2011-3374](https://nvd.nist.gov/vuln/detail/CVE-2011-3374) | LOW | apt | It was found that apt-key in apt, all versions, do not correctly validate gpg keys with the master keyrin... |
-| ubuntu:18.04 | [CVE-2011-3374](https://nvd.nist.gov/vuln/detail/CVE-2011-3374) | LOW | apt | It was found that apt-key in apt, all versions, do not correctly validate gpg keys with the master keyrin... |
-        
+| ubuntu:18.04 | [CVE-2011-3374](https://nvd.nist.gov/vuln/detail/CVE-2011-3374) | LOW | apt | It was found that apt-key in apt, all versions, do not correctly validate gpg keys with the master keyrin... |        
